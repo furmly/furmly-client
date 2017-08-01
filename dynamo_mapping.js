@@ -6,6 +6,9 @@ const defaultMap = {
 	PROCESS: components.dynamo_process,
 	SECTION: components.dynamo_section,
 	SELECT: components.dynamo_select,
-	SELECTSET:components.dynamo_selectset
+	SELECTSET: components.dynamo_selectset,
+	LIST: components.dynamo_list,
+	HIDDEN: components.dynamo_hidden,
+	NAV:components.dynamo_nav
 };
 export default defaultMap;
