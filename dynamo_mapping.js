@@ -9,6 +9,7 @@ const defaultMap = {
 	SELECTSET: components.dynamo_selectset,
 	LIST: components.dynamo_list,
 	HIDDEN: components.dynamo_hidden,
-	NAV:components.dynamo_nav
+	NAV:components.dynamo_nav,
+	IMAGE:components.dynamo_image
 };
 export default defaultMap;
