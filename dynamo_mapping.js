@@ -10,6 +10,8 @@ const defaultMap = {
 	LIST: components.dynamo_list,
 	HIDDEN: components.dynamo_hidden,
 	NAV:components.dynamo_nav,
-	IMAGE:components.dynamo_image
+	IMAGE:components.dynamo_image,
+	GRID:components.dynamo_grid,
+	FILEUPLOAD:components.dynamo_fileupload
 };
 export default defaultMap;
