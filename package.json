@@ -1,6 +1,6 @@
 {
   "name": "dynamo-client",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "This is the client library for Dynamo. It has common functionality between platforms",
   "main": "index.js",
   "scripts": {
