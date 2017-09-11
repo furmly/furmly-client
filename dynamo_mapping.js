@@ -12,6 +12,7 @@ const defaultMap = {
 	NAV:components.dynamo_nav,
 	IMAGE:components.dynamo_image,
 	GRID:components.dynamo_grid,
-	FILEUPLOAD:components.dynamo_fileupload
+	FILEUPLOAD:components.dynamo_fileupload,
+	ACTIONVIEW:components.dynamo_actionview
 };
 export default defaultMap;
