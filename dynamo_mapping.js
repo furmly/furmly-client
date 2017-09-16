@@ -14,6 +14,7 @@ const defaultMap = {
 	GRID:components.dynamo_grid,
 	FILEUPLOAD:components.dynamo_fileupload,
 	ACTIONVIEW:components.dynamo_actionview,
-	HTMLVIEW:components.dynamo_htmlview
+	HTMLVIEW:components.dynamo_htmlview,
+	LABEL:components.dynamo_label
 };
 export default defaultMap;
