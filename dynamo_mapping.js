@@ -16,6 +16,6 @@ const defaultMap = {
 	ACTIONVIEW:components.dynamo_actionview,
 	HTMLVIEW:components.dynamo_htmlview,
 	LABEL:components.dynamo_label,
-	WEBVIEW:components.dynamo_web
+	WEBVIEW:components.dynamo_webview
 };
 export default defaultMap;
