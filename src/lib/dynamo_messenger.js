@@ -5,7 +5,7 @@ import { connect } from "react-redux";
 import {
 	sendMessage,
 	loginChat,
-	createChatGroup,
+	createGroup,
 	sendFriendRequest,
 	searchForHandle,
 	acceptInvite,
@@ -72,7 +72,7 @@ export default (
 	const mapDispatchToProps = dispatch => {
 		return {
 			send: (type, msg) => dispatch(sendMessage(type, msg)),
-			createGroup: msg => dispatch(createChatGroup(msg)),
+			createGroup: msg => dispatch(createGroup(msg)),
 			login: credentials => dispatch(loginChat(credentials)),
 			sendFriendRequest: handle => dispatch(sendFriendRequest(handle)),
 			acceptInvite: handle => dispatch(acceptInvite(handle)),
