@@ -1505,12 +1505,13 @@ var dynamo_selectset = (function (Layout, Picker, ProgressBar, Container) {
 			value: function _onContainerValueChanged(value, pickerValue) {
 				this._currentValue = value;
 				pickerValue = pickerValue || this.getPickerValue();
-				if (!value) return [];
 				if (this.props.args.path) {
-					return [pickerValue, value];
+					var _p = [pickerValue];
+					if (value) _p.push(value);
+					return _p;
 				}
 				//path is not defined so unpack the properties and send.
-				return [pickerValue].concat(_toConsumableArray$1(Object.keys(value._no_path).map(function (x) {
+				return [pickerValue].concat(_toConsumableArray$1(Object.keys(value && value._no_path || {}).map(function (x) {
 					return _defineProperty$4({}, x, value._no_path[x]);
 				})));
 			}
@@ -3720,3 +3721,4 @@ exports.reducers = index;
 exports.toggleAllBusyIndicators = toggleAllBusyIndicators;
 exports.chatReducer = chat;
 exports.startChatServer = startReceivingMessages;
+//# sourceMappingURL=bundle.js.map

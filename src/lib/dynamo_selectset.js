@@ -168,14 +168,15 @@ export default (Layout, Picker, ProgressBar, Container) => {
 		_onContainerValueChanged(value, pickerValue) {
 			this._currentValue = value;
 			pickerValue = pickerValue || this.getPickerValue();
-			if (!value) return [];
 			if (this.props.args.path) {
-				return [pickerValue, value];
+				let _p = [pickerValue];
+				if (value) _p.push(value);
+				return _p;
 			}
 			//path is not defined so unpack the properties and send.
 			return [
 				pickerValue,
-				...Object.keys(value._no_path).map(x => {
+				...Object.keys((value && value._no_path) || {}).map(x => {
 					return { [x]: value._no_path[x] };
 				})
 			];
