@@ -13,15 +13,156 @@ var reactRedux = require('react-redux');
 var _ = _interopDefault(require('lodash'));
 var uuid = _interopDefault(require('uuid/v4'));
 
-var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol" ? function (obj) { return typeof obj; } : function (obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj; };
+var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol" ? function (obj) {
+  return typeof obj;
+} : function (obj) {
+  return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj;
+};
 
-var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
 
-function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+
+
+
+
+
+
+
+
+var classCallCheck = function (instance, Constructor) {
+  if (!(instance instanceof Constructor)) {
+    throw new TypeError("Cannot call a class as a function");
+  }
+};
+
+var createClass = function () {
+  function defineProperties(target, props) {
+    for (var i = 0; i < props.length; i++) {
+      var descriptor = props[i];
+      descriptor.enumerable = descriptor.enumerable || false;
+      descriptor.configurable = true;
+      if ("value" in descriptor) descriptor.writable = true;
+      Object.defineProperty(target, descriptor.key, descriptor);
+    }
+  }
+
+  return function (Constructor, protoProps, staticProps) {
+    if (protoProps) defineProperties(Constructor.prototype, protoProps);
+    if (staticProps) defineProperties(Constructor, staticProps);
+    return Constructor;
+  };
+}();
+
+
+
+
+
+var defineProperty = function (obj, key, value) {
+  if (key in obj) {
+    Object.defineProperty(obj, key, {
+      value: value,
+      enumerable: true,
+      configurable: true,
+      writable: true
+    });
+  } else {
+    obj[key] = value;
+  }
+
+  return obj;
+};
+
+var _extends = Object.assign || function (target) {
+  for (var i = 1; i < arguments.length; i++) {
+    var source = arguments[i];
+
+    for (var key in source) {
+      if (Object.prototype.hasOwnProperty.call(source, key)) {
+        target[key] = source[key];
+      }
+    }
+  }
+
+  return target;
+};
+
+
+
+var inherits = function (subClass, superClass) {
+  if (typeof superClass !== "function" && superClass !== null) {
+    throw new TypeError("Super expression must either be null or a function, not " + typeof superClass);
+  }
+
+  subClass.prototype = Object.create(superClass && superClass.prototype, {
+    constructor: {
+      value: subClass,
+      enumerable: false,
+      writable: true,
+      configurable: true
+    }
+  });
+  if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass;
+};
+
+
+
+
+
+
+
+
+
+var objectWithoutProperties = function (obj, keys) {
+  var target = {};
+
+  for (var i in obj) {
+    if (keys.indexOf(i) >= 0) continue;
+    if (!Object.prototype.hasOwnProperty.call(obj, i)) continue;
+    target[i] = obj[i];
+  }
+
+  return target;
+};
+
+var possibleConstructorReturn = function (self, call) {
+  if (!self) {
+    throw new ReferenceError("this hasn't been initialised - super() hasn't been called");
+  }
+
+  return call && (typeof call === "object" || typeof call === "function") ? call : self;
+};
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+var toConsumableArray = function (arr) {
+  if (Array.isArray(arr)) {
+    for (var i = 0, arr2 = Array(arr.length); i < arr.length; i++) arr2[i] = arr[i];
+
+    return arr2;
+  } else {
+    return Array.from(arr);
+  }
+};
 
 var MemCache = function () {
 	function MemCache(opts) {
-		_classCallCheck(this, MemCache);
+		classCallCheck(this, MemCache);
 
 		this.defaultTTL = opts && opts.ttl || 300000;
 		this.store = this.store.bind(this);
@@ -29,7 +170,7 @@ var MemCache = function () {
 		this._items = {};
 	}
 
-	_createClass(MemCache, [{
+	createClass(MemCache, [{
 		key: "getKey",
 		value: function getKey(obj) {
 			switch (typeof obj === "undefined" ? "undefined" : _typeof(obj)) {
@@ -48,7 +189,7 @@ var MemCache = function () {
 		}
 	}, {
 		key: "get",
-		value: function get(key) {
+		value: function get$$1(key) {
 			var _key = this.getKey(key);
 			return this._items[_key] && this._items[_key].value || undefined;
 		}
@@ -70,11 +211,8 @@ var MemCache = function () {
 			delete this._items[key];
 		}
 	}]);
-
 	return MemCache;
 }();
-
-function _defineProperty(obj, key, value) { if (key in obj) { Object.defineProperty(obj, key, { value: value, enumerable: true, configurable: true, writable: true }); } else { obj[key] = value; } return obj; }
 
 var preDispatch = config.preDispatch;
 var BASE_URL = global.BASE_URL || config.baseUrl;
@@ -189,7 +327,7 @@ function defaultError(dispatch, customType, _meta) {
 var dynamoDownloadUrl = BASE_URL + "/api/download/:id";
 function fetchDynamoProcess(id, args) {
   return function (dispatch, getState) {
-    return dispatch(_defineProperty({}, CALL_API, preDispatch({
+    return dispatch(defineProperty({}, CALL_API, preDispatch({
       endpoint: BASE_URL + "/api/process/describe/" + id + getQueryParams(Object.assign({}, args || {}, { $uiOnDemand: !!config.uiOnDemand })),
       types: [{ type: ACTIONS.FETCHING_PROCESS, meta: id }, {
         type: ACTIONS.FETCHED_PROCESS,
@@ -282,7 +420,7 @@ function runDynamoProcessor(id, args, key) {
   }
 
   return function (dispatch, getState) {
-    return dispatch(_defineProperty({}, CALL_API, preDispatch({
+    return dispatch(defineProperty({}, CALL_API, preDispatch({
       endpoint: BASE_URL + "/api/processors/run/" + id,
       types: [{
         type: requestCustomType || ACTIONS.DYNAMO_PROCESSOR_RUNNING,
@@ -323,7 +461,7 @@ function showMessage$1(message) {
 
 function runDynamoProcess(details) {
   return function (dispatch, getState) {
-    return dispatch(_defineProperty({}, CALL_API, preDispatch({
+    return dispatch(defineProperty({}, CALL_API, preDispatch({
       endpoint: BASE_URL + "/api/process/run/" + details.id,
       types: [{
         type: ACTIONS.DYNAMO_PROCESS_RUNNING,
@@ -358,7 +496,7 @@ function runDynamoProcess(details) {
 }
 function getDynamoFilePreview(id, key, fileType, query) {
   return function (dispatch, getState) {
-    dispatch(_defineProperty({}, CALL_API, preDispatch({
+    dispatch(defineProperty({}, CALL_API, preDispatch({
       endpoint: BASE_URL + "/api/upload/preview/" + (id + (query || "")),
       types: [{ type: ACTIONS.GET_PREVIEW, meta: key }, {
         type: ACTIONS.GOT_PREVIEW,
@@ -385,7 +523,7 @@ function uploadDynamoFile(file, key) {
   formData.append("file", file);
 
   return function (dispatch, getState) {
-    dispatch(_defineProperty({}, CALL_API, preDispatch({
+    dispatch(defineProperty({}, CALL_API, preDispatch({
       endpoint: BASE_URL + "/api/upload",
       types: [{ type: ACTIONS.START_FILE_UPLOAD, meta: key }, {
         type: ACTIONS.FILE_UPLOADED,
@@ -539,18 +677,14 @@ function startReceivingMessages(store) {
   });
 }
 
-var _createClass$1 = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
-
-function _classCallCheck$1(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
-
 var Validator = function () {
 	function Validator(context) {
-		_classCallCheck$1(this, Validator);
+		classCallCheck(this, Validator);
 
 		this.run = this.run.bind(context);
 	}
 
-	_createClass$1(Validator, [{
+	createClass(Validator, [{
 		key: "run",
 		value: function run() {
 			var _this = this;
@@ -598,7 +732,6 @@ var Validator = function () {
 			});
 		}
 	}]);
-
 	return Validator;
 }();
 
@@ -617,20 +750,6 @@ var invariants = {
 	}
 };
 
-var _extends = Object.assign || function (target) { for (var i = 1; i < arguments.length; i++) { var source = arguments[i]; for (var key in source) { if (Object.prototype.hasOwnProperty.call(source, key)) { target[key] = source[key]; } } } return target; };
-
-var _createClass$2 = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
-
-function _objectWithoutProperties(obj, keys) { var target = {}; for (var i in obj) { if (keys.indexOf(i) >= 0) continue; if (!Object.prototype.hasOwnProperty.call(obj, i)) continue; target[i] = obj[i]; } return target; }
-
-function _defineProperty$1(obj, key, value) { if (key in obj) { Object.defineProperty(obj, key, { value: value, enumerable: true, configurable: true, writable: true }); } else { obj[key] = value; } return obj; }
-
-function _classCallCheck$2(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
-
-function _possibleConstructorReturn(self, call) { if (!self) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return call && (typeof call === "object" || typeof call === "function") ? call : self; }
-
-function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
-
 /**
  * Higher order function that recieves Platform specific implementation of Input
  * @param  {Function} Input Input class
@@ -643,12 +762,12 @@ var dynamo_input = (function (LabelWrapper, Input, DatePicker, Checkbox) {
 	invariants.validComponent(Checkbox, "Checkbox");
 
 	var DynamoInput = function (_Component) {
-		_inherits(DynamoInput, _Component);
+		inherits(DynamoInput, _Component);
 
 		function DynamoInput(props) {
-			_classCallCheck$2(this, DynamoInput);
+			classCallCheck(this, DynamoInput);
 
-			var _this = _possibleConstructorReturn(this, (DynamoInput.__proto__ || Object.getPrototypeOf(DynamoInput)).call(this, props));
+			var _this = possibleConstructorReturn(this, (DynamoInput.__proto__ || Object.getPrototypeOf(DynamoInput)).call(this, props));
 
 			_this.valueChanged = _this.valueChanged.bind(_this);
 			_this.state = {
@@ -666,7 +785,7 @@ var dynamo_input = (function (LabelWrapper, Input, DatePicker, Checkbox) {
 			return _this;
 		}
 
-		_createClass$2(DynamoInput, [{
+		createClass(DynamoInput, [{
 			key: "componentWillReceiveProps",
 			value: function componentWillReceiveProps(next) {
 				if (next.component_uid !== this.props.component_uid) {
@@ -715,7 +834,7 @@ var dynamo_input = (function (LabelWrapper, Input, DatePicker, Checkbox) {
 		}, {
 			key: "valueChanged",
 			value: function valueChanged(value) {
-				this.props.valueChanged(_defineProperty$1({}, this.props.name, value));
+				this.props.valueChanged(defineProperty({}, this.props.name, value));
 				if (this.props.asyncValidators && this.props.asyncValidators.length) this.runAsyncValidators(value);
 
 				this.setState({ value: value, errors: [] });
@@ -726,11 +845,10 @@ var dynamo_input = (function (LabelWrapper, Input, DatePicker, Checkbox) {
 				/*jshint ignore:start */
 				var args = this.props.args,
 				    Result = void 0;
-
 				var _props = this.props,
 				    type = _props.type,
 				    valueChanged = _props.valueChanged,
-				    passThrough = _objectWithoutProperties(_props, ["type", "valueChanged"]);
+				    passThrough = objectWithoutProperties(_props, ["type", "valueChanged"]);
 
 				if (!args || !args.type || args.type == "text" || args.type == "number" || args.type == "password") {
 					Result = Input;
@@ -754,7 +872,6 @@ var dynamo_input = (function (LabelWrapper, Input, DatePicker, Checkbox) {
 				/*jshint ignore:end */
 			}
 		}]);
-
 		return DynamoInput;
 	}(React.Component);
 
@@ -763,14 +880,6 @@ var dynamo_input = (function (LabelWrapper, Input, DatePicker, Checkbox) {
 	};
 	return DynamoInput;
 });
-
-var _createClass$3 = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
-
-function _classCallCheck$3(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
-
-function _possibleConstructorReturn$1(self, call) { if (!self) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return call && (typeof call === "object" || typeof call === "function") ? call : self; }
-
-function _inherits$1(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
 
 var dynamo_view = (function (Page, Container) {
 	invariants.validComponent(Page, "Page");
@@ -792,12 +901,12 @@ var dynamo_view = (function (Page, Container) {
 	};
 
 	var DynamoView = function (_Component) {
-		_inherits$1(DynamoView, _Component);
+		inherits(DynamoView, _Component);
 
 		function DynamoView(props) {
-			_classCallCheck$3(this, DynamoView);
+			classCallCheck(this, DynamoView);
 
-			var _this = _possibleConstructorReturn$1(this, (DynamoView.__proto__ || Object.getPrototypeOf(DynamoView)).call(this, props));
+			var _this = possibleConstructorReturn(this, (DynamoView.__proto__ || Object.getPrototypeOf(DynamoView)).call(this, props));
 
 			_this.onValueChanged = _this.onValueChanged.bind(_this);
 			_this.submit = _this.submit.bind(_this);
@@ -809,7 +918,7 @@ var dynamo_view = (function (Page, Container) {
 			return _this;
 		}
 
-		_createClass$3(DynamoView, [{
+		createClass(DynamoView, [{
 			key: "onValueChanged",
 			value: function onValueChanged(form) {
 				this.state.form = form.dynamo_view;
@@ -847,26 +956,11 @@ var dynamo_view = (function (Page, Container) {
 				/*jshint ignore:end*/
 			}
 		}]);
-
 		return DynamoView;
 	}(React.Component);
 
 	return reactRedux.connect(mapStateToProps)(DynamoView);
 });
-
-var _extends$1 = Object.assign || function (target) { for (var i = 1; i < arguments.length; i++) { var source = arguments[i]; for (var key in source) { if (Object.prototype.hasOwnProperty.call(source, key)) { target[key] = source[key]; } } } return target; };
-
-var _createClass$4 = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
-
-function _defineProperty$2(obj, key, value) { if (key in obj) { Object.defineProperty(obj, key, { value: value, enumerable: true, configurable: true, writable: true }); } else { obj[key] = value; } return obj; }
-
-function _toConsumableArray(arr) { if (Array.isArray(arr)) { for (var i = 0, arr2 = Array(arr.length); i < arr.length; i++) { arr2[i] = arr[i]; } return arr2; } else { return Array.from(arr); } }
-
-function _classCallCheck$4(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
-
-function _possibleConstructorReturn$2(self, call) { if (!self) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return call && (typeof call === "object" || typeof call === "function") ? call : self; }
-
-function _inherits$2(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
 
 var dynamo_container = (function (Section, Header, ComponentLocator) {
 	//invariants
@@ -874,12 +968,12 @@ var dynamo_container = (function (Section, Header, ComponentLocator) {
 	if (invariants.validComponent(Section, "Section") && invariants.validComponent(Header, "Header") && !ComponentLocator) throw new Error("ComponentLocator cannot be null (dynamo_container)");
 
 	return function (_Component) {
-		_inherits$2(_class, _Component);
+		inherits(_class, _Component);
 
 		function _class(props) {
-			_classCallCheck$4(this, _class);
+			classCallCheck(this, _class);
 
-			var _this = _possibleConstructorReturn$2(this, (_class.__proto__ || Object.getPrototypeOf(_class)).call(this, props));
+			var _this = possibleConstructorReturn(this, (_class.__proto__ || Object.getPrototypeOf(_class)).call(this, props));
 
 			_this.onValueChanged = _this.onValueChanged.bind(_this);
 			_this.state = { form: _this.props.value };
@@ -889,7 +983,7 @@ var dynamo_container = (function (Section, Header, ComponentLocator) {
 			return _this;
 		}
 
-		_createClass$4(_class, [{
+		createClass(_class, [{
 			key: "setValidator",
 			value: function setValidator() {
 				var _this2 = this;
@@ -907,8 +1001,8 @@ var dynamo_container = (function (Section, Header, ComponentLocator) {
 		}, {
 			key: "onValueChanged",
 			value: function onValueChanged() {
-				this.state.form = Object.assign.apply(Object, [{}, this.state.form || {}].concat(_toConsumableArray(Array.prototype.slice.call(arguments))));
-				this.props.valueChanged(_defineProperty$2({}, this.props.name, this.state.form));
+				this.state.form = Object.assign.apply(Object, [{}, this.state.form || {}].concat(toConsumableArray(Array.prototype.slice.call(arguments))));
+				this.props.valueChanged(defineProperty({}, this.props.name, this.state.form));
 			}
 		}, {
 			key: "render",
@@ -936,7 +1030,7 @@ var dynamo_container = (function (Section, Header, ComponentLocator) {
 					if (DynamoComponent.notifyExtra) {
 						notifyExtra.push(index);
 						return function (extra) {
-							return React__default.createElement(DynamoComponent, _extends$1({}, x, {
+							return React__default.createElement(DynamoComponent, _extends({}, x, {
 								extra: extra,
 								key: x.name,
 								value: value,
@@ -946,7 +1040,7 @@ var dynamo_container = (function (Section, Header, ComponentLocator) {
 						};
 					}
 
-					return React__default.createElement(DynamoComponent, _extends$1({}, x, {
+					return React__default.createElement(DynamoComponent, _extends({}, x, {
 						value: value,
 						validator: validator,
 						key: x.name,
@@ -975,18 +1069,9 @@ var dynamo_container = (function (Section, Header, ComponentLocator) {
 				/*jshint ignore:end*/
 			}
 		}]);
-
 		return _class;
 	}(React.Component);
 });
-
-var _createClass$5 = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
-
-function _classCallCheck$5(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
-
-function _possibleConstructorReturn$3(self, call) { if (!self) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return call && (typeof call === "object" || typeof call === "function") ? call : self; }
-
-function _inherits$3(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
 
 /**
  * Higher order function that recieves Platform specific implementation of Input
@@ -1023,18 +1108,18 @@ var dynamo_process = (function (ProgressBar, TextView, DynamoView) {
 	};
 
 	var DynamoProcess = function (_Component) {
-		_inherits$3(DynamoProcess, _Component);
+		inherits(DynamoProcess, _Component);
 
 		function DynamoProcess(props) {
-			_classCallCheck$5(this, DynamoProcess);
+			classCallCheck(this, DynamoProcess);
 
-			var _this = _possibleConstructorReturn$3(this, (DynamoProcess.__proto__ || Object.getPrototypeOf(DynamoProcess)).call(this, props));
+			var _this = possibleConstructorReturn(this, (DynamoProcess.__proto__ || Object.getPrototypeOf(DynamoProcess)).call(this, props));
 
 			_this.submit = _this.submit.bind(_this);
 			return _this;
 		}
 
-		_createClass$5(DynamoProcess, [{
+		createClass(DynamoProcess, [{
 			key: "componentDidMount",
 			value: function componentDidMount() {
 				if (!this.props.description || this.props.id !== this.props.description._id) {
@@ -1071,7 +1156,6 @@ var dynamo_process = (function (ProgressBar, TextView, DynamoView) {
 				/*jshint ignore:end */
 			}
 		}]);
-
 		return DynamoProcess;
 	}(React.Component);
 	// DynamoProcess.propTypes = {
@@ -1084,29 +1168,20 @@ var dynamo_process = (function (ProgressBar, TextView, DynamoView) {
 	return reactRedux.connect(mapStateToProps, mapDispatchToProps)(DynamoProcess);
 });
 
-var _createClass$6 = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
-
-function _classCallCheck$6(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
-
-function _possibleConstructorReturn$4(self, call) { if (!self) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return call && (typeof call === "object" || typeof call === "function") ? call : self; }
-
-function _inherits$4(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
-
 var dynamo_section = (function (Layout, Header, Container) {
 	invariants.validComponent(Layout, "Layout");
 	invariants.validComponent(Header, "Header");
 	invariants.validComponent(Container, "Container");
 
 	var DynamoSection = function (_Component) {
-		_inherits$4(DynamoSection, _Component);
+		inherits(DynamoSection, _Component);
 
 		function DynamoSection(props) {
-			_classCallCheck$6(this, DynamoSection);
-
-			return _possibleConstructorReturn$4(this, (DynamoSection.__proto__ || Object.getPrototypeOf(DynamoSection)).call(this, props));
+			classCallCheck(this, DynamoSection);
+			return possibleConstructorReturn(this, (DynamoSection.__proto__ || Object.getPrototypeOf(DynamoSection)).call(this, props));
 		}
 
-		_createClass$6(DynamoSection, [{
+		createClass(DynamoSection, [{
 			key: "render",
 			value: function render() {
 				/*jshint ignore:start*/
@@ -1130,24 +1205,11 @@ var dynamo_section = (function (Layout, Header, Container) {
 				/*jshint ignore:end*/
 			}
 		}]);
-
 		return DynamoSection;
 	}(React.Component);
 
 	return DynamoSection;
 });
-
-var _typeof$1 = typeof Symbol === "function" && typeof Symbol.iterator === "symbol" ? function (obj) { return typeof obj; } : function (obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj; };
-
-var _createClass$7 = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
-
-function _defineProperty$3(obj, key, value) { if (key in obj) { Object.defineProperty(obj, key, { value: value, enumerable: true, configurable: true, writable: true }); } else { obj[key] = value; } return obj; }
-
-function _classCallCheck$7(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
-
-function _possibleConstructorReturn$5(self, call) { if (!self) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return call && (typeof call === "object" || typeof call === "function") ? call : self; }
-
-function _inherits$5(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
 
 var dynamo_select = (function (ProgressIndicator, Layout, Container) {
 	if (invariants.validComponent(ProgressIndicator, "ProgressIndicator") && invariants.validComponent(Layout, "Layout") && !Container) throw new Error("Container cannot be null (dynamo_select)");
@@ -1175,12 +1237,12 @@ var dynamo_select = (function (ProgressIndicator, Layout, Container) {
 	};
 
 	var DynamoSelect = function (_Component) {
-		_inherits$5(DynamoSelect, _Component);
+		inherits(DynamoSelect, _Component);
 
 		function DynamoSelect(props) {
-			_classCallCheck$7(this, DynamoSelect);
+			classCallCheck(this, DynamoSelect);
 
-			var _this = _possibleConstructorReturn$5(this, (DynamoSelect.__proto__ || Object.getPrototypeOf(DynamoSelect)).call(this, props));
+			var _this = possibleConstructorReturn(this, (DynamoSelect.__proto__ || Object.getPrototypeOf(DynamoSelect)).call(this, props));
 
 			_this.fetchItems = _this.fetchItems.bind(_this);
 			_this.onValueChanged = _this.onValueChanged.bind(_this);
@@ -1190,13 +1252,13 @@ var dynamo_select = (function (ProgressIndicator, Layout, Container) {
 			};
 			_this.isValidValue = _this.isValidValue.bind(_this);
 			_this.state = {
-				value: props.value && _typeof$1(props.value) == "object" ? props.value.$objectID : props.value
+				value: props.value && _typeof(props.value) == "object" ? props.value.$objectID : props.value
 			};
 			_this.isObjectIdMode = _this.isObjectIdMode.bind(_this);
 			return _this;
 		}
 
-		_createClass$7(DynamoSelect, [{
+		createClass(DynamoSelect, [{
 			key: "hasValue",
 			value: function hasValue() {
 				return !!this.state.value || "is required";
@@ -1211,8 +1273,8 @@ var dynamo_select = (function (ProgressIndicator, Layout, Container) {
 			value: function onValueChanged(value) {
 				if (this._mounted) {
 					var obid = this.isObjectIdMode(),
-					    updateValue = obid && value && (typeof value === "undefined" ? "undefined" : _typeof$1(value)) == "object" && value.$objectID || value;
-					this.props.valueChanged(_defineProperty$3({}, this.props.name, obid && (typeof value === "undefined" ? "undefined" : _typeof$1(value)) !== "object" && {
+					    updateValue = obid && value && (typeof value === "undefined" ? "undefined" : _typeof(value)) == "object" && value.$objectID || value;
+					this.props.valueChanged(defineProperty({}, this.props.name, obid && (typeof value === "undefined" ? "undefined" : _typeof(value)) !== "object" && {
 						$objectID: value
 					} || value));
 					if (this.state.value !== updateValue) {
@@ -1325,26 +1387,11 @@ var dynamo_select = (function (ProgressIndicator, Layout, Container) {
 				/*jshint ignore:end*/
 			}
 		}]);
-
 		return DynamoSelect;
 	}(React.Component);
 
 	return reactRedux.connect(mapStateToProps, mapDispatchToProps)(DynamoSelect);
 });
-
-var _typeof$2 = typeof Symbol === "function" && typeof Symbol.iterator === "symbol" ? function (obj) { return typeof obj; } : function (obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj; };
-
-var _createClass$8 = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
-
-function _toConsumableArray$1(arr) { if (Array.isArray(arr)) { for (var i = 0, arr2 = Array(arr.length); i < arr.length; i++) { arr2[i] = arr[i]; } return arr2; } else { return Array.from(arr); } }
-
-function _defineProperty$4(obj, key, value) { if (key in obj) { Object.defineProperty(obj, key, { value: value, enumerable: true, configurable: true, writable: true }); } else { obj[key] = value; } return obj; }
-
-function _classCallCheck$8(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
-
-function _possibleConstructorReturn$6(self, call) { if (!self) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return call && (typeof call === "object" || typeof call === "function") ? call : self; }
-
-function _inherits$6(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
 
 var dynamo_selectset = (function (Layout, Picker, ProgressBar, Container) {
 	//map elements in DynamoView props to elements in store.
@@ -1369,18 +1416,18 @@ var dynamo_selectset = (function (Layout, Picker, ProgressBar, Container) {
 	};
 
 	var DynamoSelectSet = function (_Component) {
-		_inherits$6(DynamoSelectSet, _Component);
+		inherits(DynamoSelectSet, _Component);
 
 		function DynamoSelectSet(props) {
-			_classCallCheck$8(this, DynamoSelectSet);
+			classCallCheck(this, DynamoSelectSet);
 
-			var _this = _possibleConstructorReturn$6(this, (DynamoSelectSet.__proto__ || Object.getPrototypeOf(DynamoSelectSet)).call(this, props));
+			var _this = possibleConstructorReturn(this, (DynamoSelectSet.__proto__ || Object.getPrototypeOf(DynamoSelectSet)).call(this, props));
 
 			_this.onPickerValueChanged = _this.onPickerValueChanged.bind(_this);
 			_this.onContainerValueChanged = _this.onContainerValueChanged.bind(_this);
 			_this.getPickerValue = _this.getPickerValue.bind(_this);
 			_this.getPickerItemsById = _this.getPickerItemsById.bind(_this);
-			var value = props.value && _typeof$2(props.value) == "object" ? props.value.$objectID : props.value;
+			var value = props.value && _typeof(props.value) == "object" ? props.value.$objectID : props.value;
 			_this.state = {
 				pickerValue: value,
 				items: _this.getPickerItemsById(value),
@@ -1397,7 +1444,7 @@ var dynamo_selectset = (function (Layout, Picker, ProgressBar, Container) {
 			return _this;
 		}
 
-		_createClass$8(DynamoSelectSet, [{
+		createClass(DynamoSelectSet, [{
 			key: "hasValue",
 			value: function hasValue() {
 				return !!this.state.pickerValue || "is required";
@@ -1450,9 +1497,9 @@ var dynamo_selectset = (function (Layout, Picker, ProgressBar, Container) {
 					}, 0);
 				}
 
-				if (this.isObjectIdMode() && this.props.value && _typeof$2(this.props.value) !== "object") {
+				if (this.isObjectIdMode() && this.props.value && _typeof(this.props.value) !== "object") {
 					return setTimeout(function () {
-						_this2.props.valueChanged(_defineProperty$4({}, _this2.props.name, _this2.getValueBasedOnMode(_this2.props.value)));
+						_this2.props.valueChanged(defineProperty({}, _this2.props.name, _this2.getValueBasedOnMode(_this2.props.value)));
 					});
 				}
 			}
@@ -1478,7 +1525,7 @@ var dynamo_selectset = (function (Layout, Picker, ProgressBar, Container) {
 			value: function getPickerValue() {
 				var value = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : this.state.pickerValue;
 
-				return _defineProperty$4({}, this.props.name, this.getValueBasedOnMode(value));
+				return defineProperty({}, this.props.name, this.getValueBasedOnMode(value));
 			}
 		}, {
 			key: "getPickerItemsById",
@@ -1514,8 +1561,8 @@ var dynamo_selectset = (function (Layout, Picker, ProgressBar, Container) {
 					return _p;
 				}
 				//path is not defined so unpack the properties and send.
-				var result = [pickerValue].concat(_toConsumableArray$1(Object.keys(value && value._no_path || {}).map(function (x) {
-					return _defineProperty$4({}, x, value._no_path[x]);
+				var result = [pickerValue].concat(toConsumableArray(Object.keys(value && value._no_path || {}).map(function (x) {
+					return defineProperty({}, x, value._no_path[x]);
 				})));
 
 				if (superCancel) {
@@ -1526,7 +1573,7 @@ var dynamo_selectset = (function (Layout, Picker, ProgressBar, Container) {
 		}, {
 			key: "getValueBasedOnMode",
 			value: function getValueBasedOnMode(v) {
-				return this.props.args && this.props.args.mode && (typeof v === "undefined" ? "undefined" : _typeof$2(v)) !== "object" && this.props.args.mode == "ObjectId" && { $objectID: v } || v;
+				return this.props.args && this.props.args.mode && (typeof v === "undefined" ? "undefined" : _typeof(v)) !== "object" && this.props.args.mode == "ObjectId" && { $objectID: v } || v;
 			}
 		}, {
 			key: "respondToPickerValueChanged",
@@ -1598,23 +1645,12 @@ var dynamo_selectset = (function (Layout, Picker, ProgressBar, Container) {
 				return "_no_path";
 			}
 		}]);
-
 		return DynamoSelectSet;
 	}(React.Component);
 
 	DynamoSelectSet.notifyExtra = true;
 	return reactRedux.connect(mapStateToProps, mapDispatchToProps)(DynamoSelectSet);
 });
-
-var _createClass$9 = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
-
-function _defineProperty$5(obj, key, value) { if (key in obj) { Object.defineProperty(obj, key, { value: value, enumerable: true, configurable: true, writable: true }); } else { obj[key] = value; } return obj; }
-
-function _classCallCheck$9(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
-
-function _possibleConstructorReturn$7(self, call) { if (!self) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return call && (typeof call === "object" || typeof call === "function") ? call : self; }
-
-function _inherits$7(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
 
 var dynamo_list = (function (Layout, Button, List, Modal, ErrorText, ProgressBar, Container) {
 	invariants.validComponent(Layout, "Layout");
@@ -1662,12 +1698,12 @@ var dynamo_list = (function (Layout, Button, List, Modal, ErrorText, ProgressBar
 	};
 
 	var DynamoList = function (_Component) {
-		_inherits$7(DynamoList, _Component);
+		inherits(DynamoList, _Component);
 
 		function DynamoList(props) {
-			_classCallCheck$9(this, DynamoList);
+			classCallCheck(this, DynamoList);
 
-			var _this = _possibleConstructorReturn$7(this, (DynamoList.__proto__ || Object.getPrototypeOf(DynamoList)).call(this, props));
+			var _this = possibleConstructorReturn(this, (DynamoList.__proto__ || Object.getPrototypeOf(DynamoList)).call(this, props));
 
 			_this.state = {
 				validator: {},
@@ -1689,11 +1725,11 @@ var dynamo_list = (function (Layout, Button, List, Modal, ErrorText, ProgressBar
 			return _this;
 		}
 
-		_createClass$9(DynamoList, [{
+		createClass(DynamoList, [{
 			key: "componentWillReceiveProps",
 			value: function componentWillReceiveProps(next) {
 				if (next.confirmation !== this.props.confirmation && next.confirmation && next.confirmation.params && typeof next.confirmation.params.index !== "undefined" && this.state.items.length) {
-					return this.state.items.splice(next.confirmation.params.index, 1), this.props.valueChanged(_defineProperty$5({}, this.props.name, items));
+					return this.state.items.splice(next.confirmation.params.index, 1), this.props.valueChanged(defineProperty({}, this.props.name, items));
 				}
 				if (this.props.component_uid !== next.component_uid) {
 					//setTimeout(() => {
@@ -1709,7 +1745,7 @@ var dynamo_list = (function (Layout, Button, List, Modal, ErrorText, ProgressBar
 							items: _items,
 							modalVisible: false
 						});
-						this.props.valueChanged(_defineProperty$5({}, this.props.name, _items));
+						this.props.valueChanged(defineProperty({}, this.props.name, _items));
 					}
 					return;
 					//}, 0);
@@ -1743,7 +1779,7 @@ var dynamo_list = (function (Layout, Button, List, Modal, ErrorText, ProgressBar
 				//if theres a default then update everyone.
 				if (this.state.items && this.state.items.length) {
 					setTimeout(function () {
-						_this2.props.valueChanged(_defineProperty$5({}, _this2.props.name, _this2.state.items));
+						_this2.props.valueChanged(defineProperty({}, _this2.props.name, _this2.state.items));
 					}, 0);
 				}
 				var equal = equivalent(this.props.dataTemplate, this.state.items);
@@ -1813,7 +1849,7 @@ var dynamo_list = (function (Layout, Button, List, Modal, ErrorText, ProgressBar
 						var items = _this3.state.items || [];
 
 						if (!_this3.state.edit) items.push(_this3.state.form);else items.splice(items.indexOf(_this3.state.edit), 1, _this3.state.form);
-						_this3.props.valueChanged(_defineProperty$5({}, _this3.props.name, items));
+						_this3.props.valueChanged(defineProperty({}, _this3.props.name, items));
 						_this3.setState({
 							items: Object.assign([], items),
 							modalVisible: false,
@@ -1927,29 +1963,18 @@ var dynamo_list = (function (Layout, Button, List, Modal, ErrorText, ProgressBar
 				return "_modal_";
 			}
 		}]);
-
 		return DynamoList;
 	}(React.Component);
 
 	return reactRedux.connect(mapStateToProps, mapDispatchToProps)(DynamoList);
 });
 
-function _defineProperty$6(obj, key, value) { if (key in obj) { Object.defineProperty(obj, key, { value: value, enumerable: true, configurable: true, writable: true }); } else { obj[key] = value; } return obj; }
-
 var dynamo_hidden = (function (props) {
 	setTimeout(function () {
-		return (props.value || props.args && props.args.default) && props.valueChanged(_defineProperty$6({}, props.name, props.value || props.args && props.args.default));
+		return (props.value || props.args && props.args.default) && props.valueChanged(defineProperty({}, props.name, props.value || props.args && props.args.default));
 	}, 0);
 	return null;
 });
-
-var _createClass$10 = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
-
-function _classCallCheck$10(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
-
-function _possibleConstructorReturn$8(self, call) { if (!self) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return call && (typeof call === "object" || typeof call === "function") ? call : self; }
-
-function _inherits$8(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
 
 var dynamo_nav = (function (Link, NavigationActions) {
 	if (invariants.validComponent(Link, "Link") && !NavigationActions) throw new Error("NavigationActions cannot be null (dynamo_nav)");
@@ -1963,19 +1988,19 @@ var dynamo_nav = (function (Link, NavigationActions) {
 	//{text:"link text",type:"DYNAMO or CLIENT",config:{value:""}}
 
 	var DynamoNav = function (_Component) {
-		_inherits$8(DynamoNav, _Component);
+		inherits(DynamoNav, _Component);
 
 		function DynamoNav(props) {
-			_classCallCheck$10(this, DynamoNav);
+			classCallCheck(this, DynamoNav);
 
-			var _this = _possibleConstructorReturn$8(this, (DynamoNav.__proto__ || Object.getPrototypeOf(DynamoNav)).call(this, props));
+			var _this = possibleConstructorReturn(this, (DynamoNav.__proto__ || Object.getPrototypeOf(DynamoNav)).call(this, props));
 
 			_this.go = _this.go.bind(_this);
 			_this.state = { link: _this.props.value };
 			return _this;
 		}
 
-		_createClass$10(DynamoNav, [{
+		createClass(DynamoNav, [{
 			key: "go",
 			value: function go() {
 				var params = null;
@@ -1989,17 +2014,6 @@ var dynamo_nav = (function (Link, NavigationActions) {
 
 					link = linkAndParams.link;
 					params = linkAndParams.params;
-					// let linkContainsParams = link.indexOf("|") !== -1;
-					// if (linkContainsParams || this.props.args.params) {
-					// 	//parameters to pass on.
-
-					// 	let key_value = link.split("|");
-					// 	link = key_value.shift();
-					// 	params = key_value.reduce((sum, x) => {
-					// 		let sp = x.split("=");
-					// 		return (sum[sp[0]] = sp[1]), sum;
-					// 	}, {});
-					//}
 					switch (this.props.args.type) {
 						case DynamoNav.NAV_TYPE.CLIENT:
 							this.props.dispatch(NavigationActions.setParams({
@@ -2036,7 +2050,7 @@ var dynamo_nav = (function (Link, NavigationActions) {
 			value: function getParams(firstItemIsLink, link) {
 				var key_value = link.split("|");
 				if (firstItemIsLink) link = key_value.shift();
-				params = key_value.reduce(function (sum, x) {
+				var params = key_value.reduce(function (sum, x) {
 					var sp = x.split("=");
 					return sum[sp[0]] = sp[1], sum;
 				}, {});
@@ -2045,7 +2059,6 @@ var dynamo_nav = (function (Link, NavigationActions) {
 				return result;
 			}
 		}]);
-
 		return DynamoNav;
 	}(React.Component);
 
@@ -2053,34 +2066,22 @@ var dynamo_nav = (function (Link, NavigationActions) {
 	return reactRedux.connect(null, mapDispatchToState)(DynamoNav);
 });
 
-var _extends$2 = Object.assign || function (target) { for (var i = 1; i < arguments.length; i++) { var source = arguments[i]; for (var key in source) { if (Object.prototype.hasOwnProperty.call(source, key)) { target[key] = source[key]; } } } return target; };
-
-function _objectWithoutProperties$1(obj, keys) { var target = {}; for (var i in obj) { if (keys.indexOf(i) >= 0) continue; if (!Object.prototype.hasOwnProperty.call(obj, i)) continue; target[i] = obj[i]; } return target; }
-
 var dynamo_image = (function (Image) {
 	invariants.validComponent(Image, "Image");
 	return function (props) {
 		var value = props.value,
 		    args = props.args,
-		    rest = _objectWithoutProperties$1(props, ["value", "args"]);
+		    rest = objectWithoutProperties(props, ["value", "args"]);
 
 		if (value && props.args.type == "URL") {
 			var data = props.args.config.data.replace(new RegExp("{" + props.name + "}", "g"), value),
 			    _args = Object.assign({}, props.args);
 			_args.config = { data: data };
-			return React__default.createElement(Image, _extends$2({ args: _args }, rest));
+			return React__default.createElement(Image, _extends({ args: _args }, rest));
 		}
 		return React__default.createElement(Image, props);
 	};
 });
-
-var _createClass$11 = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
-
-function _classCallCheck$11(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
-
-function _possibleConstructorReturn$9(self, call) { if (!self) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return call && (typeof call === "object" || typeof call === "function") ? call : self; }
-
-function _inherits$9(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
 
 var GRID_MODES = {
 	CRUD: "CRUD",
@@ -2147,12 +2148,12 @@ var dynamo_grid = (function (Layout, List, ItemView, Header, ProgressBar, Comman
 	};
 
 	var DynamoGrid = function (_Component) {
-		_inherits$9(DynamoGrid, _Component);
+		inherits(DynamoGrid, _Component);
 
 		function DynamoGrid(props) {
-			_classCallCheck$11(this, DynamoGrid);
+			classCallCheck(this, DynamoGrid);
 
-			var _this = _possibleConstructorReturn$9(this, (DynamoGrid.__proto__ || Object.getPrototypeOf(DynamoGrid)).call(this, props));
+			var _this = possibleConstructorReturn(this, (DynamoGrid.__proto__ || Object.getPrototypeOf(DynamoGrid)).call(this, props));
 
 			_this.state = {
 				validator: {},
@@ -2193,7 +2194,7 @@ var dynamo_grid = (function (Layout, List, ItemView, Header, ProgressBar, Comman
 			return _this;
 		}
 
-		_createClass$11(DynamoGrid, [{
+		createClass(DynamoGrid, [{
 			key: "componentDidMount",
 			value: function componentDidMount() {
 				if (this.props.args.filterProcessor && !this.props.fetchingFilterTemplate) {
@@ -2495,55 +2496,32 @@ var dynamo_grid = (function (Layout, List, ItemView, Header, ProgressBar, Comman
 				return "_commandResultView_";
 			}
 		}]);
-
 		return DynamoGrid;
 	}(React.Component);
 
 	return reactRedux.connect(mapStateToProps, mapDispatchToProps)(DynamoGrid);
 });
 
-var _extends$3 = Object.assign || function (target) { for (var i = 1; i < arguments.length; i++) { var source = arguments[i]; for (var key in source) { if (Object.prototype.hasOwnProperty.call(source, key)) { target[key] = source[key]; } } } return target; };
-
-var _createClass$12 = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
-
-function _classCallCheck$12(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
-
-function _possibleConstructorReturn$10(self, call) { if (!self) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return call && (typeof call === "object" || typeof call === "function") ? call : self; }
-
-function _inherits$10(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
-
 var dynamo_htmlview = (function (PlatformComponent) {
 	return function (_Component) {
-		_inherits$10(DynamoHTMLViewer, _Component);
+		inherits(DynamoHTMLViewer, _Component);
 
 		function DynamoHTMLViewer(props) {
-			_classCallCheck$12(this, DynamoHTMLViewer);
-
-			return _possibleConstructorReturn$10(this, (DynamoHTMLViewer.__proto__ || Object.getPrototypeOf(DynamoHTMLViewer)).call(this, props));
+			classCallCheck(this, DynamoHTMLViewer);
+			return possibleConstructorReturn(this, (DynamoHTMLViewer.__proto__ || Object.getPrototypeOf(DynamoHTMLViewer)).call(this, props));
 		}
 
-		_createClass$12(DynamoHTMLViewer, [{
+		createClass(DynamoHTMLViewer, [{
 			key: "render",
 			value: function render() {
-				return React__default.createElement(PlatformComponent, _extends$3({
+				return React__default.createElement(PlatformComponent, _extends({
 					html: this.props.value || this.props.args.html
 				}, this.props));
 			}
 		}]);
-
 		return DynamoHTMLViewer;
 	}(React.Component);
 });
-
-var _createClass$13 = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
-
-function _defineProperty$7(obj, key, value) { if (key in obj) { Object.defineProperty(obj, key, { value: value, enumerable: true, configurable: true, writable: true }); } else { obj[key] = value; } return obj; }
-
-function _classCallCheck$13(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
-
-function _possibleConstructorReturn$11(self, call) { if (!self) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return call && (typeof call === "object" || typeof call === "function") ? call : self; }
-
-function _inherits$11(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
 
 /**
  * This component should render a file uploader
@@ -2559,12 +2537,12 @@ var dynamo_fileupload = (function (Uploader, ProgressBar, Text) {
 	invariants.validComponent(Text, "Text");
 
 	var DynamoFileUpload = function (_Component) {
-		_inherits$11(DynamoFileUpload, _Component);
+		inherits(DynamoFileUpload, _Component);
 
 		function DynamoFileUpload(props) {
-			_classCallCheck$13(this, DynamoFileUpload);
+			classCallCheck(this, DynamoFileUpload);
 
-			var _this = _possibleConstructorReturn$11(this, (DynamoFileUpload.__proto__ || Object.getPrototypeOf(DynamoFileUpload)).call(this, props));
+			var _this = possibleConstructorReturn(this, (DynamoFileUpload.__proto__ || Object.getPrototypeOf(DynamoFileUpload)).call(this, props));
 
 			_this.state = {};
 			_this._previewType = _this.getPreviewType.call(_this);
@@ -2578,7 +2556,7 @@ var dynamo_fileupload = (function (Uploader, ProgressBar, Text) {
 			return _this;
 		}
 
-		_createClass$13(DynamoFileUpload, [{
+		createClass(DynamoFileUpload, [{
 			key: "runValidators",
 			value: function runValidators() {
 				return new Validator(this).run();
@@ -2625,7 +2603,7 @@ var dynamo_fileupload = (function (Uploader, ProgressBar, Text) {
 				if (next.uploadedId !== this.props.uploadedId || next.component_uid !== this.props.component_uid) {
 					this._getPreview(next.uploadedId);
 					//setTimeout(() => {
-					this.props.valueChanged(_defineProperty$7({}, this.props.name, next.uploadedId));
+					this.props.valueChanged(defineProperty({}, this.props.name, next.uploadedId));
 					//}, 0);
 				}
 			}
@@ -2652,7 +2630,6 @@ var dynamo_fileupload = (function (Uploader, ProgressBar, Text) {
 				});
 			}
 		}]);
-
 		return DynamoFileUpload;
 	}(React.Component);
 
@@ -2679,14 +2656,6 @@ var dynamo_fileupload = (function (Uploader, ProgressBar, Text) {
 
 	return reactRedux.connect(mapStateToProps, mapDispatchToProps)(DynamoFileUpload);
 });
-
-var _createClass$14 = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
-
-function _classCallCheck$14(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
-
-function _possibleConstructorReturn$12(self, call) { if (!self) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return call && (typeof call === "object" || typeof call === "function") ? call : self; }
-
-function _inherits$12(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
 
 var dynamo_actionview = (function (Layout, ProgressBar, Filter, FilterContainer, ContentContainer) {
 	invariants.validComponent(Filter, "Filter");
@@ -2727,12 +2696,12 @@ var dynamo_actionview = (function (Layout, ProgressBar, Filter, FilterContainer,
 	};
 
 	var DynamoActionView = function (_Component) {
-		_inherits$12(DynamoActionView, _Component);
+		inherits(DynamoActionView, _Component);
 
 		function DynamoActionView(props) {
-			_classCallCheck$14(this, DynamoActionView);
+			classCallCheck(this, DynamoActionView);
 
-			var _this = _possibleConstructorReturn$12(this, (DynamoActionView.__proto__ || Object.getPrototypeOf(DynamoActionView)).call(this, props));
+			var _this = possibleConstructorReturn(this, (DynamoActionView.__proto__ || Object.getPrototypeOf(DynamoActionView)).call(this, props));
 
 			_this.state = { form: _this.props.value };
 			_this._filterValidator = {};
@@ -2741,7 +2710,7 @@ var dynamo_actionview = (function (Layout, ProgressBar, Filter, FilterContainer,
 			return _this;
 		}
 
-		_createClass$14(DynamoActionView, [{
+		createClass(DynamoActionView, [{
 			key: "componentWillReceiveProps",
 			value: function componentWillReceiveProps(next) {
 				if (_.isEqual(next.value, this.state.form)) {
@@ -2806,50 +2775,36 @@ var dynamo_actionview = (function (Layout, ProgressBar, Filter, FilterContainer,
 				return "_itemView_";
 			}
 		}]);
-
 		return DynamoActionView;
 	}(React.Component);
 
 	return reactRedux.connect(mapStateToProps, mapDispatchToProps)(DynamoActionView);
 });
 
-var _extends$4 = Object.assign || function (target) { for (var i = 1; i < arguments.length; i++) { var source = arguments[i]; for (var key in source) { if (Object.prototype.hasOwnProperty.call(source, key)) { target[key] = source[key]; } } } return target; };
-
-function _objectWithoutProperties$2(obj, keys) { var target = {}; for (var i in obj) { if (keys.indexOf(i) >= 0) continue; if (!Object.prototype.hasOwnProperty.call(obj, i)) continue; target[i] = obj[i]; } return target; }
-
 var dynamo_label = (function (Label) {
 	invariants.validComponent(Label, "Label");
 	return function (props) {
 		var value = props.value,
 		    description = props.description,
-		    rest = _objectWithoutProperties$2(props, ["value", "description"]);
+		    rest = objectWithoutProperties(props, ["value", "description"]);
 
 		if (value) {
-			return React__default.createElement(Label, _extends$4({ description: value }, rest));
+			return React__default.createElement(Label, _extends({ description: value }, rest));
 		}
 		return React__default.createElement(Label, props);
 	};
 });
 
-var _createClass$15 = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
-
-function _classCallCheck$15(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
-
-function _possibleConstructorReturn$13(self, call) { if (!self) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return call && (typeof call === "object" || typeof call === "function") ? call : self; }
-
-function _inherits$13(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
-
 var dynamo_webview = (function (WebView, Text) {
 	return function (_Component) {
-		_inherits$13(DynamoWebView, _Component);
+		inherits(DynamoWebView, _Component);
 
 		function DynamoWebView(props) {
-			_classCallCheck$15(this, DynamoWebView);
-
-			return _possibleConstructorReturn$13(this, (DynamoWebView.__proto__ || Object.getPrototypeOf(DynamoWebView)).call(this, props));
+			classCallCheck(this, DynamoWebView);
+			return possibleConstructorReturn(this, (DynamoWebView.__proto__ || Object.getPrototypeOf(DynamoWebView)).call(this, props));
 		}
 
-		_createClass$15(DynamoWebView, [{
+		createClass(DynamoWebView, [{
 			key: "render",
 			value: function render() {
 				if (this.props.args && this.props.args.url) {
@@ -2863,18 +2818,9 @@ var dynamo_webview = (function (WebView, Text) {
 				}
 			}
 		}]);
-
 		return DynamoWebView;
 	}(React.Component);
 });
-
-var _createClass$16 = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
-
-function _classCallCheck$16(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
-
-function _possibleConstructorReturn$14(self, call) { if (!self) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return call && (typeof call === "object" || typeof call === "function") ? call : self; }
-
-function _inherits$14(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
 
 var dynamo_messenger = (function (Layout, Pane, OpenChats, Editor, ContextMenu, NewChatButton, OpenChatsLayout, Modal, ProgressBar, Login, ContactList, ChatHistory, AddNewContact, PendingInvites, ChatLayout) {
 	invariants.validComponent(Layout, "Layout");
@@ -2954,12 +2900,12 @@ var dynamo_messenger = (function (Layout, Pane, OpenChats, Editor, ContextMenu, 
 	};
 
 	var DynamoMessenger = function (_Component) {
-		_inherits$14(DynamoMessenger, _Component);
+		inherits(DynamoMessenger, _Component);
 
 		function DynamoMessenger(props) {
-			_classCallCheck$16(this, DynamoMessenger);
+			classCallCheck(this, DynamoMessenger);
 
-			var _this = _possibleConstructorReturn$14(this, (DynamoMessenger.__proto__ || Object.getPrototypeOf(DynamoMessenger)).call(this, props));
+			var _this = possibleConstructorReturn(this, (DynamoMessenger.__proto__ || Object.getPrototypeOf(DynamoMessenger)).call(this, props));
 
 			_this.renderChat = _this.renderChat.bind(_this);
 			_this.renderPendingInvites = _this.renderPendingInvites.bind(_this);
@@ -2989,7 +2935,7 @@ var dynamo_messenger = (function (Layout, Pane, OpenChats, Editor, ContextMenu, 
 			return _this;
 		}
 
-		_createClass$16(DynamoMessenger, [{
+		createClass(DynamoMessenger, [{
 			key: "sendMessage",
 			value: function sendMessage$$1(contact, message) {
 				this.props.send(contact.type !== "group" ? "msg" : "grpmsg", {
@@ -3198,20 +3144,11 @@ var dynamo_messenger = (function (Layout, Pane, OpenChats, Editor, ContextMenu, 
 				);
 			}
 		}]);
-
 		return DynamoMessenger;
 	}(React.Component);
 
 	return reactRedux.connect(mapStateToProps, mapDispatchToProps)(DynamoMessenger);
 });
-
-var _createClass$17 = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
-
-function _classCallCheck$17(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
-
-function _possibleConstructorReturn$15(self, call) { if (!self) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return call && (typeof call === "object" || typeof call === "function") ? call : self; }
-
-function _inherits$15(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
 
 var dynamo_command = (function (Link, customDownloadCommand) {
 	invariants.validComponent(Link, "Link");
@@ -3223,19 +3160,19 @@ var dynamo_command = (function (Link, customDownloadCommand) {
 	};
 
 	var DynamoCommand = function (_Component) {
-		_inherits$15(DynamoCommand, _Component);
+		inherits(DynamoCommand, _Component);
 
 		function DynamoCommand(props) {
-			_classCallCheck$17(this, DynamoCommand);
+			classCallCheck(this, DynamoCommand);
 
-			var _this = _possibleConstructorReturn$15(this, (DynamoCommand.__proto__ || Object.getPrototypeOf(DynamoCommand)).call(this, props));
+			var _this = possibleConstructorReturn(this, (DynamoCommand.__proto__ || Object.getPrototypeOf(DynamoCommand)).call(this, props));
 
 			_this.go = _this.go.bind(_this);
 			_this.run = _this.run.bind(_this);
 			return _this;
 		}
 
-		_createClass$17(DynamoCommand, [{
+		createClass(DynamoCommand, [{
 			key: "run",
 			value: function run() {
 				this.props.dispatch(runDynamoProcessor(this.props.args.commmandProcessor, JSON.parse(this.props.args.commandProcessorArgs || {}), this.props.component_uid));
@@ -3276,7 +3213,6 @@ var dynamo_command = (function (Link, customDownloadCommand) {
 				);
 			}
 		}]);
-
 		return DynamoCommand;
 	}(React.Component);
 
@@ -3328,12 +3264,6 @@ var defaultMap = {
 	COMMAND: components.dynamo_command
 };
 
-var _typeof$3 = typeof Symbol === "function" && typeof Symbol.iterator === "symbol" ? function (obj) { return typeof obj; } : function (obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj; };
-
-var _extends$5 = Object.assign || function (target) { for (var i = 1; i < arguments.length; i++) { var source = arguments[i]; for (var key in source) { if (Object.prototype.hasOwnProperty.call(source, key)) { target[key] = source[key]; } } } return target; };
-
-function _defineProperty$8(obj, key, value) { if (key in obj) { Object.defineProperty(obj, key, { value: value, enumerable: true, configurable: true, writable: true }); } else { obj[key] = value; } return obj; }
-
 function index () {
 	var _Object$assign8, _Object$assign10;
 
@@ -3345,7 +3275,7 @@ function index () {
 			var incoming = action.payload.dynamo;
 			if (incoming) {
 				toggleAllBusyIndicators(incoming);
-				return _extends$5({}, state, incoming);
+				return _extends({}, state, incoming);
 			}
 			return state;
 		case ACTIONS.DYNAMO_PROCESS_FAILED:
@@ -3359,7 +3289,7 @@ function index () {
 				return {
 					busy: false,
 					completed: true,
-					message: _typeof$3(action.payload.data) == "object" && action.payload.data.message || null
+					message: _typeof(action.payload.data) == "object" && action.payload.data.message || null
 				};
 			}
 
@@ -3367,25 +3297,25 @@ function index () {
 			if (config.uiOnDemand) state.description.steps[0] = action.payload.data.$nextStep;else currentState.currentStep = currentState.currentStep + 1;
 			//potentially costly will have to test and see what happens.
 			//currentState.templateCache = getTemplatesAndAddComponentUid(state.description.steps[currentState.currentStep].form.elements);
-			currentState.value = _typeof$3(action.payload.data) == "object" && _typeof$3(action.payload.data.message) == "object" && action.payload.data.message;
+			currentState.value = _typeof(action.payload.data) == "object" && _typeof(action.payload.data.message) == "object" && action.payload.data.message;
 			return Object.assign({}, state, currentState);
 
 		case ACTIONS.FETCHING_GRID:
-			return Object.assign({}, state, _defineProperty$8({}, action.meta.key, fetchingGrid(state[action.meta.key], action)));
+			return Object.assign({}, state, defineProperty({}, action.meta.key, fetchingGrid(state[action.meta.key], action)));
 		case ACTIONS.FILTERED_GRID:
-			return Object.assign({}, state, _defineProperty$8({}, action.payload.key, filteredGrid(state[action.payload.key], action)));
+			return Object.assign({}, state, defineProperty({}, action.payload.key, filteredGrid(state[action.payload.key], action)));
 		case ACTIONS.GET_SINGLE_ITEM_FOR_GRID:
-			return Object.assign({}, state, _defineProperty$8({}, action.meta.key, getSingleItemForGrid$1(state[action.meta.key], action)));
+			return Object.assign({}, state, defineProperty({}, action.meta.key, getSingleItemForGrid$1(state[action.meta.key], action)));
 
 		case ACTIONS.GOT_SINGLE_ITEM_FOR_GRID:
-			return Object.assign({}, state, _defineProperty$8({}, action.payload.key, gotSingleItemForGrid(state[action.payload.key], action)));
+			return Object.assign({}, state, defineProperty({}, action.payload.key, gotSingleItemForGrid(state[action.payload.key], action)));
 		case ACTIONS.ERROR_WHILE_GETTING_SINGLE_ITEM_FOR_GRID:
-			return Object.assign({}, state, _defineProperty$8({}, action.payload.key, errorWhileGettingSingleItemForGrid(state[action.payload.key], action)));
+			return Object.assign({}, state, defineProperty({}, action.payload.key, errorWhileGettingSingleItemForGrid(state[action.payload.key], action)));
 		case ACTIONS.ERROR_WHILE_FETCHING_GRID:
-			return Object.assign({}, state, _defineProperty$8({}, action.payload.key, failedToFetchGrid(state[action.payload.key])));
+			return Object.assign({}, state, defineProperty({}, action.payload.key, failedToFetchGrid(state[action.payload.key])));
 
 		case ACTIONS.DYNAMO_GET_MORE_FOR_GRID:
-			return Object.assign({}, state, _defineProperty$8({}, action.payload.key, reduceGrid(state[action.payload.key], action)));
+			return Object.assign({}, state, defineProperty({}, action.payload.key, reduceGrid(state[action.payload.key], action)));
 
 		case ACTIONS.DYNAMO_PROCESS_RUNNING:
 			return Object.assign({}, state, {
@@ -3394,12 +3324,12 @@ function index () {
 			});
 		case ACTIONS.DYNAMO_PROCESSOR_RAN:
 			configureTemplates(state, action);
-			return Object.assign({}, state, (_Object$assign8 = {}, _defineProperty$8(_Object$assign8, action.payload.key, action.payload.data), _defineProperty$8(_Object$assign8, action.payload.key + "-busy", false), _Object$assign8));
+			return Object.assign({}, state, (_Object$assign8 = {}, defineProperty(_Object$assign8, action.payload.key, action.payload.data), defineProperty(_Object$assign8, action.payload.key + "-busy", false), _Object$assign8));
 
 		case ACTIONS.DYNAMO_PROCESSOR_RUNNING:
-			return Object.assign({}, state, _defineProperty$8({}, action.meta.key + "-busy", !action.error));
+			return Object.assign({}, state, defineProperty({}, action.meta.key + "-busy", !action.error));
 		case ACTIONS.DYNAMO_PROCESSOR_FAILED:
-			return Object.assign({}, state, (_Object$assign10 = {}, _defineProperty$8(_Object$assign10, action.meta + "-busy", false), _defineProperty$8(_Object$assign10, action.meta, null), _Object$assign10));
+			return Object.assign({}, state, (_Object$assign10 = {}, defineProperty(_Object$assign10, action.meta + "-busy", false), defineProperty(_Object$assign10, action.meta, null), _Object$assign10));
 		case ACTIONS.FETCHED_PROCESS:
 			var fetchedValue = Object.assign({}, action.payload.data.data);
 			var fetchedDescription = Object.assign({}, action.payload.data.description);
@@ -3419,34 +3349,34 @@ function index () {
 				busy: false
 			};
 		case ACTIONS.START_FILE_UPLOAD:
-			return Object.assign({}, state, _defineProperty$8({}, action.meta, startUpload(state[action.meta], action)));
+			return Object.assign({}, state, defineProperty({}, action.meta, startUpload(state[action.meta], action)));
 		case ACTIONS.FILE_UPLOADED:
-			return Object.assign({}, state, _defineProperty$8({}, action.payload.key, fileUpload(state[action.payload.key], action)));
+			return Object.assign({}, state, defineProperty({}, action.payload.key, fileUpload(state[action.payload.key], action)));
 		case ACTIONS.FILE_UPLOAD_FAILED:
-			return Object.assign({}, state, _defineProperty$8({}, action.meta, uploadFailed(state[action.meta], action)));
+			return Object.assign({}, state, defineProperty({}, action.meta, uploadFailed(state[action.meta], action)));
 		case ACTIONS.GET_PREVIEW:
-			return Object.assign({}, state, _defineProperty$8({}, action.meta, getPreview(state[action.meta], action)));
+			return Object.assign({}, state, defineProperty({}, action.meta, getPreview(state[action.meta], action)));
 		case ACTIONS.GOT_PREVIEW:
-			return Object.assign({}, state, _defineProperty$8({}, action.payload.key, gotPreview(state[action.payload.key], action)));
+			return Object.assign({}, state, defineProperty({}, action.payload.key, gotPreview(state[action.payload.key], action)));
 		case ACTIONS.FAILED_TO_GET_PREVIEW:
-			return Object.assign({}, state, _defineProperty$8({}, action.meta, failedToGetPreview(state[action.meta], action)));
+			return Object.assign({}, state, defineProperty({}, action.meta, failedToGetPreview(state[action.meta], action)));
 		case ACTIONS.GET_ITEM_TEMPLATE:
-			return Object.assign({}, state, _defineProperty$8({}, action.meta.key, getTemplate("gettingTemplate", state[action.meta.key], action)));
+			return Object.assign({}, state, defineProperty({}, action.meta.key, getTemplate("gettingTemplate", state[action.meta.key], action)));
 		case ACTIONS.GOT_ITEM_TEMPLATE:
 			configureTemplates(state, action);
-			return Object.assign({}, state, _defineProperty$8({}, action.payload.key, gotTemplate("gettingTemplate", "itemTemplate", state[action.payload.key], action)));
+			return Object.assign({}, state, defineProperty({}, action.payload.key, gotTemplate("gettingTemplate", "itemTemplate", state[action.payload.key], action)));
 		case ACTIONS.FAILED_TO_GET_ITEM_TEMPLATE:
-			return Object.assign({}, state, _defineProperty$8({}, action.meta, failedToGetTemplate("gettingTemplate", state[action.meta], action)));
+			return Object.assign({}, state, defineProperty({}, action.meta, failedToGetTemplate("gettingTemplate", state[action.meta], action)));
 		case ACTIONS.GET_FILTER_TEMPLATE:
-			return Object.assign({}, state, _defineProperty$8({}, action.meta, getTemplate("gettingFilterTemplate", state[action.meta], action)));
+			return Object.assign({}, state, defineProperty({}, action.meta, getTemplate("gettingFilterTemplate", state[action.meta], action)));
 		case ACTIONS.GOT_FILTER_TEMPLATE:
 			if (action.error) {
-				return Object.assign({}, state, _defineProperty$8({}, action.meta, failedToGetTemplate("gettingFilterTemplate", state[action.meta], action)));
+				return Object.assign({}, state, defineProperty({}, action.meta, failedToGetTemplate("gettingFilterTemplate", state[action.meta], action)));
 			}
 			configureTemplates(state, action);
-			return Object.assign({}, state, _defineProperty$8({}, action.payload.key, gotTemplate("gettingFilterTemplate", "filterTemplate", state[action.payload.key], action)));
+			return Object.assign({}, state, defineProperty({}, action.payload.key, gotTemplate("gettingFilterTemplate", "filterTemplate", state[action.payload.key], action)));
 		case ACTIONS.FAILED_TO_GET_FILTER_TEMPLATE:
-			return Object.assign({}, state, _defineProperty$8({}, action.meta, failedToGetTemplate("gettingFilterTemplate", state[action.meta], action)));
+			return Object.assign({}, state, defineProperty({}, action.meta, failedToGetTemplate("gettingFilterTemplate", state[action.meta], action)));
 		default:
 			return state;
 	}
@@ -3462,7 +3392,7 @@ function getTemplate(busyIndicator) {
 	var state = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : {};
 	var action = arguments[2];
 
-	return Object.assign({}, state, _defineProperty$8({}, busyIndicator, !action.error));
+	return Object.assign({}, state, defineProperty({}, busyIndicator, !action.error));
 }
 function gotTemplate(busyIndicator, propName) {
 	var _Object$assign25;
@@ -3470,11 +3400,11 @@ function gotTemplate(busyIndicator, propName) {
 	var state = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : {};
 	var action = arguments[3];
 
-	return Object.assign({}, state, (_Object$assign25 = {}, _defineProperty$8(_Object$assign25, propName, action.payload.data), _defineProperty$8(_Object$assign25, busyIndicator, false), _Object$assign25));
+	return Object.assign({}, state, (_Object$assign25 = {}, defineProperty(_Object$assign25, propName, action.payload.data), defineProperty(_Object$assign25, busyIndicator, false), _Object$assign25));
 }
 function failedToGetTemplate(busyIndicator) {
 	var state = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : {};
-	return Object.assign({}, state, _defineProperty$8({}, busyIndicator, false));
+	return Object.assign({}, state, defineProperty({}, busyIndicator, false));
 }
 
 function startUpload() {
@@ -3526,7 +3456,7 @@ function runThroughObj(conditions, data) {
 		if (Array.prototype.isPrototypeOf(data[key])) return data[key].forEach(function (element) {
 			runThroughObj(conditions, element, result, data);
 		});
-		if (data[key] && _typeof$3(data[key]) == "object") return runThroughObj(conditions, data[key], result, data);
+		if (data[key] && _typeof(data[key]) == "object") return runThroughObj(conditions, data[key], result, data);
 	});
 	return result;
 }
@@ -3621,8 +3551,6 @@ function errorWhileGettingSingleItemForGrid() {
 	});
 }
 
-var _extends$6 = Object.assign || function (target) { for (var i = 1; i < arguments.length; i++) { var source = arguments[i]; for (var key in source) { if (Object.prototype.hasOwnProperty.call(source, key)) { target[key] = source[key]; } } } return target; };
-
 function chat () {
 	var state = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : {};
 	var action = arguments[1];
@@ -3632,7 +3560,7 @@ function chat () {
 			var incoming = action.payload.chat;
 			if (incoming) {
 				toggleAllBusyIndicators(incoming);
-				return _extends$6({}, state, incoming);
+				return _extends({}, state, incoming);
 			}
 			return state;
 		case ACTIONS.LOGIN_CHAT:

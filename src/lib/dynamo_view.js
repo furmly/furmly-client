@@ -1,6 +1,5 @@
 import React, { Component } from "react";
 import { connect } from "react-redux";
-import { valueChanged } from "./actions";
 import invariants from "./utils/invariants";
 export default (Page, Container) => {
 	invariants.validComponent(Page, "Page");

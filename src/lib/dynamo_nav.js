@@ -23,7 +23,7 @@ export default (Link, NavigationActions) => {
 		static getParams(firstItemIsLink, link) {
 			let key_value = link.split("|");
 			if (firstItemIsLink) link = key_value.shift();
-			params = key_value.reduce((sum, x) => {
+			let params = key_value.reduce((sum, x) => {
 				let sp = x.split("=");
 				return (sum[sp[0]] = sp[1]), sum;
 			}, {});
@@ -48,17 +48,6 @@ export default (Link, NavigationActions) => {
 
 				link = linkAndParams.link;
 				params = linkAndParams.params;
-				// let linkContainsParams = link.indexOf("|") !== -1;
-				// if (linkContainsParams || this.props.args.params) {
-				// 	//parameters to pass on.
-
-				// 	let key_value = link.split("|");
-				// 	link = key_value.shift();
-				// 	params = key_value.reduce((sum, x) => {
-				// 		let sp = x.split("=");
-				// 		return (sum[sp[0]] = sp[1]), sum;
-				// 	}, {});
-				//}
 				switch (this.props.args.type) {
 					case DynamoNav.NAV_TYPE.CLIENT:
 						this.props.dispatch(
