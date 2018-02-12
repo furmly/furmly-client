@@ -167,7 +167,7 @@ export default (Layout, Picker, ProgressBar, Container) => {
 
 		_onContainerValueChanged(value, pickerValue) {
 			this._currentValue = value;
-			let pickerValue = pickerValue || this.getPickerValue();
+			pickerValue = pickerValue || this.getPickerValue();
 			if (!value) return [];
 			if (this.props.args.path) {
 				return [pickerValue, value];
