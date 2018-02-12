@@ -13,6 +13,12 @@ export default (Link, NavigationActions) => {
 		};
 	};
 
+	const mapStateToProps = (_, initialProps) => state => {
+		return {
+			context: state && state.dynamo && state.dynamo.navigationContext
+		};
+	};
+
 	//{text:"link text",type:"DYNAMO or CLIENT",config:{value:""}}
 	class DynamoNav extends Component {
 		constructor(props) {
@@ -23,11 +29,11 @@ export default (Link, NavigationActions) => {
 		static getParams(firstItemIsLink, link) {
 			let key_value = link.split("|");
 			if (firstItemIsLink) link = key_value.shift();
-			params = key_value.reduce((sum, x) => {
-				let sp = x.split("=");
-				return (sum[sp[0]] = sp[1]), sum;
-			}, {});
-			result = { params };
+			let params = key_value.reduce((sum, x) => {
+					let sp = x.split("=");
+					return (sum[sp[0]] = sp[1]), sum;
+				}, {}),
+				result = { params };
 			if (firstItemIsLink || !key_value.length) result.link = link;
 			return result;
 		}
@@ -48,21 +54,10 @@ export default (Link, NavigationActions) => {
 
 				link = linkAndParams.link;
 				params = linkAndParams.params;
-				// let linkContainsParams = link.indexOf("|") !== -1;
-				// if (linkContainsParams || this.props.args.params) {
-				// 	//parameters to pass on.
-
-				// 	let key_value = link.split("|");
-				// 	link = key_value.shift();
-				// 	params = key_value.reduce((sum, x) => {
-				// 		let sp = x.split("=");
-				// 		return (sum[sp[0]] = sp[1]), sum;
-				// 	}, {});
-				//}
 				switch (this.props.args.type) {
 					case DynamoNav.NAV_TYPE.CLIENT:
 						this.props.dispatch(
-							NavigationActions.setParams({
+							NavigationActions.navigate({
 								key: link,
 								params
 							})
@@ -73,7 +68,7 @@ export default (Link, NavigationActions) => {
 						const setParamsAction = NavigationActions.setParams({
 							params: { id: link, fetchParams: params },
 							key: "Dynamo"
-						});
+						},this.props.context);
 						this.props.dispatch(setParamsAction);
 				}
 			}
@@ -91,5 +86,5 @@ export default (Link, NavigationActions) => {
 		}
 	}
 	DynamoNav.NAV_TYPE = { CLIENT: "CLIENT", DYNAMO: "DYNAMO" };
-	return connect(null, mapDispatchToState)(DynamoNav);
+	return connect(mapStateToProps, mapDispatchToState)(DynamoNav);
 };

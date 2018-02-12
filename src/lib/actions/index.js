@@ -9,6 +9,8 @@ const preDispatch = config.preDispatch,
   preLogin = config.preLogin,
   cache = new MemCache({ ttl: config.processorsCacheTimeout });
 export const ACTIONS = {
+  ADD_NAVIGATION_CONTEXT:"ADD_NAVIGATION_CONTEXT",
+  REMOVE_NAVIGATION_CONTEXT:"REMOVE_NAVIGATION_CONTEXT",
   OPEN_CONFIRMATION: "OPEN_CONFIRMATION",
   OPEN_CHAT: "OPEN_CHAT",
   CLOSE_CHAT: "CLOSE_CHAT",
@@ -97,6 +99,18 @@ function getQueryParams(args) {
         })
         .join("")
     : "";
+}
+export function removeNavigationContext(){
+  return {
+    type:ACTIONS.REMOVE_NAVIGATION_CONTEXT
+  }
+}
+
+export function addNavigationContext(args){
+  return {
+    type:ACTIONS.ADD_NAVIGATION_CONTEXT,
+    payload:args
+  };
 }
 export function openConfirmation(id, message, params) {
   return {

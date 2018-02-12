@@ -15,6 +15,13 @@ export default function(state = {}, action) {
 				};
 			}
 			return state;
+		case ACTIONS.ADD_NAVIGATION_CONTEXT:
+			return Object.assign({}, state, {
+				navigationContext: action.payload
+			});
+		case ACTIONS.REMOVE_NAVIGATION_CONTEXT:
+			delete state.navigationContext;
+			return Object.assign({}, state);
 		case ACTIONS.DYNAMO_PROCESS_FAILED:
 			return Object.assign({}, state, { busy: false });
 		case ACTIONS.DYNAMO_PROCESS_RAN:
@@ -285,19 +292,19 @@ function failedToGetPreview(state = {}, action) {
 	return Object.assign({}, state, { busy: false });
 }
 function runThroughObj(conditions, data, result = {}, parent = null) {
-	if(data)
-	Object.keys(data).forEach(key => {
-		let send = false;
-		for (var v = 0; v < conditions.length; v++) {
-			if (conditions[v](key, data, result, parent)) return result;
-		}
-		if (Array.prototype.isPrototypeOf(data[key]))
-			return data[key].forEach(function(element) {
-				runThroughObj(conditions, element, result, data);
-			});
-		if (data[key] && typeof data[key] == "object")
-			return runThroughObj(conditions, data[key], result, data);
-	});
+	if (data)
+		Object.keys(data).forEach(key => {
+			let send = false;
+			for (var v = 0; v < conditions.length; v++) {
+				if (conditions[v](key, data, result, parent)) return result;
+			}
+			if (Array.prototype.isPrototypeOf(data[key]))
+				return data[key].forEach(function(element) {
+					runThroughObj(conditions, element, result, data);
+				});
+			if (data[key] && typeof data[key] == "object")
+				return runThroughObj(conditions, data[key], result, data);
+		});
 	return result;
 }
 

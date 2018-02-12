@@ -13,8 +13,6 @@ rollup({
 		babel({
 			exclude: "node_modules/**"
 		})
-		// ,
-		// sourceMaps()
 	]
 })
 	.then(function(e) {
