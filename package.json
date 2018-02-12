@@ -4,7 +4,7 @@
   "description": "This is the client library for Dynamo. It has common functionality between platforms",
   "main": "dist/bundle.js",
   "scripts": {
-    "build":"node ./scripts/build.js",
+    "build": "node ./scripts/build.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [

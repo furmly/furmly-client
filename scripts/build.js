@@ -13,6 +13,8 @@ rollup({
 		babel({
 			exclude: "node_modules/**"
 		})
+		// ,
+		// sourceMaps()
 	]
 })
 	.then(function(e) {
@@ -20,7 +22,8 @@ rollup({
 		//console.log(e);
 		e.write({
 			file: output,
-			format: "cjs"
+			format: "cjs",
+			sourcemap:true
 		});
 	})
 	.catch(e => {
