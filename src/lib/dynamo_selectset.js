@@ -145,11 +145,9 @@ export default (Layout, Picker, ProgressBar, Container) => {
 			this.onPickerValueChanged(items[0].id, items);
 			//}, 0);
 		}
-		getPickerValue() {
+		getPickerValue(value = this.state.pickerValue) {
 			return {
-				[this.props.name]: this.getValueBasedOnMode(
-					this.state.pickerValue
-				)
+				[this.props.name]: this.getValueBasedOnMode(value)
 			};
 		}
 		getPickerItemsById(v, items = this.props.items) {
@@ -160,16 +158,16 @@ export default (Layout, Picker, ProgressBar, Container) => {
 
 			return [];
 		}
-		onContainerValueChanged(value) {
+		onContainerValueChanged(value, pickerValue) {
 			this.props.valueChanged.apply(
 				this,
-				this._onContainerValueChanged.call(this, value)
+				this._onContainerValueChanged.call(this, value, pickerValue)
 			);
 		}
 
-		_onContainerValueChanged(value) {
+		_onContainerValueChanged(value, pickerValue) {
 			this._currentValue = value;
-			let pickerValue = this.getPickerValue();
+			let pickerValue = pickerValue || this.getPickerValue();
 			if (!value) return [];
 			if (this.props.args.path) {
 				return [pickerValue, value];
@@ -197,9 +195,7 @@ export default (Layout, Picker, ProgressBar, Container) => {
 				pickerValue = null;
 			if (items && items.length && items.filter(x => x.id == v).length) {
 				//set the picker value.
-				this.props.valueChanged({
-					[this.props.name]: this.getValueBasedOnMode(v)
-				});
+				this.onContainerValueChanged(null, this.getPickerValue(v));
 				pickerValue = v;
 			}
 			if (this._mounted) {
