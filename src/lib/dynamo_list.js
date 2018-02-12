@@ -130,8 +130,9 @@ export default (
 			}
 
 			if (
-				!equivalent(next.dataTemplate, this.props.dataTemplate) ||
-				!equivalent(next.dataTemplate, this.state.items)
+				next.dataTemplate &&
+				(!equivalent(next.dataTemplate, this.props.dataTemplate) ||
+					!equivalent(next.dataTemplate, this.state.items))
 			) {
 				if (this._mounted) {
 					if (Array.prototype.isPrototypeOf(next.dataTemplate))
@@ -349,6 +350,7 @@ export default (
 			}
 			let template = this.getItemTemplate(),
 				disabled = this.isDisabled();
+
 			return (
 				/*jshint ignore:start */
 				<Layout value={this.props.label}>

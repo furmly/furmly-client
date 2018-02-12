@@ -6,7 +6,6 @@ let rollup = require("rollup").rollup,
 	input = path.resolve(__dirname, "../src/index.js"),
 	output = path.resolve(__dirname, "../dist/bundle.js");
 
-console.log(output);
 rollup({
 	input,
 	plugins: [
@@ -17,7 +16,7 @@ rollup({
 	]
 })
 	.then(function(e) {
-		console.log("everything rolled up");
+		console.log("everything rolled up successfully");
 		//console.log(e);
 		e.write({
 			file: output,

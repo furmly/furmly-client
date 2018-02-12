@@ -1477,7 +1477,9 @@ var dynamo_selectset = (function (Layout, Picker, ProgressBar, Container) {
 		}, {
 			key: "getPickerValue",
 			value: function getPickerValue() {
-				return _defineProperty$4({}, this.props.name, this.getValueBasedOnMode(this.state.pickerValue));
+				var value = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : this.state.pickerValue;
+
+				return _defineProperty$4({}, this.props.name, this.getValueBasedOnMode(value));
 			}
 		}, {
 			key: "getPickerItemsById",
@@ -1495,14 +1497,14 @@ var dynamo_selectset = (function (Layout, Picker, ProgressBar, Container) {
 			}
 		}, {
 			key: "onContainerValueChanged",
-			value: function onContainerValueChanged(value) {
-				this.props.valueChanged.apply(this, this._onContainerValueChanged.call(this, value));
+			value: function onContainerValueChanged(value, pickerValue) {
+				this.props.valueChanged.apply(this, this._onContainerValueChanged.call(this, value, pickerValue));
 			}
 		}, {
 			key: "_onContainerValueChanged",
-			value: function _onContainerValueChanged(value) {
+			value: function _onContainerValueChanged(value, pickerValue) {
 				this._currentValue = value;
-				var pickerValue = this.getPickerValue();
+				pickerValue = pickerValue || this.getPickerValue();
 				if (!value) return [];
 				if (this.props.args.path) {
 					return [pickerValue, value];
@@ -1528,7 +1530,7 @@ var dynamo_selectset = (function (Layout, Picker, ProgressBar, Container) {
 					return x.id == v;
 				}).length) {
 					//set the picker value.
-					this.props.valueChanged(_defineProperty$4({}, this.props.name, this.getValueBasedOnMode(v)));
+					this.onContainerValueChanged(null, this.getPickerValue(v));
 					pickerValue = v;
 				}
 				if (this._mounted) {
@@ -1704,7 +1706,7 @@ var dynamo_list = (function (Layout, Button, List, Modal, ErrorText, ProgressBar
 					//}, 0);
 				}
 
-				if (!equivalent(next.dataTemplate, this.props.dataTemplate) || !equivalent(next.dataTemplate, this.state.items)) {
+				if (next.dataTemplate && (!equivalent(next.dataTemplate, this.props.dataTemplate) || !equivalent(next.dataTemplate, this.state.items))) {
 					if (this._mounted) {
 						if (Array.prototype.isPrototypeOf(next.dataTemplate)) this.setState({
 							items: next.dataTemplate.slice()
@@ -1879,6 +1881,7 @@ var dynamo_list = (function (Layout, Button, List, Modal, ErrorText, ProgressBar
 				}
 				var template = this.getItemTemplate(),
 				    disabled = this.isDisabled();
+
 				return (
 					/*jshint ignore:start */
 					React__default.createElement(
