@@ -882,7 +882,8 @@ var dynamo_container = (function (Section, Header, ComponentLocator) {
 			var _this = _possibleConstructorReturn$2(this, (_class.__proto__ || Object.getPrototypeOf(_class)).call(this, props));
 
 			_this.onValueChanged = _this.onValueChanged.bind(_this);
-			_this.state = { form: _this.props.value, validations: [] };
+			_this.state = { form: _this.props.value };
+			_this._validations = [];
 			_this.setValidator = _this.setValidator.bind(_this);
 			_this.setValidator();
 			return _this;
@@ -894,7 +895,7 @@ var dynamo_container = (function (Section, Header, ComponentLocator) {
 				var _this2 = this;
 
 				this.props.validator.validate = function () {
-					return Promise.all(_this2.state.validations.map(function (x) {
+					return Promise.all(_this2._validations.map(function (x) {
 						if (x.validate) return x.validate();
 
 						return new Promise(function (resolve, reject) {
@@ -914,7 +915,7 @@ var dynamo_container = (function (Section, Header, ComponentLocator) {
 			value: function render() {
 				var _this3 = this;
 
-				this.state.validations.length = 0;
+				this._validations.length = 0;
 				var keys = this.props.value ? Object.keys(this.props.value) : [],
 				    self = this,
 				    extraVal = {},
@@ -928,7 +929,7 @@ var dynamo_container = (function (Section, Header, ComponentLocator) {
 					    source = self.props.value,
 					    validator = {},
 					    value = source ? _this3.props.value[x.name] : null;
-					_this3.state.validations.push(validator);
+					_this3._validations.push(validator);
 					if (source && self.props.value[x.name] && keys.indexOf(x.name) !== -1) keys.splice(keys.indexOf(x.name), 1);
 					/*jshint ignore:start*/
 					if (!DynamoComponent) throw new Error("Unknown component:" + JSON.stringify(x, null, " "));
@@ -1470,9 +1471,7 @@ var dynamo_selectset = (function (Layout, Picker, ProgressBar, Container) {
 			value: function selectFirstItem() {
 				var items = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : this.props.items;
 
-				//setTimeout(() => {
 				this.onPickerValueChanged(items[0].id, items);
-				//}, 0);
 			}
 		}, {
 			key: "getPickerValue",
@@ -1503,17 +1502,26 @@ var dynamo_selectset = (function (Layout, Picker, ProgressBar, Container) {
 		}, {
 			key: "_onContainerValueChanged",
 			value: function _onContainerValueChanged(value, pickerValue) {
+				var superCancel = this._currentValue && Object.keys(this._currentValue).reduce(function (sum, x) {
+					return sum[x] = undefined, sum;
+				}, {});
 				this._currentValue = value;
 				pickerValue = pickerValue || this.getPickerValue();
 				if (this.props.args.path) {
 					var _p = [pickerValue];
+					if (superCancel) _p.push(superCancel);
 					if (value) _p.push(value);
 					return _p;
 				}
 				//path is not defined so unpack the properties and send.
-				return [pickerValue].concat(_toConsumableArray$1(Object.keys(value && value._no_path || {}).map(function (x) {
+				var result = [pickerValue].concat(_toConsumableArray$1(Object.keys(value && value._no_path || {}).map(function (x) {
 					return _defineProperty$4({}, x, value._no_path[x]);
 				})));
+
+				if (superCancel) {
+					result.splice(1, 0, superCancel);
+				}
+				return result;
 			}
 		}, {
 			key: "getValueBasedOnMode",

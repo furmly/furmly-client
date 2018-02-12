@@ -141,9 +141,7 @@ export default (Layout, Picker, ProgressBar, Container) => {
 			return this.props.items && this.props.items.length == 1;
 		}
 		selectFirstItem(items = this.props.items) {
-			//setTimeout(() => {
 			this.onPickerValueChanged(items[0].id, items);
-			//}, 0);
 		}
 		getPickerValue(value = this.state.pickerValue) {
 			return {
@@ -166,20 +164,31 @@ export default (Layout, Picker, ProgressBar, Container) => {
 		}
 
 		_onContainerValueChanged(value, pickerValue) {
+			let superCancel =
+				this._currentValue &&
+				Object.keys(this._currentValue).reduce((sum, x) => {
+					return (sum[x] = undefined), sum;
+				}, {});
 			this._currentValue = value;
 			pickerValue = pickerValue || this.getPickerValue();
 			if (this.props.args.path) {
 				let _p = [pickerValue];
+				if (superCancel) _p.push(superCancel);
 				if (value) _p.push(value);
 				return _p;
 			}
 			//path is not defined so unpack the properties and send.
-			return [
+			let result = [
 				pickerValue,
 				...Object.keys((value && value._no_path) || {}).map(x => {
 					return { [x]: value._no_path[x] };
 				})
 			];
+
+			if (superCancel) {
+				result.splice(1, 0, superCancel);
+			}
+			return result;
 		}
 
 		getValueBasedOnMode(v) {

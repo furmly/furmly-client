@@ -15,14 +15,15 @@ export default (Section, Header, ComponentLocator) => {
 		constructor(props) {
 			super(props);
 			this.onValueChanged = this.onValueChanged.bind(this);
-			this.state = { form: this.props.value, validations: [] };
+			this.state = { form: this.props.value };
+			this._validations=[];
 			this.setValidator = this.setValidator.bind(this);
 			this.setValidator();
 		}
 		setValidator() {
 			this.props.validator.validate = () => {
 				return Promise.all(
-					this.state.validations.map(x => {
+					this._validations.map(x => {
 						if (x.validate) return x.validate();
 
 						return new Promise((resolve, reject) => {
@@ -42,7 +43,7 @@ export default (Section, Header, ComponentLocator) => {
 		}
 
 		render() {
-			this.state.validations.length = 0;
+			this._validations.length = 0;
 			let keys = this.props.value ? Object.keys(this.props.value) : [],
 				self = this,
 				extraVal = {},
@@ -56,7 +57,7 @@ export default (Section, Header, ComponentLocator) => {
 						source = self.props.value,
 						validator = {},
 						value = source ? this.props.value[x.name] : null;
-					this.state.validations.push(validator);
+					this._validations.push(validator);
 					if (
 						source &&
 						self.props.value[x.name] &&
