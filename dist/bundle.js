@@ -2053,8 +2053,8 @@ var dynamo_nav = (function (Link, NavigationActions) {
 				var params = key_value.reduce(function (sum, x) {
 					var sp = x.split("=");
 					return sum[sp[0]] = sp[1], sum;
-				}, {});
-				result = { params: params };
+				}, {}),
+				    result = { params: params };
 				if (firstItemIsLink || !key_value.length) result.link = link;
 				return result;
 			}

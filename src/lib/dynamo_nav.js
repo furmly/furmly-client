@@ -24,10 +24,10 @@ export default (Link, NavigationActions) => {
 			let key_value = link.split("|");
 			if (firstItemIsLink) link = key_value.shift();
 			let params = key_value.reduce((sum, x) => {
-				let sp = x.split("=");
-				return (sum[sp[0]] = sp[1]), sum;
-			}, {});
-			result = { params };
+					let sp = x.split("=");
+					return (sum[sp[0]] = sp[1]), sum;
+				}, {}),
+				result = { params };
 			if (firstItemIsLink || !key_value.length) result.link = link;
 			return result;
 		}
