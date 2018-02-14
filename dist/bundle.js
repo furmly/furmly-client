@@ -220,6 +220,8 @@ var CHAT_URL = global.CHAT_URL || config.chatUrl;
 var preLogin = config.preLogin;
 var cache = new MemCache({ ttl: config.processorsCacheTimeout });
 var ACTIONS = {
+  ADD_NAVIGATION_CONTEXT: "ADD_NAVIGATION_CONTEXT",
+  REMOVE_NAVIGATION_CONTEXT: "REMOVE_NAVIGATION_CONTEXT",
   OPEN_CONFIRMATION: "OPEN_CONFIRMATION",
   OPEN_CHAT: "OPEN_CHAT",
   CLOSE_CHAT: "CLOSE_CHAT",
@@ -301,6 +303,18 @@ function getQueryParams(args) {
   return args ? "?" + Object.keys(args).map(function (x, index, arr) {
     return x + "=" + (encodeURIComponent(args[x]) + (index != arr.length - 1 ? "&" : ""));
   }).join("") : "";
+}
+function removeNavigationContext() {
+  return {
+    type: ACTIONS.REMOVE_NAVIGATION_CONTEXT
+  };
+}
+
+function addNavigationContext(args) {
+  return {
+    type: ACTIONS.ADD_NAVIGATION_CONTEXT,
+    payload: args
+  };
 }
 function openConfirmation(id, message, params) {
   return {
@@ -1985,6 +1999,14 @@ var dynamo_nav = (function (Link, NavigationActions) {
 		};
 	};
 
+	var mapStateToProps = function mapStateToProps(_$$1, initialProps) {
+		return function (state) {
+			return {
+				context: state && state.dynamo && state.dynamo.navigationContext
+			};
+		};
+	};
+
 	//{text:"link text",type:"DYNAMO or CLIENT",config:{value:""}}
 
 	var DynamoNav = function (_Component) {
@@ -2026,7 +2048,7 @@ var dynamo_nav = (function (Link, NavigationActions) {
 							var setParamsAction = NavigationActions.setParams({
 								params: { id: link, fetchParams: params },
 								key: "Dynamo"
-							});
+							}, this.props.context);
 							this.props.dispatch(setParamsAction);
 					}
 				}
@@ -2063,7 +2085,7 @@ var dynamo_nav = (function (Link, NavigationActions) {
 	}(React.Component);
 
 	DynamoNav.NAV_TYPE = { CLIENT: "CLIENT", DYNAMO: "DYNAMO" };
-	return reactRedux.connect(null, mapDispatchToState)(DynamoNav);
+	return reactRedux.connect(mapStateToProps, mapDispatchToState)(DynamoNav);
 });
 
 var dynamo_image = (function (Image) {
@@ -3278,6 +3300,13 @@ function index () {
 				return _extends({}, state, incoming);
 			}
 			return state;
+		case ACTIONS.ADD_NAVIGATION_CONTEXT:
+			return Object.assign({}, state, {
+				navigationContext: action.payload
+			});
+		case ACTIONS.REMOVE_NAVIGATION_CONTEXT:
+			delete state.navigationContext;
+			return Object.assign({}, state);
 		case ACTIONS.DYNAMO_PROCESS_FAILED:
 			return Object.assign({}, state, { busy: false });
 		case ACTIONS.DYNAMO_PROCESS_RAN:
@@ -3657,4 +3686,6 @@ exports.reducers = index;
 exports.toggleAllBusyIndicators = toggleAllBusyIndicators;
 exports.chatReducer = chat;
 exports.startChatServer = startReceivingMessages;
+exports.addNavigationContext = addNavigationContext;
+exports.removeNavigationContext = removeNavigationContext;
 //# sourceMappingURL=bundle.js.map

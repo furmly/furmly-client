@@ -13,6 +13,12 @@ export default (Link, NavigationActions) => {
 		};
 	};
 
+	const mapStateToProps = (_, initialProps) => state => {
+		return {
+			context: state && state.dynamo && state.dynamo.navigationContext
+		};
+	};
+
 	//{text:"link text",type:"DYNAMO or CLIENT",config:{value:""}}
 	class DynamoNav extends Component {
 		constructor(props) {
@@ -51,7 +57,7 @@ export default (Link, NavigationActions) => {
 				switch (this.props.args.type) {
 					case DynamoNav.NAV_TYPE.CLIENT:
 						this.props.dispatch(
-							NavigationActions.setParams({
+							NavigationActions.navigate({
 								key: link,
 								params
 							})
@@ -62,7 +68,7 @@ export default (Link, NavigationActions) => {
 						const setParamsAction = NavigationActions.setParams({
 							params: { id: link, fetchParams: params },
 							key: "Dynamo"
-						});
+						},this.props.context);
 						this.props.dispatch(setParamsAction);
 				}
 			}
@@ -80,5 +86,5 @@ export default (Link, NavigationActions) => {
 		}
 	}
 	DynamoNav.NAV_TYPE = { CLIENT: "CLIENT", DYNAMO: "DYNAMO" };
-	return connect(null, mapDispatchToState)(DynamoNav);
+	return connect(mapStateToProps, mapDispatchToState)(DynamoNav);
 };
