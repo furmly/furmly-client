@@ -262,6 +262,7 @@ export default (Layout, Picker, ProgressBar, Container) => {
 							valueChanged={this.onContainerValueChanged}
 							elements={this.state.items}
 							validator={this.state.containerValidator}
+							navigation={this.props.navigation}
 						/>
 					}
 				/>

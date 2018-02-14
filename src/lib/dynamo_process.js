@@ -77,7 +77,12 @@ export default (ProgressBar, TextView, DynamoView) => {
 					<TextView text="Sorry we couldnt load that process...please wait a few minutes and retry." />
 				);
 			}
-			return <DynamoView submit={this.submit} />;
+			return (
+				<DynamoView
+					navigation={this.props.navigation}
+					submit={this.submit}
+				/>
+			);
 			/*jshint ignore:end */
 		}
 	}

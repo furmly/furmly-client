@@ -463,6 +463,7 @@ export default (
 							valueChanged={this.filterValueChanged}
 							name={DynamoGrid.filterViewName()}
 							validator={this._filterValidator}
+							navigation={this.props.navigation}
 						/>
 					</Header>
 				) : this.props.fetchingFilterTemplate ? (
@@ -510,6 +511,7 @@ export default (
 								name={DynamoGrid.itemViewName()}
 								validator={this.state.validator}
 								valueChanged={this.valueChanged}
+								navigation={this.props.navigation}
 							/>
 						}
 					/>
@@ -527,6 +529,7 @@ export default (
 								elements={this.state.commandResult}
 								name={DynamoGrid.commandResultViewName()}
 								validator={{}}
+								navigation={this.props.navigation}
 							/>
 						}
 						title={""}
