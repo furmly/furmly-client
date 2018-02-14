@@ -65,10 +65,14 @@ export default (Link, NavigationActions) => {
 						break;
 
 					case DynamoNav.NAV_TYPE.DYNAMO:
-						const setParamsAction = NavigationActions.setParams({
-							params: { id: link, fetchParams: params },
-							key: "Dynamo"
-						},this.props.context);
+						const setParamsAction = NavigationActions.setParams(
+							{
+								params: { id: link, fetchParams: params },
+								key: "Dynamo"
+							},
+							this.props.context,
+							this.props.navigation
+						);
 						this.props.dispatch(setParamsAction);
 				}
 			}

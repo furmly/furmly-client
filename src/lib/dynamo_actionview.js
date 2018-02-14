@@ -88,6 +88,7 @@ export default (
 							name={DynamoActionView.itemViewName()}
 							validator={this._filterValidator}
 							valueChanged={this.valueChanged}
+							navigation={this.props.navigation}
 						/>
 					</Filter>
 					<ContentContainer
@@ -95,6 +96,7 @@ export default (
 						value={this.props.resultData}
 						validator={{}}
 						valueChanged={this.doNothing}
+						navigation={this.props.navigation}
 					/>
 				</Layout>
 			);

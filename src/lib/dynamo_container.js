@@ -79,6 +79,7 @@ export default (Section, Header, ComponentLocator) => {
 								value={value}
 								validator={validator}
 								valueChanged={this.onValueChanged}
+								navigation={this.props.navigation}
 							/>;
 					}
 
@@ -89,6 +90,7 @@ export default (Section, Header, ComponentLocator) => {
 							validator={validator}
 							key={x.name}
 							valueChanged={this.onValueChanged}
+							navigation={this.props.navigation}
 						/>
 					);
 					/*jshint ignore:end*/

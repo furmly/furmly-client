@@ -59,6 +59,7 @@ export default (Page, Container) => {
 						value={this.props.value}
 						valueChanged={this.onValueChanged}
 						validator={this.state.validator}
+						navigation={this.props.navigation}
 					/>
 				</Page>
 			);

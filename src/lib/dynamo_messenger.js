@@ -299,6 +299,7 @@ export default (
 						hideDone={true}
 						done={this.hideModal}
 						visibility={this.state.showModal}
+						
 					/>
 					{this.state._panes[this.state.selectedPane].render()}
 				</Layout>

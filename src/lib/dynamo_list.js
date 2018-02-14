@@ -374,6 +374,7 @@ export default (
 								name={DynamoList.modalName()}
 								validator={this.state.validator}
 								valueChanged={this.valueChanged}
+								navigation={this.props.navigation}
 							/>
 						}
 						visibility={this.state.modalVisible}
