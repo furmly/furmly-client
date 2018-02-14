@@ -57,3 +57,6 @@ typings/
 # dotenv environment variables file
 .env
 
+# no need to store the compiled version. run npm run build to compile
+dist/
+
