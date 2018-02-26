@@ -3396,7 +3396,9 @@ function index () {
 				currentStep: 0,
 				busy: false,
 				value: fetchedValue,
-				templateCache: {} //getTemplatesAndAddComponentUid(fetchedDescription.steps[0].form.elements)
+				templateCache: {},
+				//always carry over the navigationContext.
+				navigationContext: state.navigationContext
 			};
 		case ACTIONS.FETCHING_PROCESS:
 			return Object.assign({}, state, {
