@@ -964,7 +964,8 @@ var dynamo_view = (function (Page, Container) {
 						name: "dynamo_view",
 						value: this.props.value,
 						valueChanged: this.onValueChanged,
-						validator: this.state.validator
+						validator: this.state.validator,
+						navigation: this.props.navigation
 					})
 				);
 				/*jshint ignore:end*/
@@ -1049,7 +1050,8 @@ var dynamo_container = (function (Section, Header, ComponentLocator) {
 								key: x.name,
 								value: value,
 								validator: validator,
-								valueChanged: _this3.onValueChanged
+								valueChanged: _this3.onValueChanged,
+								navigation: _this3.props.navigation
 							}));
 						};
 					}
@@ -1058,7 +1060,8 @@ var dynamo_container = (function (Section, Header, ComponentLocator) {
 						value: value,
 						validator: validator,
 						key: x.name,
-						valueChanged: _this3.onValueChanged
+						valueChanged: _this3.onValueChanged,
+						navigation: _this3.props.navigation
 					}));
 					/*jshint ignore:end*/
 				});
@@ -1166,7 +1169,10 @@ var dynamo_process = (function (ProgressBar, TextView, DynamoView) {
 				if (!this.props.description) {
 					return React__default.createElement(TextView, { text: "Sorry we couldnt load that process...please wait a few minutes and retry." });
 				}
-				return React__default.createElement(DynamoView, { submit: this.submit });
+				return React__default.createElement(DynamoView, {
+					navigation: this.props.navigation,
+					submit: this.submit
+				});
 				/*jshint ignore:end */
 			}
 		}]);
@@ -1213,7 +1219,8 @@ var dynamo_section = (function (Layout, Header, Container) {
 						name: this.props.name,
 						value: this.props.value,
 						valueChanged: this.props.valueChanged,
-						validator: this.props.validator
+						validator: this.props.validator,
+						navigation: this.props.navigation
 					})
 				);
 				/*jshint ignore:end*/
@@ -1648,7 +1655,8 @@ var dynamo_selectset = (function (Layout, Picker, ProgressBar, Container) {
 						value: initialElementsData,
 						valueChanged: this.onContainerValueChanged,
 						elements: this.state.items,
-						validator: this.state.containerValidator
+						validator: this.state.containerValidator,
+						navigation: this.props.navigation
 					})
 				});
 				/*jshint ignore:end*/
@@ -1961,7 +1969,8 @@ var dynamo_list = (function (Layout, Button, List, Modal, ErrorText, ProgressBar
 								value: this.state.edit,
 								name: DynamoList.modalName(),
 								validator: this.state.validator,
-								valueChanged: this.valueChanged
+								valueChanged: this.valueChanged,
+								navigation: this.props.navigation
 							}),
 							visibility: this.state.modalVisible,
 							done: this.closeModal
@@ -2038,7 +2047,7 @@ var dynamo_nav = (function (Link, NavigationActions) {
 					params = linkAndParams.params;
 					switch (this.props.args.type) {
 						case DynamoNav.NAV_TYPE.CLIENT:
-							this.props.dispatch(NavigationActions.setParams({
+							this.props.dispatch(NavigationActions.navigate({
 								key: link,
 								params: params
 							}));
@@ -2048,7 +2057,7 @@ var dynamo_nav = (function (Link, NavigationActions) {
 							var setParamsAction = NavigationActions.setParams({
 								params: { id: link, fetchParams: params },
 								key: "Dynamo"
-							}, this.props.context);
+							}, this.props.context, this.props.navigation);
 							this.props.dispatch(setParamsAction);
 					}
 				}
@@ -2449,7 +2458,8 @@ var dynamo_grid = (function (Layout, List, ItemView, Header, ProgressBar, Comman
 						value: this.state.filter,
 						valueChanged: this.filterValueChanged,
 						name: DynamoGrid.filterViewName(),
-						validator: this._filterValidator
+						validator: this._filterValidator,
+						navigation: this.props.navigation
 					})
 				) : this.props.fetchingFilterTemplate ? React__default.createElement(ProgressBar, null) : null,
 				    footer = !this.finished() && this.props.busy ? React__default.createElement(ProgressBar, null) : null;
@@ -2480,7 +2490,8 @@ var dynamo_grid = (function (Layout, List, ItemView, Header, ProgressBar, Comman
 							value: this.state.existingValue,
 							name: DynamoGrid.itemViewName(),
 							validator: this.state.validator,
-							valueChanged: this.valueChanged
+							valueChanged: this.valueChanged,
+							navigation: this.props.navigation
 						})
 					}),
 					React__default.createElement(CommandsView, {
@@ -2495,7 +2506,8 @@ var dynamo_grid = (function (Layout, List, ItemView, Header, ProgressBar, Comman
 						template: React__default.createElement(Container, {
 							elements: this.state.commandResult,
 							name: DynamoGrid.commandResultViewName(),
-							validator: {}
+							validator: {},
+							navigation: this.props.navigation
 						}),
 						title: "",
 						busy: this.props.commandProcessing
@@ -2780,14 +2792,16 @@ var dynamo_actionview = (function (Layout, ProgressBar, Filter, FilterContainer,
 							value: this.state.form,
 							name: DynamoActionView.itemViewName(),
 							validator: this._filterValidator,
-							valueChanged: this.valueChanged
+							valueChanged: this.valueChanged,
+							navigation: this.props.navigation
 						})
 					),
 					React__default.createElement(ContentContainer, {
 						elements: this.props.resultUI,
 						value: this.props.resultData,
 						validator: {},
-						valueChanged: this.doNothing
+						valueChanged: this.doNothing,
+						navigation: this.props.navigation
 					})
 				);
 			}
@@ -3161,6 +3175,7 @@ var dynamo_messenger = (function (Layout, Pane, OpenChats, Editor, ContextMenu, 
 						hideDone: true,
 						done: this.hideModal,
 						visibility: this.state.showModal
+
 					}),
 					this.state._panes[this.state.selectedPane].render()
 				);
@@ -3283,7 +3298,21 @@ var defaultMap = {
 	LABEL: components.dynamo_label,
 	WEBVIEW: components.dynamo_webview,
 	MESSENGER: components.dynamo_messenger,
-	COMMAND: components.dynamo_command
+	COMMAND: components.dynamo_command,
+	recipes: {},
+	_defaultMap: {},
+	cook: function cook() {
+		var _this = this;
+
+		if (!this._cooked) {
+			this._cooked = true;
+			Object.keys(this.recipes).forEach(function (recipe) {
+				_this._defaultMap[recipe] = _this[recipe];
+				_this[recipe] = _this[recipe].apply(null, _this.recipes[recipe]);
+			});
+		}
+		return this;
+	}
 };
 
 function index () {
