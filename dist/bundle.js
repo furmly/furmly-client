@@ -3406,7 +3406,9 @@ function index () {
 			});
 		case ACTIONS.FAILED_TO_FETCH_PROCESS:
 			return {
-				busy: false
+				busy: false,
+				//always carry over the navigationContext.
+				navigationContext: state.navigationContext
 			};
 		case ACTIONS.START_FILE_UPLOAD:
 			return Object.assign({}, state, defineProperty({}, action.meta, startUpload(state[action.meta], action)));
