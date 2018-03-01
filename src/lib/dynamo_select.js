@@ -46,7 +46,7 @@ export default (ProgressIndicator, Layout, Container) => {
 				value:
 					props.value && typeof props.value == "object"
 						? props.value.$objectID
-						: props.value
+						: props.value || props.args.default
 			};
 			this.isObjectIdMode = this.isObjectIdMode.bind(this);
 		}
