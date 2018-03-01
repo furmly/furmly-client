@@ -1,8 +1,18 @@
 import React, { Component } from "react";
 import invariants from "./utils/invariants";
 
-export default (Section, Header, ComponentLocator) => {
+export default (...args) => {
 	//invariants
+	let Section = args[0],
+		Header = args[1],
+		ComponentWrapper,
+		ComponentLocator;
+	if (args.length == 3) {
+		ComponentLocator = args[2];
+	} else {
+		ComponentWrapper = args[2];
+		ComponentLocator = args[3];
+	}
 
 	if (
 		invariants.validComponent(Section, "Section") &&
@@ -16,7 +26,7 @@ export default (Section, Header, ComponentLocator) => {
 			super(props);
 			this.onValueChanged = this.onValueChanged.bind(this);
 			this.state = { form: this.props.value };
-			this._validations=[];
+			this._validations = [];
 			this.setValidator = this.setValidator.bind(this);
 			this.setValidator();
 		}
@@ -49,62 +59,84 @@ export default (Section, Header, ComponentLocator) => {
 				extraVal = {},
 				index = -1,
 				notifyExtra = [],
-				elements = (this.props.elements||[]).sort((x, y) => {
-					return x.order - y.order;
-				}).map(x => {
-					index++;
-					let DynamoComponent = ComponentLocator(x),
-						source = self.props.value,
-						validator = {},
-						value = source ? this.props.value[x.name] : null;
-					this._validations.push(validator);
-					if (
-						source &&
-						self.props.value[x.name] &&
-						keys.indexOf(x.name) !== -1
-					)
-						keys.splice(keys.indexOf(x.name), 1);
-					/*jshint ignore:start*/
-					if (!DynamoComponent)
-						throw new Error(
-							"Unknown component:" + JSON.stringify(x, null, " ")
-						);
-					if (DynamoComponent.notifyExtra) {
-						notifyExtra.push(index);
-						return extra =>
+				elements = (this.props.elements || [])
+					.sort((x, y) => {
+						return x.order - y.order;
+					})
+					.map(x => {
+						index++;
+						let DynamoComponent = ComponentLocator(x),
+							source = self.props.value,
+							validator = {},
+							value = source ? this.props.value[x.name] : null;
+						this._validations.push(validator);
+						if (
+							source &&
+							self.props.value[x.name] &&
+							keys.indexOf(x.name) !== -1
+						)
+							keys.splice(keys.indexOf(x.name), 1);
+						/*jshint ignore:start*/
+						if (!DynamoComponent)
+							throw new Error(
+								"Unknown component:" +
+									JSON.stringify(x, null, " ")
+							);
+						if (DynamoComponent.notifyExtra) {
+							notifyExtra.push(index);
+							return extra => {
+								let component = (
+									<DynamoComponent
+										{...x}
+										extra={extra}
+										key={x.name}
+										value={value}
+										validator={validator}
+										valueChanged={this.onValueChanged}
+										navigation={this.props.navigation}
+									/>
+								);
+								if (ComponentWrapper)
+									return ComponentWrapper(
+										x.elementType,
+										x.uid,
+										x.name,
+										component
+									);
+
+								return component;
+							};
+						}
+						let component = (
 							<DynamoComponent
 								{...x}
-								extra={extra}
-								key={x.name}
 								value={value}
 								validator={validator}
+								key={x.name}
 								valueChanged={this.onValueChanged}
 								navigation={this.props.navigation}
-							/>;
-					}
-
-					return (
-						<DynamoComponent
-							{...x}
-							value={value}
-							validator={validator}
-							key={x.name}
-							valueChanged={this.onValueChanged}
-							navigation={this.props.navigation}
-						/>
-					);
-					/*jshint ignore:end*/
-				});
+							/>
+						);
+						return ComponentWrapper
+							? ComponentWrapper(
+									x.elementType,
+									x.uid,
+									x.name,
+									component
+								)
+							: component;
+						/*jshint ignore:end*/
+					});
 
 			if (keys.length || notifyExtra.length) {
-				if (!notifyExtra.length){
+				if (!notifyExtra.length) {
 					// console.warn(
 					// 	"there are extra properties that no component cares about " +
 					// 		JSON.stringify(keys, null, " ")
 					// );
 					// console.warn('shouldnt happen too often');
 				}
-					
+
 				keys.forEach(x => {
 					extraVal[x] = self.props.value[x];
 				});
@@ -113,14 +145,15 @@ export default (Section, Header, ComponentLocator) => {
 					elements[x] = elements[x](Object.assign({}, extraVal));
 				});
 			}
-
+			if (this.props.label)
+				return (
+					<Section>
+						<Header text={this.props.label} />
+						{elements}
+					</Section>
+				);
 			/*jshint ignore:start*/
-			return (
-				<Section>
-					<Header text={this.props.label} />
-					{elements}
-				</Section>
-			);
+			return <Section>{elements}</Section>;
 			/*jshint ignore:end*/
 		}
 	};

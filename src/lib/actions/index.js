@@ -9,8 +9,8 @@ const preDispatch = config.preDispatch,
   preLogin = config.preLogin,
   cache = new MemCache({ ttl: config.processorsCacheTimeout });
 export const ACTIONS = {
-  ADD_NAVIGATION_CONTEXT:"ADD_NAVIGATION_CONTEXT",
-  REMOVE_NAVIGATION_CONTEXT:"REMOVE_NAVIGATION_CONTEXT",
+  ADD_NAVIGATION_CONTEXT: "ADD_NAVIGATION_CONTEXT",
+  REMOVE_NAVIGATION_CONTEXT: "REMOVE_NAVIGATION_CONTEXT",
   OPEN_CONFIRMATION: "OPEN_CONFIRMATION",
   OPEN_CHAT: "OPEN_CHAT",
   CLOSE_CHAT: "CLOSE_CHAT",
@@ -100,16 +100,16 @@ function getQueryParams(args) {
         .join("")
     : "";
 }
-export function removeNavigationContext(){
+export function removeNavigationContext() {
   return {
-    type:ACTIONS.REMOVE_NAVIGATION_CONTEXT
-  }
+    type: ACTIONS.REMOVE_NAVIGATION_CONTEXT
+  };
 }
 
-export function addNavigationContext(args){
+export function addNavigationContext(args) {
   return {
-    type:ACTIONS.ADD_NAVIGATION_CONTEXT,
-    payload:args
+    type: ACTIONS.ADD_NAVIGATION_CONTEXT,
+    payload: args
   };
 }
 export function openConfirmation(id, message, params) {
@@ -148,6 +148,20 @@ function defaultError(dispatch, customType, meta) {
 }
 export const dynamoDownloadUrl = `${BASE_URL}/api/download/:id`;
 export function fetchDynamoProcess(id, args) {
+  if (config.cacheProcessDescription) {
+    let cacheKey = { id, args },
+      hasKey = cache.hasKey(cacheKey);
+    if (hasKey) {
+      let payload = Object.assign({}, cache.get(cacheKey));
+
+      return dispatch => {
+        dispatch({
+          type: ACTIONS.FETCHED_PROCESS,
+          payload
+        });
+      };
+    }
+  }
   return (dispatch, getState) =>
     dispatch({
       [CALL_API]: preDispatch(
@@ -163,7 +177,11 @@ export function fetchDynamoProcess(id, args) {
                 //workaround for react-native fetch.
                 setTimeout(() => null, 0);
                 return res.json().then(d => {
-                  return { id: id, data: d };
+                  let response = { id: id, data: d };
+                  if (config.cacheProcessDescription && !d.data) {
+                    cache.store({ id, args }, response);
+                  }
+                  return response;
                 });
               }
             },
@@ -223,7 +241,6 @@ export function getSingleItemForGrid(id, args, key) {
     disableCache: true
   });
 }
-
 
 export function runDynamoProcessor(
   id,
