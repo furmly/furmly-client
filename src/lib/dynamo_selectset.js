@@ -34,7 +34,7 @@ export default (Layout, Picker, ProgressBar, Container) => {
 			let value =
 				props.value && typeof props.value == "object"
 					? props.value.$objectID
-					: props.value;
+					: props.value || props.args.default;
 			this.state = {
 				pickerValue: value,
 				items: this.getPickerItemsById(value),
