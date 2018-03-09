@@ -995,8 +995,13 @@ var dynamo_view = (function (Page, Container) {
 	return reactRedux.connect(mapStateToProps)(DynamoView);
 });
 
+var _arguments = arguments;
 var dynamo_container = (function (Section, Header, ComponentWrapper, ComponentLocator) {
 	//invariants
+	if (Array.prototype.slice.call(_arguments).length == 3) {
+		ComponentLocator = ComponentWrapper;
+		ComponentWrapper = null;
+	}
 
 	if (invariants.validComponent(Section, "Section") && invariants.validComponent(Header, "Header") && !ComponentLocator) throw new Error("ComponentLocator cannot be null (dynamo_container)");
 
@@ -1063,24 +1068,27 @@ var dynamo_container = (function (Section, Header, ComponentWrapper, ComponentLo
 					if (DynamoComponent.notifyExtra) {
 						notifyExtra.push(index);
 						return function (extra) {
-							return ComponentWrapper(x.elementType, React__default.createElement(DynamoComponent, _extends({}, x, {
+							var component = React__default.createElement(DynamoComponent, _extends({}, x, {
 								extra: extra,
 								key: x.name,
 								value: value,
 								validator: validator,
 								valueChanged: _this3.onValueChanged,
 								navigation: _this3.props.navigation
-							})));
+							}));
+							if (ComponentWrapper) return ComponentWrapper(x.elementType, x.uid, component);
+
+							return component;
 						};
 					}
-
-					return ComponentWrapper(x.elementType, React__default.createElement(DynamoComponent, _extends({}, x, {
+					var component = React__default.createElement(DynamoComponent, _extends({}, x, {
 						value: value,
 						validator: validator,
 						key: x.name,
 						valueChanged: _this3.onValueChanged,
 						navigation: _this3.props.navigation
-					})));
+					}));
+					return ComponentWrapper ? ComponentWrapper(x.elementType, x.uid, component) : component;
 					/*jshint ignore:end*/
 				});
 
