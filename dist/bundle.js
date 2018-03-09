@@ -1063,33 +1063,24 @@ var dynamo_container = (function (Section, Header, ComponentWrapper, ComponentLo
 					if (DynamoComponent.notifyExtra) {
 						notifyExtra.push(index);
 						return function (extra) {
-							return React__default.createElement(
-								ComponentWrapper,
-								{ className: x.elementType },
-								React__default.createElement(DynamoComponent, _extends({}, x, {
-									extra: extra,
-									key: x.name,
-									value: value,
-									validator: validator,
-									valueChanged: _this3.onValueChanged,
-									navigation: _this3.props.navigation
-								})),
-								";"
-							);
+							return ComponentWrapper(x.elementType, React__default.createElement(DynamoComponent, _extends({}, x, {
+								extra: extra,
+								key: x.name,
+								value: value,
+								validator: validator,
+								valueChanged: _this3.onValueChanged,
+								navigation: _this3.props.navigation
+							})));
 						};
 					}
 
-					return React__default.createElement(
-						ComponentWrapper,
-						{ className: x.elementType },
-						React__default.createElement(DynamoComponent, _extends({}, x, {
-							value: value,
-							validator: validator,
-							key: x.name,
-							valueChanged: _this3.onValueChanged,
-							navigation: _this3.props.navigation
-						}))
-					);
+					return ComponentWrapper(x.elementType, React__default.createElement(DynamoComponent, _extends({}, x, {
+						value: value,
+						validator: validator,
+						key: x.name,
+						valueChanged: _this3.onValueChanged,
+						navigation: _this3.props.navigation
+					})));
 					/*jshint ignore:end*/
 				});
 

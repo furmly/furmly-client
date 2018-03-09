@@ -74,8 +74,9 @@ export default (Section, Header, ComponentWrapper, ComponentLocator) => {
 							);
 						if (DynamoComponent.notifyExtra) {
 							notifyExtra.push(index);
-							return extra => (
-								<ComponentWrapper className={x.elementType}>
+							return extra =>
+								ComponentWrapper(
+									x.elementType,
 									<DynamoComponent
 										{...x}
 										extra={extra}
@@ -84,22 +85,20 @@ export default (Section, Header, ComponentWrapper, ComponentLocator) => {
 										validator={validator}
 										valueChanged={this.onValueChanged}
 										navigation={this.props.navigation}
-									/>;
-								</ComponentWrapper>
-							);
+									/>
+								);
 						}
 
-						return (
-							<ComponentWrapper className={x.elementType}>
-								<DynamoComponent
-									{...x}
-									value={value}
-									validator={validator}
-									key={x.name}
-									valueChanged={this.onValueChanged}
-									navigation={this.props.navigation}
-								/>
-							</ComponentWrapper>
+						return ComponentWrapper(
+							x.elementType,
+							<DynamoComponent
+								{...x}
+								value={value}
+								validator={validator}
+								key={x.name}
+								valueChanged={this.onValueChanged}
+								navigation={this.props.navigation}
+							/>
 						);
 						/*jshint ignore:end*/
 					});
