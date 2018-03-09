@@ -995,7 +995,7 @@ var dynamo_view = (function (Page, Container) {
 	return reactRedux.connect(mapStateToProps)(DynamoView);
 });
 
-var dynamo_container = (function (Section, Header, ComponentLocator) {
+var dynamo_container = (function (Section, Header, ComponentWrapper, ComponentLocator) {
 	//invariants
 
 	if (invariants.validComponent(Section, "Section") && invariants.validComponent(Header, "Header") && !ComponentLocator) throw new Error("ComponentLocator cannot be null (dynamo_container)");
@@ -1063,24 +1063,33 @@ var dynamo_container = (function (Section, Header, ComponentLocator) {
 					if (DynamoComponent.notifyExtra) {
 						notifyExtra.push(index);
 						return function (extra) {
-							return React__default.createElement(DynamoComponent, _extends({}, x, {
-								extra: extra,
-								key: x.name,
-								value: value,
-								validator: validator,
-								valueChanged: _this3.onValueChanged,
-								navigation: _this3.props.navigation
-							}));
+							return React__default.createElement(
+								ComponentWrapper,
+								{ className: x.elementType },
+								React__default.createElement(DynamoComponent, _extends({}, x, {
+									extra: extra,
+									key: x.name,
+									value: value,
+									validator: validator,
+									valueChanged: _this3.onValueChanged,
+									navigation: _this3.props.navigation
+								})),
+								";"
+							);
 						};
 					}
 
-					return React__default.createElement(DynamoComponent, _extends({}, x, {
-						value: value,
-						validator: validator,
-						key: x.name,
-						valueChanged: _this3.onValueChanged,
-						navigation: _this3.props.navigation
-					}));
+					return React__default.createElement(
+						ComponentWrapper,
+						{ className: x.elementType },
+						React__default.createElement(DynamoComponent, _extends({}, x, {
+							value: value,
+							validator: validator,
+							key: x.name,
+							valueChanged: _this3.onValueChanged,
+							navigation: _this3.props.navigation
+						}))
+					);
 					/*jshint ignore:end*/
 				});
 
