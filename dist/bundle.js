@@ -340,6 +340,20 @@ function defaultError(dispatch, customType, _meta) {
 }
 var dynamoDownloadUrl = BASE_URL + "/api/download/:id";
 function fetchDynamoProcess(id, args) {
+  if (config.cacheProcessDescription) {
+    var cacheKey = { id: id, args: args },
+        hasKey = cache.hasKey(cacheKey);
+    if (hasKey) {
+      var payload = Object.assign({}, cache.get(cacheKey));
+
+      return function (dispatch) {
+        dispatch({
+          type: ACTIONS.FETCHED_PROCESS,
+          payload: payload
+        });
+      };
+    }
+  }
   return function (dispatch, getState) {
     return dispatch(defineProperty({}, CALL_API, preDispatch({
       endpoint: BASE_URL + "/api/process/describe/" + id + getQueryParams(Object.assign({}, args || {}, { $uiOnDemand: !!config.uiOnDemand })),
@@ -351,7 +365,11 @@ function fetchDynamoProcess(id, args) {
             return null;
           }, 0);
           return res.json().then(function (d) {
-            return { id: id, data: d };
+            var response = { id: id, data: d };
+            if (config.cacheProcessDescription && !d.data) {
+              cache.store({ id: id, args: args }, response);
+            }
+            return response;
           });
         }
       }, defaultError(dispatch, ACTIONS.FAILED_TO_FETCH_PROCESS)],
@@ -1273,7 +1291,7 @@ var dynamo_select = (function (ProgressIndicator, Layout, Container) {
 			};
 			_this.isValidValue = _this.isValidValue.bind(_this);
 			_this.state = {
-				value: props.value && _typeof(props.value) == "object" ? props.value.$objectID : props.value
+				value: props.value && _typeof(props.value) == "object" ? props.value.$objectID : props.value || props.args.default
 			};
 			_this.isObjectIdMode = _this.isObjectIdMode.bind(_this);
 			return _this;
@@ -1448,7 +1466,7 @@ var dynamo_selectset = (function (Layout, Picker, ProgressBar, Container) {
 			_this.onContainerValueChanged = _this.onContainerValueChanged.bind(_this);
 			_this.getPickerValue = _this.getPickerValue.bind(_this);
 			_this.getPickerItemsById = _this.getPickerItemsById.bind(_this);
-			var value = props.value && _typeof(props.value) == "object" ? props.value.$objectID : props.value;
+			var value = props.value && _typeof(props.value) == "object" ? props.value.$objectID : props.value || props.args.default;
 			_this.state = {
 				pickerValue: value,
 				items: _this.getPickerItemsById(value),
@@ -3301,8 +3319,22 @@ var defaultMap = {
 	COMMAND: components.dynamo_command,
 	recipes: {},
 	_defaultMap: {},
-	cook: function cook() {
+	cook: function cook(name, recipe, customName) {
 		var _this = this;
+
+		if (name && recipe) {
+			if (!Array.prototype.isPrototypeOf(recipe)) {
+				throw new Error("Recipe must be an array");
+			}
+			if (!this._defaultMap[name]) throw new Error("Cannot find any recipe for that element");
+			if (name == customName) {
+				throw new Error("Cusom name will override default recipe");
+			}
+
+			var cooked = this._defaultMap[name].apply(null, recipe);
+			if (customName) this[customName] = cooked;
+			return cooked;
+		}
 
 		if (!this._cooked) {
 			this._cooked = true;

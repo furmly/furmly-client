@@ -59,6 +59,7 @@ export default (LabelWrapper, Input, DatePicker, Checkbox) => {
 				this.valueChanged(this.props.value);
 				//}, 0);
 			}
+
 		}
 		runValidators() {
 			return new ValidationHelper(this).run();
