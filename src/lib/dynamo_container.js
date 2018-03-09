@@ -3,6 +3,10 @@ import invariants from "./utils/invariants";
 
 export default (Section, Header, ComponentWrapper, ComponentLocator) => {
 	//invariants
+	if (Array.prototype.slice.call(arguments).length == 3) {
+		ComponentLocator = ComponentWrapper;
+		ComponentWrapper = null;
+	}
 
 	if (
 		invariants.validComponent(Section, "Section") &&
@@ -74,9 +78,8 @@ export default (Section, Header, ComponentWrapper, ComponentLocator) => {
 							);
 						if (DynamoComponent.notifyExtra) {
 							notifyExtra.push(index);
-							return extra =>
-								ComponentWrapper(
-									x.elementType,
+							return extra => {
+								let component = (
 									<DynamoComponent
 										{...x}
 										extra={extra}
@@ -87,10 +90,17 @@ export default (Section, Header, ComponentWrapper, ComponentLocator) => {
 										navigation={this.props.navigation}
 									/>
 								);
-						}
+								if (ComponentWrapper)
+									return ComponentWrapper(
+										x.elementType,
+										x.uid,
+										component
+									);
 
-						return ComponentWrapper(
-							x.elementType,
+								return component;
+							};
+						}
+						let component = (
 							<DynamoComponent
 								{...x}
 								value={value}
@@ -100,6 +110,9 @@ export default (Section, Header, ComponentWrapper, ComponentLocator) => {
 								navigation={this.props.navigation}
 							/>
 						);
+						return ComponentWrapper
+							? ComponentWrapper(x.elementType, x.uid, component)
+							: component;
 						/*jshint ignore:end*/
 					});
 
