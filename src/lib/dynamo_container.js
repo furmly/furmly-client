@@ -94,6 +94,7 @@ export default (Section, Header, ComponentWrapper, ComponentLocator) => {
 									return ComponentWrapper(
 										x.elementType,
 										x.uid,
+										x.name,
 										component
 									);
 
@@ -111,7 +112,12 @@ export default (Section, Header, ComponentWrapper, ComponentLocator) => {
 							/>
 						);
 						return ComponentWrapper
-							? ComponentWrapper(x.elementType, x.uid, component)
+							? ComponentWrapper(
+									x.elementType,
+									x.uid,
+									x.name,
+									component
+								)
 							: component;
 						/*jshint ignore:end*/
 					});
@@ -133,14 +139,15 @@ export default (Section, Header, ComponentWrapper, ComponentLocator) => {
 					elements[x] = elements[x](Object.assign({}, extraVal));
 				});
 			}
-
+			if (this.props.label)
+				return (
+					<Section>
+						<Header text={this.props.label} />
+						{elements}
+					</Section>
+				);
 			/*jshint ignore:start*/
-			return (
-				<Section>
-					<Header text={this.props.label} />
-					{elements}
-				</Section>
-			);
+			return <Section>{elements}</Section>;
 			/*jshint ignore:end*/
 		}
 	};
