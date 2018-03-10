@@ -1076,7 +1076,7 @@ var dynamo_container = (function (Section, Header, ComponentWrapper, ComponentLo
 								valueChanged: _this3.onValueChanged,
 								navigation: _this3.props.navigation
 							}));
-							if (ComponentWrapper) return ComponentWrapper(x.elementType, x.uid, component);
+							if (ComponentWrapper) return ComponentWrapper(x.elementType, x.uid, x.name, component);
 
 							return component;
 						};
@@ -1088,7 +1088,7 @@ var dynamo_container = (function (Section, Header, ComponentWrapper, ComponentLo
 						valueChanged: _this3.onValueChanged,
 						navigation: _this3.props.navigation
 					}));
-					return ComponentWrapper ? ComponentWrapper(x.elementType, x.uid, component) : component;
+					return ComponentWrapper ? ComponentWrapper(x.elementType, x.uid, x.name, component) : component;
 					/*jshint ignore:end*/
 				});
 
@@ -1101,12 +1101,16 @@ var dynamo_container = (function (Section, Header, ComponentWrapper, ComponentLo
 						elements[x] = elements[x](Object.assign({}, extraVal));
 					});
 				}
-
+				if (this.props.label) return React__default.createElement(
+					Section,
+					null,
+					React__default.createElement(Header, { text: this.props.label }),
+					elements
+				);
 				/*jshint ignore:start*/
 				return React__default.createElement(
 					Section,
 					null,
-					React__default.createElement(Header, { text: this.props.label }),
 					elements
 				);
 				/*jshint ignore:end*/
