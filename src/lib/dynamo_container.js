@@ -1,11 +1,17 @@
 import React, { Component } from "react";
 import invariants from "./utils/invariants";
 
-export default (Section, Header, ComponentWrapper, ComponentLocator) => {
+export default (...args) => {
 	//invariants
-	if (Array.prototype.slice.call(arguments).length == 3) {
-		ComponentLocator = ComponentWrapper;
-		ComponentWrapper = null;
+	let Section = args[0],
+		Header = args[1],
+		ComponentWrapper,
+		ComponentLocator;
+	if (args.length == 3) {
+		ComponentLocator = args[2];
+	} else {
+		ComponentWrapper = args[2];
+		ComponentLocator = args[3];
 	}
 
 	if (
