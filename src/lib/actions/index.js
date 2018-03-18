@@ -9,6 +9,7 @@ const preDispatch = config.preDispatch,
   preLogin = config.preLogin,
   cache = new MemCache({ ttl: config.processorsCacheTimeout });
 export const ACTIONS = {
+  CLEAR_DATA: "CLEAR_DATA",
   ADD_NAVIGATION_CONTEXT: "ADD_NAVIGATION_CONTEXT",
   REMOVE_NAVIGATION_CONTEXT: "REMOVE_NAVIGATION_CONTEXT",
   OPEN_CONFIRMATION: "OPEN_CONFIRMATION",
@@ -197,7 +198,12 @@ export function fetchDynamoProcess(id, args) {
       )
     });
 }
-
+export function clearElementData(key) {
+  return {
+    type: ACTIONS.CLEAR_DATA,
+    payload: key
+  };
+}
 export function getMoreForGrid(id, args, key) {
   return runDynamoProcessor(id, args, key, {
     requestCustomType: ACTIONS.FETCHING_GRID,
@@ -259,7 +265,7 @@ export function runDynamoProcessor(
     let cacheKey = { id, args },
       hasKey = cache.hasKey(cacheKey);
     if (hasKey) {
-      let payload = Object.assign({}, cache.get(cacheKey));
+      let payload = JSON.parse(JSON.stringify(cache.get(cacheKey)));
       payload.key = key;
 
       return dispatch => {

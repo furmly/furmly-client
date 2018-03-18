@@ -3,7 +3,11 @@ import { connect } from "react-redux";
 import ValidatorHelper from "./utils/validator";
 import invariants from "./utils/invariants";
 import _ from "lodash";
-import { runDynamoProcessor, openConfirmation } from "./actions";
+import {
+	runDynamoProcessor,
+	openConfirmation,
+	clearElementData
+} from "./actions";
 
 export default (
 	Layout,
@@ -58,7 +62,8 @@ export default (
 			getListItemDataTemplate: (id, args, key) =>
 				dispatch(runDynamoProcessor(id, args, key)),
 			openConfirmation: (id, message, params) =>
-				dispatch(openConfirmation(id, message, params))
+				dispatch(openConfirmation(id, message, params)),
+			clearElementData: key => dispatch(clearElementData(key))
 		};
 	};
 
@@ -151,6 +156,8 @@ export default (
 		}
 		componentWillUnmount() {
 			this._mounted = false;
+			//need to cleanup the namespace.
+			this.props.clearElementData(this.props.component_uid);
 		}
 
 		componentDidMount() {
