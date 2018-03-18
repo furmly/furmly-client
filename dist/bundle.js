@@ -4988,10 +4988,38 @@ function chat () {
 	}
 }
 
+function formatExpression (string) {
+	var str = string.toString();
+
+	for (var _len = arguments.length, rest = Array(_len > 1 ? _len - 1 : 0), _key = 1; _key < _len; _key++) {
+		rest[_key - 1] = arguments[_key];
+	}
+
+	if (rest.length) {
+		var t = _typeof(rest[0]);
+		var key;
+		var args = "string" === t || "number" === t ? rest : rest[0];
+
+		for (key in args) {
+			str = str.replace(new RegExp("\\{" + key + "\\}", "gi"), args[key]);
+		}
+	}
+
+	return str;
+}
+
+var index$1 = {
+	invariants: invariants,
+	memcache: MemCache,
+	formatExpression: formatExpression,
+	validator: Validator
+};
+
 exports.default = defaultMap;
 exports.reducers = index;
 exports.toggleAllBusyIndicators = toggleAllBusyIndicators;
 exports.chatReducer = chat;
+exports.utils = index$1;
 exports.startChatServer = startReceivingMessages;
 exports.addNavigationContext = addNavigationContext;
 exports.removeNavigationContext = removeNavigationContext;
