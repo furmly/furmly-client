@@ -21,7 +21,23 @@ const defaultMap = {
 	COMMAND: components.dynamo_command,
 	recipes: {},
 	_defaultMap: {},
-	cook: function(name, recipe, customName) {
+	componentLocator(interceptors) {
+		return context => {
+			let control;
+			if (interceptors)
+				control = interceptors(context, this, this._defaultMap);
+			if (!control) {
+				if (context.uid) {
+					if (this[context.uid]) return this[context.uid];
+					let upper = context.uid.toUpperCase();
+					if (this[upper]) return this[upper];
+				}
+				return this[context.elementType];
+			}
+			return control;
+		};
+	},
+	cook(name, recipe, customName) {
 		if (name && recipe) {
 			if (!Array.prototype.isPrototypeOf(recipe)) {
 				throw new Error("Recipe must be an array");
@@ -29,7 +45,7 @@ const defaultMap = {
 			if (!this._defaultMap[name])
 				throw new Error("Cannot find any recipe for that element");
 			if (name == customName) {
-				throw new Error("Cusom name will override default recipe");
+				console.warn("Custom name will override default recipe");
 			}
 
 			let cooked = this._defaultMap[name].apply(null, recipe);

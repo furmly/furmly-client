@@ -2112,7 +2112,7 @@ var dynamo_input = (function (LabelWrapper, Input, DatePicker, Checkbox) {
 	}(React.Component);
 
 	DynamoInput.propTypes = {
-		valueChanged: React__default.PropTypes.func
+		valueChanged: PropTypes.func
 	};
 	return DynamoInput;
 });
@@ -3039,7 +3039,7 @@ var dynamo_list = (function (Layout, Button, List, Modal, ErrorText, ProgressBar
 				this._mounted = true;
 				//if its template is a reference then store it.
 				if (this.isTemplateRef()) {
-					this.props.templateCache[this.props.args.itemTemplate.dynamo_ref] = Array.prototype.isPrototypeOf(this.props.args.itemTemplate) ? this.props.args.itemTemplate : this.props.args.itemTemplate.template;
+					this.props.templateCache[this.isTemplateRef()] = Array.prototype.isPrototypeOf(this.props.args.itemTemplate) ? this.props.args.itemTemplate : this.props.args.itemTemplate.template;
 				}
 				//if theres a default then update everyone.
 				if (this.state.items && this.state.items.length) {
@@ -3167,7 +3167,7 @@ var dynamo_list = (function (Layout, Button, List, Modal, ErrorText, ProgressBar
 					this.props.args.itemTemplate = this.props.templateCache[this.props.args.behavior && this.props.args.behavior.template_ref] || [];
 				}
 
-				var itemTemplate = this.clone(this.isTemplateRef() ? this.props.args.itemTemplate.template : this.props.args.itemTemplate);
+				var itemTemplate = this.clone(this.isTemplateRef() && !Array.prototype.isPrototypeOf(this.props.args.itemTemplate) ? this.props.args.itemTemplate.template : this.props.args.itemTemplate);
 
 				if (this.props.args.behavior && this.props.args.behavior.extension && this.props.args.behavior.extension.length) this.props.args.behavior.extension.forEach(function (element, index) {
 					element.key = index;
@@ -4544,8 +4544,25 @@ var defaultMap = {
 	COMMAND: components.dynamo_command,
 	recipes: {},
 	_defaultMap: {},
-	cook: function cook(name, recipe, customName) {
+	componentLocator: function componentLocator(interceptors) {
 		var _this = this;
+
+		return function (context) {
+			var control = void 0;
+			if (interceptors) control = interceptors(context, _this, _this._defaultMap);
+			if (!control) {
+				if (context.uid) {
+					if (_this[context.uid]) return _this[context.uid];
+					var upper = context.uid.toUpperCase();
+					if (_this[upper]) return _this[upper];
+				}
+				return _this[context.elementType];
+			}
+			return control;
+		};
+	},
+	cook: function cook(name, recipe, customName) {
+		var _this2 = this;
 
 		if (name && recipe) {
 			if (!Array.prototype.isPrototypeOf(recipe)) {
@@ -4553,7 +4570,7 @@ var defaultMap = {
 			}
 			if (!this._defaultMap[name]) throw new Error("Cannot find any recipe for that element");
 			if (name == customName) {
-				throw new Error("Cusom name will override default recipe");
+				console.warn("Custom name will override default recipe");
 			}
 
 			var cooked = this._defaultMap[name].apply(null, recipe);
@@ -4564,8 +4581,8 @@ var defaultMap = {
 		if (!this._cooked) {
 			this._cooked = true;
 			Object.keys(this.recipes).forEach(function (recipe) {
-				_this._defaultMap[recipe] = _this[recipe];
-				_this[recipe] = _this[recipe].apply(null, _this.recipes[recipe]);
+				_this2._defaultMap[recipe] = _this2[recipe];
+				_this2[recipe] = _this2[recipe].apply(null, _this2.recipes[recipe]);
 			});
 		}
 		return this;

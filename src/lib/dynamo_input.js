@@ -1,3 +1,4 @@
+import PropTypes from 'prop-types';
 import React, { Component } from "react";
 import { connect } from "react-redux";
 import { runDynamoProcessor } from "./actions";
@@ -150,7 +151,7 @@ export default (LabelWrapper, Input, DatePicker, Checkbox) => {
 		}
 	}
 	DynamoInput.propTypes = {
-		valueChanged: React.PropTypes.func
+		valueChanged: PropTypes.func
 	};
 	return DynamoInput;
 };

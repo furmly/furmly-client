@@ -152,12 +152,13 @@ export default (
 		componentWillUnmount() {
 			this._mounted = false;
 		}
+
 		componentDidMount() {
 			this._mounted = true;
 			//if its template is a reference then store it.
 			if (this.isTemplateRef()) {
 				this.props.templateCache[
-					this.props.args.itemTemplate.dynamo_ref
+					this.isTemplateRef()
 				] = Array.prototype.isPrototypeOf(this.props.args.itemTemplate)
 					? this.props.args.itemTemplate
 					: this.props.args.itemTemplate.template;
@@ -318,7 +319,8 @@ export default (
 			}
 
 			let itemTemplate = this.clone(
-				this.isTemplateRef()
+				this.isTemplateRef() &&
+				!Array.prototype.isPrototypeOf(this.props.args.itemTemplate)
 					? this.props.args.itemTemplate.template
 					: this.props.args.itemTemplate
 			);
