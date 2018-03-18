@@ -5,6 +5,8 @@ import config from "client_config";
 
 export default function(state = {}, action) {
 	switch (action.type) {
+		case ACTIONS.CLEAR_DATA:
+			return Object.assign(state, { [action.payload]: null });
 		case "persist/REHYDRATE":
 			var incoming = action.payload.dynamo;
 			if (incoming) {
@@ -154,7 +156,7 @@ export default function(state = {}, action) {
 			return {
 				busy: false,
 				//always carry over the navigationContext.
-				navigationContext:state.navigationContext
+				navigationContext: state.navigationContext
 			};
 		case ACTIONS.START_FILE_UPLOAD:
 			return Object.assign({}, state, {

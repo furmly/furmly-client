@@ -1424,6 +1424,7 @@ var CHAT_URL = global.CHAT_URL || config.chatUrl;
 var preLogin = config.preLogin;
 var cache = new MemCache({ ttl: config.processorsCacheTimeout });
 var ACTIONS = {
+  CLEAR_DATA: "CLEAR_DATA",
   ADD_NAVIGATION_CONTEXT: "ADD_NAVIGATION_CONTEXT",
   REMOVE_NAVIGATION_CONTEXT: "REMOVE_NAVIGATION_CONTEXT",
   OPEN_CONFIRMATION: "OPEN_CONFIRMATION",
@@ -1585,7 +1586,12 @@ function fetchDynamoProcess(id, args) {
     }, getState())));
   };
 }
-
+function clearElementData(key) {
+  return {
+    type: ACTIONS.CLEAR_DATA,
+    payload: key
+  };
+}
 function getMoreForGrid(id, args, key) {
   return runDynamoProcessor(id, args, key, {
     requestCustomType: ACTIONS.FETCHING_GRID,
@@ -1643,7 +1649,7 @@ function runDynamoProcessor(id, args, key) {
     var cacheKey = { id: id, args: args },
         hasKey = cache.hasKey(cacheKey);
     if (hasKey) {
-      var payload = Object.assign({}, cache.get(cacheKey));
+      var payload = JSON.parse(JSON.stringify(cache.get(cacheKey)));
       payload.key = key;
 
       return function (dispatch) {
@@ -2958,6 +2964,9 @@ var dynamo_list = (function (Layout, Button, List, Modal, ErrorText, ProgressBar
 			},
 			openConfirmation: function openConfirmation$$1(id, message, params) {
 				return dispatch(openConfirmation(id, message, params));
+			},
+			clearElementData: function clearElementData$$1(key) {
+				return dispatch(clearElementData(key));
 			}
 		};
 	};
@@ -3030,6 +3039,8 @@ var dynamo_list = (function (Layout, Button, List, Modal, ErrorText, ProgressBar
 			key: "componentWillUnmount",
 			value: function componentWillUnmount() {
 				this._mounted = false;
+				//need to cleanup the namespace.
+				this.props.clearElementData(this.props.component_uid);
 			}
 		}, {
 			key: "componentDidMount",
@@ -4590,12 +4601,14 @@ var defaultMap = {
 };
 
 function index () {
-	var _Object$assign8, _Object$assign10;
+	var _Object$assign9, _Object$assign11;
 
 	var state = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : {};
 	var action = arguments[1];
 
 	switch (action.type) {
+		case ACTIONS.CLEAR_DATA:
+			return Object.assign(state, defineProperty({}, action.payload, null));
 		case "persist/REHYDRATE":
 			var incoming = action.payload.dynamo;
 			if (incoming) {
@@ -4656,12 +4669,12 @@ function index () {
 			});
 		case ACTIONS.DYNAMO_PROCESSOR_RAN:
 			configureTemplates(state, action);
-			return Object.assign({}, state, (_Object$assign8 = {}, defineProperty(_Object$assign8, action.payload.key, action.payload.data), defineProperty(_Object$assign8, action.payload.key + "-busy", false), _Object$assign8));
+			return Object.assign({}, state, (_Object$assign9 = {}, defineProperty(_Object$assign9, action.payload.key, action.payload.data), defineProperty(_Object$assign9, action.payload.key + "-busy", false), _Object$assign9));
 
 		case ACTIONS.DYNAMO_PROCESSOR_RUNNING:
 			return Object.assign({}, state, defineProperty({}, action.meta.key + "-busy", !action.error));
 		case ACTIONS.DYNAMO_PROCESSOR_FAILED:
-			return Object.assign({}, state, (_Object$assign10 = {}, defineProperty(_Object$assign10, action.meta + "-busy", false), defineProperty(_Object$assign10, action.meta, null), _Object$assign10));
+			return Object.assign({}, state, (_Object$assign11 = {}, defineProperty(_Object$assign11, action.meta + "-busy", false), defineProperty(_Object$assign11, action.meta, null), _Object$assign11));
 		case ACTIONS.FETCHED_PROCESS:
 			var fetchedValue = Object.assign({}, action.payload.data.data);
 			var fetchedDescription = Object.assign({}, action.payload.data.description);
@@ -4731,12 +4744,12 @@ function getTemplate(busyIndicator) {
 	return Object.assign({}, state, defineProperty({}, busyIndicator, !action.error));
 }
 function gotTemplate(busyIndicator, propName) {
-	var _Object$assign25;
+	var _Object$assign26;
 
 	var state = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : {};
 	var action = arguments[3];
 
-	return Object.assign({}, state, (_Object$assign25 = {}, defineProperty(_Object$assign25, propName, action.payload.data), defineProperty(_Object$assign25, busyIndicator, false), _Object$assign25));
+	return Object.assign({}, state, (_Object$assign26 = {}, defineProperty(_Object$assign26, propName, action.payload.data), defineProperty(_Object$assign26, busyIndicator, false), _Object$assign26));
 }
 function failedToGetTemplate(busyIndicator) {
 	var state = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : {};
