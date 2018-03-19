@@ -104,7 +104,9 @@ export default (
 			) {
 				return (
 					this.state.items.splice(next.confirmation.params.index, 1),
-					this.props.valueChanged({ [this.props.name]: items })
+					this.props.valueChanged({
+						[this.props.name]: this.state.items
+					})
 				);
 			}
 			if (this.props.component_uid !== next.component_uid) {

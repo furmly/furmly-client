@@ -2233,20 +2233,36 @@ var dynamo_container = (function () {
 			var _this = possibleConstructorReturn(this, (_class.__proto__ || Object.getPrototypeOf(_class)).call(this, props));
 
 			_this.onValueChanged = _this.onValueChanged.bind(_this);
-			_this.state = { form: _this.props.value };
-			_this._validations = [];
+			_this.state = {
+				form: _this.props.value,
+				_validations: (_this.props.elements || []).map(function (x) {
+					return {};
+				})
+			};
+			//this._validations = [];
 			_this.setValidator = _this.setValidator.bind(_this);
 			_this.setValidator();
 			return _this;
 		}
 
 		createClass(_class, [{
+			key: "componentWillReceiveProps",
+			value: function componentWillReceiveProps(next) {
+				//console.log("container will receive new props");
+				if (next.elements && (next.elements !== this.props.elements || next.elements.length !== this.props.elements.length)) {
+					var _validations = next.elements.map(function (x) {
+						return {};
+					});
+					this.setState({ _validations: _validations });
+				}
+			}
+		}, {
 			key: "setValidator",
 			value: function setValidator() {
 				var _this2 = this;
 
 				this.props.validator.validate = function () {
-					return Promise.all(_this2._validations.map(function (x) {
+					return Promise.all(_this2.state._validations.map(function (x) {
 						if (x.validate) return x.validate();
 
 						return new Promise(function (resolve, reject) {
@@ -2266,21 +2282,20 @@ var dynamo_container = (function () {
 			value: function render() {
 				var _this3 = this;
 
-				this._validations.length = 0;
+				//this._validations.length = 0;
 				var keys = this.props.value ? Object.keys(this.props.value) : [],
 				    self = this,
 				    extraVal = {},
-				    index = -1,
 				    notifyExtra = [],
 				    elements = (this.props.elements || []).sort(function (x, y) {
 					return x.order - y.order;
-				}).map(function (x) {
-					index++;
+				}).map(function (x, index) {
 					var DynamoComponent = ComponentLocator(x),
 					    source = self.props.value,
-					    validator = {},
-					    value = source ? _this3.props.value[x.name] : null;
-					_this3._validations.push(validator);
+
+					//validator = {},
+					value = source ? _this3.props.value[x.name] : null;
+					//this._validations.push(validator);
 					if (source && self.props.value[x.name] && keys.indexOf(x.name) !== -1) keys.splice(keys.indexOf(x.name), 1);
 					/*jshint ignore:start*/
 					if (!DynamoComponent) throw new Error("Unknown component:" + JSON.stringify(x, null, " "));
@@ -2291,7 +2306,7 @@ var dynamo_container = (function () {
 								extra: extra,
 								key: x.name,
 								value: value,
-								validator: validator,
+								validator: _this3.state._validations[index],
 								valueChanged: _this3.onValueChanged,
 								navigation: _this3.props.navigation
 							}));
@@ -2302,7 +2317,7 @@ var dynamo_container = (function () {
 					}
 					var component = React__default.createElement(DynamoComponent, _extends$4({}, x, {
 						value: value,
-						validator: validator,
+						validator: _this3.state._validations[index],
 						key: x.name,
 						valueChanged: _this3.onValueChanged,
 						navigation: _this3.props.navigation
@@ -3003,23 +3018,23 @@ var dynamo_list = (function (Layout, Button, List, Modal, ErrorText, ProgressBar
 			key: "componentWillReceiveProps",
 			value: function componentWillReceiveProps(next) {
 				if (next.confirmation !== this.props.confirmation && next.confirmation && next.confirmation.params && typeof next.confirmation.params.index !== "undefined" && this.state.items.length) {
-					return this.state.items.splice(next.confirmation.params.index, 1), this.props.valueChanged(defineProperty({}, this.props.name, items));
+					return this.state.items.splice(next.confirmation.params.index, 1), this.props.valueChanged(defineProperty({}, this.props.name, this.state.items));
 				}
 				if (this.props.component_uid !== next.component_uid) {
 					//setTimeout(() => {
 					if (this._mounted) {
-						var _items = next.dataTemplate || next.value || next.args && next.args.default || [];
-						_items = _items.slice();
-						if (next.args.listItemDataTemplateProcessor && _items.length) {
-							this.getListItemDataTemplate(_items, next);
+						var items = next.dataTemplate || next.value || next.args && next.args.default || [];
+						items = items.slice();
+						if (next.args.listItemDataTemplateProcessor && items.length) {
+							this.getListItemDataTemplate(items, next);
 						}
 						this.setState({
 							form: null,
 							itemTemplate: null,
-							items: _items,
+							items: items,
 							modalVisible: false
 						});
-						this.props.valueChanged(defineProperty({}, this.props.name, _items));
+						this.props.valueChanged(defineProperty({}, this.props.name, items));
 					}
 					return;
 					//}, 0);
