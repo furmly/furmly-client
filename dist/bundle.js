@@ -2082,6 +2082,18 @@ var dynamo_input = (function (LabelWrapper, Input, DatePicker, Checkbox) {
 				this.setState({ value: value, errors: [] });
 			}
 		}, {
+			key: "getDateConfig",
+			value: function getDateConfig(args) {
+				var result = {};
+				if (args.max) {
+					if (args.max == "TODAY") result.maxDate = new Date();else result.maxDate = new Date(args.maxConfig.date);
+				}
+				if (args.min) {
+					if (args.min == "TODAY") result.minDate = new Date();else result.minDate = new Date(args.minConfig.date);
+				}
+				return result;
+			}
+		}, {
 			key: "render",
 			value: function render() {
 				/*jshint ignore:start */
@@ -2098,8 +2110,10 @@ var dynamo_input = (function (LabelWrapper, Input, DatePicker, Checkbox) {
 				}
 				if (args.type == "checkbox") Result = Checkbox;
 
-				if (args.type == "date") Result = DatePicker;
-
+				if (args.type == "date") {
+					Result = DatePicker;
+					Object.assign(passThrough, this.getDateConfig(args));
+				}
 				return React__default.createElement(LabelWrapper, {
 					value: this.props.label,
 					inner: React__default.createElement(Result, _extends$4({

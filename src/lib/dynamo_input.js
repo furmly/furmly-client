@@ -1,4 +1,4 @@
-import PropTypes from 'prop-types';
+import PropTypes from "prop-types";
 import React, { Component } from "react";
 import { connect } from "react-redux";
 import { runDynamoProcessor } from "./actions";
@@ -60,7 +60,6 @@ export default (LabelWrapper, Input, DatePicker, Checkbox) => {
 				this.valueChanged(this.props.value);
 				//}, 0);
 			}
-
 		}
 		runValidators() {
 			return new ValidationHelper(this).run();
@@ -113,6 +112,18 @@ export default (LabelWrapper, Input, DatePicker, Checkbox) => {
 
 			this.setState({ value: value, errors: [] });
 		}
+		getDateConfig(args) {
+			let result = {};
+			if (args.max) {
+				if (args.max == "TODAY") result.maxDate = new Date();
+				else result.maxDate = new Date(args.maxConfig.date);
+			}
+			if (args.min) {
+				if (args.min == "TODAY") result.minDate = new Date();
+				else result.minDate = new Date(args.minConfig.date);
+			}
+			return result;
+		}
 		render() {
 			/*jshint ignore:start */
 			let args = this.props.args,
@@ -130,8 +141,10 @@ export default (LabelWrapper, Input, DatePicker, Checkbox) => {
 			}
 			if (args.type == "checkbox") Result = Checkbox;
 
-			if (args.type == "date") Result = DatePicker;
-
+			if (args.type == "date") {
+				Result = DatePicker;
+				Object.assign(passThrough, this.getDateConfig(args));
+			}
 			return (
 				<LabelWrapper
 					value={this.props.label}
