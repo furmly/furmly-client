@@ -2248,9 +2248,13 @@ var dynamo_container = (function () {
 		createClass(_class, [{
 			key: "componentWillReceiveProps",
 			value: function componentWillReceiveProps(next) {
-				console.log("container will receive new props");
-				// let _validations = next.elements.map(x => ({}));
-				// this.setState({ _validations });
+				//console.log("container will receive new props");
+				if (next.elements && (next.elements !== this.props.elements || next.elements.length !== this.props.elements.length)) {
+					var _validations = next.elements.map(function (x) {
+						return {};
+					});
+					this.setState({ _validations: _validations });
+				}
 			}
 		}, {
 			key: "setValidator",

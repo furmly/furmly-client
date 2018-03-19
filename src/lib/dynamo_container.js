@@ -33,7 +33,17 @@ export default (...args) => {
 			this.setValidator = this.setValidator.bind(this);
 			this.setValidator();
 		}
-		componentWillReceiveProps(next) {}
+		componentWillReceiveProps(next) {
+			//console.log("container will receive new props");
+			if (
+				next.elements &&
+				(next.elements !== this.props.elements ||
+					next.elements.length !== this.props.elements.length)
+			) {
+				let _validations = next.elements.map(x => ({}));
+				this.setState({ _validations });
+			}
+		}
 		setValidator() {
 			this.props.validator.validate = () => {
 				return Promise.all(
@@ -138,6 +148,7 @@ export default (...args) => {
 					// 	"there are extra properties that no component cares about " +
 					// 		JSON.stringify(keys, null, " ")
 					// );
+					// console.warn('shouldnt happen too often');
 				}
 
 				keys.forEach(x => {
