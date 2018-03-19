@@ -25,15 +25,19 @@ export default (...args) => {
 		constructor(props) {
 			super(props);
 			this.onValueChanged = this.onValueChanged.bind(this);
-			this.state = { form: this.props.value };
-			this._validations = [];
+			this.state = {
+				form: this.props.value,
+				_validations: (this.props.elements || []).map(x => ({}))
+			};
+			//this._validations = [];
 			this.setValidator = this.setValidator.bind(this);
 			this.setValidator();
 		}
+		componentWillReceiveProps(next) {}
 		setValidator() {
 			this.props.validator.validate = () => {
 				return Promise.all(
-					this._validations.map(x => {
+					this.state._validations.map(x => {
 						if (x.validate) return x.validate();
 
 						return new Promise((resolve, reject) => {
@@ -53,23 +57,21 @@ export default (...args) => {
 		}
 
 		render() {
-			this._validations.length = 0;
+			//this._validations.length = 0;
 			let keys = this.props.value ? Object.keys(this.props.value) : [],
 				self = this,
 				extraVal = {},
-				index = -1,
 				notifyExtra = [],
 				elements = (this.props.elements || [])
 					.sort((x, y) => {
 						return x.order - y.order;
 					})
-					.map(x => {
-						index++;
+					.map((x, index) => {
 						let DynamoComponent = ComponentLocator(x),
 							source = self.props.value,
-							validator = {},
+							//validator = {},
 							value = source ? this.props.value[x.name] : null;
-						this._validations.push(validator);
+						//this._validations.push(validator);
 						if (
 							source &&
 							self.props.value[x.name] &&
@@ -91,7 +93,9 @@ export default (...args) => {
 										extra={extra}
 										key={x.name}
 										value={value}
-										validator={validator}
+										validator={
+											this.state._validations[index]
+										}
 										valueChanged={this.onValueChanged}
 										navigation={this.props.navigation}
 									/>
@@ -111,7 +115,7 @@ export default (...args) => {
 							<DynamoComponent
 								{...x}
 								value={value}
-								validator={validator}
+								validator={this.state._validations[index]}
 								key={x.name}
 								valueChanged={this.onValueChanged}
 								navigation={this.props.navigation}
@@ -134,7 +138,6 @@ export default (...args) => {
 					// 	"there are extra properties that no component cares about " +
 					// 		JSON.stringify(keys, null, " ")
 					// );
-					// console.warn('shouldnt happen too often');
 				}
 
 				keys.forEach(x => {
