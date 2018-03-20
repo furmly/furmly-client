@@ -2085,12 +2085,16 @@ var dynamo_input = (function (LabelWrapper, Input, DatePicker, Checkbox) {
 			key: "getDateConfig",
 			value: function getDateConfig(args) {
 				var result = {};
-				if (args.max) {
-					if (args.max == "TODAY") result.maxDate = new Date();else result.maxDate = new Date(args.maxConfig.date);
+				if (args.config) {
+					args = args.config;
+					if (args.max) {
+						if (args.max == "TODAY") result.maxDate = new Date();else result.maxDate = new Date(args.maxConfig.date);
+					}
+					if (args.min) {
+						if (args.min == "TODAY") result.minDate = new Date();else result.minDate = new Date(args.minConfig.date);
+					}
 				}
-				if (args.min) {
-					if (args.min == "TODAY") result.minDate = new Date();else result.minDate = new Date(args.minConfig.date);
-				}
+
 				return result;
 			}
 		}, {
