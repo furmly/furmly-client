@@ -1424,6 +1424,10 @@ var CHAT_URL = global.CHAT_URL || config.chatUrl;
 var preLogin = config.preLogin;
 var cache = new MemCache({ ttl: config.processorsCacheTimeout });
 var ACTIONS = {
+  CLEAR_STACK: "CLEAR_STACK",
+  SET_DYNAMO_PARAMS: "SET_DYNAMO_PARAMS",
+  REMOVE_LAST_DYNAMO_PARAMS: "REMOVE_LAST_DYNAMO_PARAMS",
+  ALREADY_VISIBLE: "ALREADY_VISIBLE",
   CLEAR_DATA: "CLEAR_DATA",
   ADD_NAVIGATION_CONTEXT: "ADD_NAVIGATION_CONTEXT",
   REMOVE_NAVIGATION_CONTEXT: "REMOVE_NAVIGATION_CONTEXT",
@@ -1509,6 +1513,26 @@ function getQueryParams(args) {
     return x + "=" + (encodeURIComponent(args[x]) + (index != arr.length - 1 ? "&" : ""));
   }).join("") : "";
 }
+function setParams(args) {
+  return {
+    type: ACTIONS.SET_DYNAMO_PARAMS,
+    payload: args
+  };
+}
+
+function goBack(navigation) {
+  return { type: ACTIONS.REMOVE_LAST_DYNAMO_PARAMS };
+}
+function clearNavigationStack(navigation) {
+  return { type: ACTIONS.CLEAR_STACK };
+}
+function alreadyVisible(args) {
+  return {
+    type: ACTIONS.ALREADY_VISIBLE,
+    payload: args
+  };
+}
+
 function removeNavigationContext() {
   return {
     type: ACTIONS.REMOVE_NAVIGATION_CONTEXT
@@ -3334,18 +3358,21 @@ var dynamo_nav = (function (Link, NavigationActions) {
 					params = linkAndParams.params;
 					switch (this.props.args.type) {
 						case DynamoNav.NAV_TYPE.CLIENT:
-							this.props.dispatch(NavigationActions.navigate({
+							//this.props.dispatch(
+							NavigationActions.navigate({
 								key: link,
 								params: params
-							}));
+							}, this.props.context, this.props.navigation);
+							//);
 							break;
 
 						case DynamoNav.NAV_TYPE.DYNAMO:
-							var setParamsAction = NavigationActions.setParams({
+							//const setParamsAction =
+							NavigationActions.setParams({
 								params: { id: link, fetchParams: params },
 								key: "Dynamo"
 							}, this.props.context, this.props.navigation);
-							this.props.dispatch(setParamsAction);
+						//this.props.dispatch(setParamsAction);
 					}
 				}
 			}
@@ -5061,12 +5088,39 @@ var index$1 = {
 	validator: Validator
 };
 
+function navigation () {
+	var state = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : { stack: [] };
+	var action = arguments[1];
+
+	switch (action.type) {
+		case ACTIONS.SET_DYNAMO_PARAMS:
+		case ACTIONS.ALREADY_VISIBLE:
+			state.stack.push(action.payload);
+			return Object.assign({}, state, { stack: state.stack.slice() });
+		case ACTIONS.REMOVE_LAST_DYNAMO_PARAMS:
+			state.stack.pop();
+			return Object.assign({}, state, { stack: state.stack.slice() });
+		case ACTIONS.CLEAR_STACK:
+			return {
+				stack: []
+			};
+
+		default:
+			return state;
+	}
+}
+
 exports.default = defaultMap;
 exports.reducers = index;
 exports.toggleAllBusyIndicators = toggleAllBusyIndicators;
 exports.chatReducer = chat;
 exports.utils = index$1;
+exports.dynamoNavigation = navigation;
 exports.startChatServer = startReceivingMessages;
 exports.addNavigationContext = addNavigationContext;
 exports.removeNavigationContext = removeNavigationContext;
+exports.setParams = setParams;
+exports.goBack = goBack;
+exports.clearNavigationStack = clearNavigationStack;
+exports.alreadyVisible = alreadyVisible;
 //# sourceMappingURL=bundle.js.map
