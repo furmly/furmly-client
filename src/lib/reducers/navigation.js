@@ -1,4 +1,4 @@
-import { ACTIONS } from "./actions";
+import { ACTIONS } from "../actions";
 
 export default function(state = { stack: [] }, action) {
 	switch (action.type) {
@@ -9,7 +9,7 @@ export default function(state = { stack: [] }, action) {
 		case ACTIONS.REMOVE_LAST_DYNAMO_PARAMS:
 			state.stack.pop();
 			return Object.assign({}, state, { stack: state.stack.slice() });
-		case ACTIONS.CLEAR:
+		case ACTIONS.CLEAR_STACK:
 			return {
 				stack: []
 			};

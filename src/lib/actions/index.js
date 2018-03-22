@@ -9,6 +9,10 @@ const preDispatch = config.preDispatch,
   preLogin = config.preLogin,
   cache = new MemCache({ ttl: config.processorsCacheTimeout });
 export const ACTIONS = {
+  CLEAR_STACK:"CLEAR_STACK",
+  SET_DYNAMO_PARAMS: "SET_DYNAMO_PARAMS",
+  REMOVE_LAST_DYNAMO_PARAMS: "REMOVE_LAST_DYNAMO_PARAMS",
+  ALREADY_VISIBLE: "ALREADY_VISIBLE",
   CLEAR_DATA: "CLEAR_DATA",
   ADD_NAVIGATION_CONTEXT: "ADD_NAVIGATION_CONTEXT",
   REMOVE_NAVIGATION_CONTEXT: "REMOVE_NAVIGATION_CONTEXT",
@@ -101,6 +105,26 @@ function getQueryParams(args) {
         .join("")
     : "";
 }
+export function setParams(args) {
+  return {
+    type: ACTIONS.SET_DYNAMO_PARAMS,
+    payload: args
+  };
+}
+
+export function goBack(navigation) {
+  return { type: ACTIONS.REMOVE_LAST_DYNAMO_PARAMS };
+}
+export function clearNavigationStack(navigation) {
+  return { type: ACTIONS.CLEAR_STACK };
+}
+export function alreadyVisible(args) {
+  return {
+    type: ACTIONS.ALREADY_VISIBLE,
+    payload: args
+  };
+}
+
 export function removeNavigationContext() {
   return {
     type: ACTIONS.REMOVE_NAVIGATION_CONTEXT
