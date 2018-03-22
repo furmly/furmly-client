@@ -53,12 +53,26 @@ export default function(state = {}, action) {
 				action.payload && action.payload.data
 					? action.payload.data.instanceId
 					: null;
-			if (config.uiOnDemand)
+			if (
+				config.uiOnDemand &&
+				!state.description.allowsBackwardNavigation
+			)
 				state.description.steps[0] = action.payload.data.$nextStep;
-			else currentState.currentStep = currentState.currentStep + 1;
-			//potentially costly will have to test and see what happens.
-			//currentState.templateCache = getTemplatesAndAddComponentUid(state.description.steps[currentState.currentStep].form.elements);
-			currentState.value =
+			else {
+				if (config.uiOnDemand) {
+					if (
+						state.description.steps.length ==
+						currentState.currentStep + 1
+					) {
+						state.description.steps.push(
+							action.payload.data.$nextStep
+						);
+					}
+				}
+				currentState.currentStep = currentState.currentStep + 1;
+			}
+			currentState[currentState.currentStep] =
+				//currentState.value =
 				typeof action.payload.data == "object" &&
 				typeof action.payload.data.message == "object" &&
 				action.payload.data.message;
@@ -115,7 +129,7 @@ export default function(state = {}, action) {
 		case ACTIONS.DYNAMO_PROCESS_RUNNING:
 			return Object.assign({}, state, {
 				busy: !action.error,
-				value: action.meta.form
+				[state.currentStep]: action.meta.form
 			});
 		case ACTIONS.DYNAMO_PROCESSOR_RAN:
 			configureTemplates(state, action);
@@ -143,7 +157,7 @@ export default function(state = {}, action) {
 				description: fetchedDescription,
 				currentStep: 0,
 				busy: false,
-				value: fetchedValue,
+				0: fetchedValue,
 				templateCache: {},
 				//always carry over the navigationContext.
 				navigationContext: state.navigationContext

@@ -64,6 +64,7 @@ export default (ProgressBar, TextView, DynamoView) => {
 			this.props.runProcess({
 				id: this.props.id,
 				form,
+				currentStep: this.props.currentStep,
 				instanceId: this.props.instanceId
 			});
 		}
@@ -79,6 +80,7 @@ export default (ProgressBar, TextView, DynamoView) => {
 			}
 			return (
 				<DynamoView
+					currentStep={this.props.currentStep || 0}
 					navigation={this.props.navigation}
 					submit={this.submit}
 				/>

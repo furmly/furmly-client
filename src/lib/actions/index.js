@@ -9,7 +9,7 @@ const preDispatch = config.preDispatch,
   preLogin = config.preLogin,
   cache = new MemCache({ ttl: config.processorsCacheTimeout });
 export const ACTIONS = {
-  CLEAR_STACK:"CLEAR_STACK",
+  CLEAR_STACK: "CLEAR_STACK",
   SET_DYNAMO_PARAMS: "SET_DYNAMO_PARAMS",
   REMOVE_LAST_DYNAMO_PARAMS: "REMOVE_LAST_DYNAMO_PARAMS",
   ALREADY_VISIBLE: "ALREADY_VISIBLE",
@@ -93,6 +93,9 @@ export const displayMessage = text => {
     message: text
   };
 };
+function copy(value) {
+  return JSON.parse(JSON.stringify(value));
+}
 
 function getQueryParams(args) {
   return args
@@ -289,7 +292,7 @@ export function runDynamoProcessor(
     let cacheKey = { id, args },
       hasKey = cache.hasKey(cacheKey);
     if (hasKey) {
-      let payload = JSON.parse(JSON.stringify(cache.get(cacheKey)));
+      let payload = copy(cache.get(cacheKey));
       payload.key = key;
 
       return dispatch => {
@@ -371,7 +374,23 @@ export function runDynamoProcess(details) {
                     if (d && typeof d.message == "string") {
                       dispatch(showMessage(d.message));
                     }
-
+                    if (
+                      !(config.uiOnDemand && d.status == "COMPLETED") &&
+                      !(
+                        !config.uiOnDemand &&
+                        (state.description.steps.length == 1 ||
+                          state.currentStep + 1 >
+                            state.description.steps.length - 1)
+                      )
+                    ) {
+                      let _p = copy(
+                        state.dynamoNavigation.stack[
+                          state.dynamoNavigation.stack.length - 1
+                        ]
+                      );
+                      _p.params.currentStep = (_p.params.currentStep || 0) + 1;
+                      dispatch(setParams(_p));
+                    }
                     return { id: details.id, data: d };
                   })
                   .catch(er => {
@@ -391,14 +410,11 @@ export function runDynamoProcess(details) {
             "Content-Type": "application/json"
           },
           body: JSON.stringify(
-            Object.assign(
-              {},
-              details.form,
-              {
-                instanceId: details.instanceId
-              },
-              { $uiOnDemand: !!config.uiOnDemand }
-            )
+            Object.assign({}, details.form, {
+              instanceId: details.instanceId,
+              $uiOnDemand: !!config.uiOnDemand,
+              $currentStep: details.currentStep
+            })
           )
         },
         getState()

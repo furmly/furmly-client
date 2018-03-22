@@ -5,15 +5,17 @@ export default (Page, Container) => {
 	invariants.validComponent(Page, "Page");
 	invariants.validComponent(Container, "Container");
 	//map elements in DynamoView props to elements in store.
-	const mapStateToProps = (_, initialProps) => state => {
+	const mapStateToProps = (_, initialProps) => (state, ownProps) => {
 		//console.log("mapping state to props");
 		let description = state.dynamo.description,
-			map = { value: state.dynamo.value };
+		map = {
+			value: state.dynamo[ownProps.currentStep]
+		};
 		if (description) {
-			let step = state.dynamo.currentStep || 0;
-			map.elements = description.steps[step].form.elements;
-			if (description.steps[step].mode == "VIEW") map.hideSubmit = true;
-			map.title=description.title;
+			map.elements =
+				description.steps[ownProps.currentStep].form.elements;
+			if (description.steps[ownProps.currentStep].mode == "VIEW") map.hideSubmit = true;
+			map.title = description.title;
 		}
 		return map;
 	};
@@ -53,7 +55,7 @@ export default (Page, Container) => {
 			return (
 				<Page submit={this.submit} hideSubmit={this.props.hideSubmit}>
 					<Container
-					    label={this.props.title}
+						label={this.props.title}
 						elements={this.props.elements}
 						name="dynamo_view"
 						value={this.props.value}
