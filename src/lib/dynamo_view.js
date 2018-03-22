@@ -5,15 +5,20 @@ export default (Page, Container) => {
 	invariants.validComponent(Page, "Page");
 	invariants.validComponent(Container, "Container");
 	//map elements in DynamoView props to elements in store.
-	const mapStateToProps = (_, initialProps) => state => {
+	const mapStateToProps = (_, initialProps) => (state, ownProps) => {
 		//console.log("mapping state to props");
-		let description = state.dynamo.description,
-			map = { value: state.dynamo.value };
-		if (description) {
-			let step = state.dynamo.currentStep || 0;
-			map.elements = description.steps[step].form.elements;
-			if (description.steps[step].mode == "VIEW") map.hideSubmit = true;
-			map.title=description.title;
+		let _state = state.dynamo[ownProps.currentProcess],
+			description = _state && _state.description,
+			map = {
+				value: (_state && _state[ownProps.currentStep]) || null
+			};
+
+		if (description && description.steps[ownProps.currentStep]) {
+			map.elements =
+				description.steps[ownProps.currentStep].form.elements;
+			if (description.steps[ownProps.currentStep].mode == "VIEW")
+				map.hideSubmit = true;
+			map.title = description.title;
 		}
 		return map;
 	};
@@ -29,6 +34,11 @@ export default (Page, Container) => {
 				validator: {}
 			};
 		}
+		componentWillReceiveProps(next) {
+			if (next.value !== this.props.value) {
+				this.setState({ form: next.value });
+			}
+		}
 		onValueChanged(form) {
 			this.state.form = form.dynamo_view;
 		}
@@ -37,6 +47,9 @@ export default (Page, Container) => {
 				.validate()
 				.then(
 					() => {
+						console.log(
+							"currentStep:" + (this.props.currentStep || "0")
+						);
 						this.props.submit(this.state.form);
 					},
 					() => {
@@ -53,13 +66,15 @@ export default (Page, Container) => {
 			return (
 				<Page submit={this.submit} hideSubmit={this.props.hideSubmit}>
 					<Container
-					    label={this.props.title}
+						label={this.props.title}
 						elements={this.props.elements}
 						name="dynamo_view"
 						value={this.props.value}
 						valueChanged={this.onValueChanged}
 						validator={this.state.validator}
 						navigation={this.props.navigation}
+						currentStep={this.props.currentStep}
+						currentProcess={this.props.currentProcess}
 					/>
 				</Page>
 			);

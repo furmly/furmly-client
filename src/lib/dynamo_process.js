@@ -15,13 +15,14 @@ export default (ProgressBar, TextView, DynamoView) => {
 	invariants.validComponent(DynamoView, "DynamoView");
 
 	//map elements in DynamoInput props to elements in store.
-	const mapStateToProps = (_, initialProps) => state => {
+	const mapStateToProps = (_, initialProps) => (state, ownProps) => {
+		let _state = state.dynamo[`${ownProps.id}`];
 		return {
-			busy: state.dynamo.busy,
-			description: state.dynamo.description,
-			instanceId: state.dynamo.instanceId,
+			busy: !!state.dynamo[`${ownProps.id}-busy`],
+			description: _state && _state.description,
+			instanceId: _state && _state.instanceId,
 			message: state.dynamo.message,
-			completed: state.dynamo.completed
+			completed: _state && _state.completed
 		};
 	};
 
@@ -54,9 +55,12 @@ export default (ProgressBar, TextView, DynamoView) => {
 				return this.props.navigation.goBack();
 
 			if (
-				(next.id !== this.props.id ||
+				((next.id !== this.props.id ||
 					!_.isEqual(next.fetchParams, this.props.fetchParams)) &&
-				!this.props.busy
+					!next.busy &&
+					!next.description) ||
+				(next.id == this.props.id &&
+					!_.isEqual(next.fetchParams, this.props.fetchParams) && !next.busy)
 			)
 				this.props.fetch(next.id, next.fetchParams);
 		}
@@ -64,6 +68,7 @@ export default (ProgressBar, TextView, DynamoView) => {
 			this.props.runProcess({
 				id: this.props.id,
 				form,
+				currentStep: this.props.currentStep,
 				instanceId: this.props.instanceId
 			});
 		}
@@ -79,6 +84,8 @@ export default (ProgressBar, TextView, DynamoView) => {
 			}
 			return (
 				<DynamoView
+					currentStep={this.props.currentStep || 0}
+					currentProcess={this.props.id}
 					navigation={this.props.navigation}
 					submit={this.submit}
 				/>

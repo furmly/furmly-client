@@ -3,6 +3,7 @@ import { connect } from "react-redux";
 import { runDynamoProcessor } from "./actions";
 import invariants from "./utils/invariants";
 import _ from "lodash";
+import { getKey } from "./utils/view";
 
 export default (
 	Layout,
@@ -27,11 +28,13 @@ export default (
 		};
 	};
 	const mapStateToProps = (_, initialProps) => (state, ownProps) => {
-		var _actionState = state.dynamo[ownProps.component_uid];
+		var component_uid = getKey(state, ownProps.component_uid,ownProps),
+			_actionState = state.dynamo[component_uid];
 		return {
 			resultUI: _actionState && (_actionState.ui || _actionState),
 			resultData: _actionState && _actionState.data,
-			busy: !!state.dynamo[ownProps.component_uid + "-busy"]
+			busy: !!state.dynamo[component_uid + "-busy"],
+			component_uid
 		};
 	};
 	class DynamoActionView extends Component {
@@ -89,6 +92,8 @@ export default (
 							validator={this._filterValidator}
 							valueChanged={this.valueChanged}
 							navigation={this.props.navigation}
+							currentProcess={this.props.currentProcess}
+							currentStep={this.props.currentStep}
 						/>
 					</Filter>
 					<ContentContainer
@@ -97,6 +102,8 @@ export default (
 						validator={{}}
 						valueChanged={this.doNothing}
 						navigation={this.props.navigation}
+						currentProcess={this.props.currentProcess}
+						currentStep={this.props.currentStep}
 					/>
 				</Layout>
 			);

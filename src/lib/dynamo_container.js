@@ -41,7 +41,7 @@ export default (...args) => {
 					next.elements.length !== this.props.elements.length)
 			) {
 				let _validations = next.elements.map(x => ({}));
-				this.setState({ _validations });
+				this.setState({ _validations, form: next.value });
 			}
 		}
 		setValidator() {
@@ -108,6 +108,10 @@ export default (...args) => {
 										}
 										valueChanged={this.onValueChanged}
 										navigation={this.props.navigation}
+										currentProcess={
+											this.props.currentProcess
+										}
+										currentStep={this.props.currentStep}
 									/>
 								);
 								if (ComponentWrapper)
@@ -129,6 +133,8 @@ export default (...args) => {
 								key={x.name}
 								valueChanged={this.onValueChanged}
 								navigation={this.props.navigation}
+								currentProcess={this.props.currentProcess}
+								currentStep={this.props.currentStep}
 							/>
 						);
 						return ComponentWrapper

@@ -1419,12 +1419,18 @@ var MemCache = function () {
 }();
 
 var preDispatch = config.preDispatch;
+var preRefeshToken = config.preRefeshToken;
 var BASE_URL = global.BASE_URL || config.baseUrl;
 var CHAT_URL = global.CHAT_URL || config.chatUrl;
 var preLogin = config.preLogin;
+var throttled = {};
 var cache = new MemCache({ ttl: config.processorsCacheTimeout });
 var ACTIONS = {
+  GET_REFRESH_TOKEN: "GET_REFRESH_TOKEN",
+  GOT_REFRESH_TOKEN: "GOT_REFRESH_TOKEN",
+  FAILED_TO_GET_REFRESH_TOKEN: "FAILED_TO_GET_REFRESH_TOKEN",
   CLEAR_STACK: "CLEAR_STACK",
+  REPLACE_STACK: "REPLACE_STACK",
   SET_DYNAMO_PARAMS: "SET_DYNAMO_PARAMS",
   REMOVE_LAST_DYNAMO_PARAMS: "REMOVE_LAST_DYNAMO_PARAMS",
   ALREADY_VISIBLE: "ALREADY_VISIBLE",
@@ -1507,6 +1513,9 @@ var displayMessage = function displayMessage(text) {
     message: text
   };
 };
+function copy(value) {
+  return JSON.parse(JSON.stringify(value));
+}
 
 function getQueryParams(args) {
   return args ? "?" + Object.keys(args).map(function (x, index, arr) {
@@ -1520,10 +1529,16 @@ function setParams(args) {
   };
 }
 
-function goBack(navigation) {
-  return { type: ACTIONS.REMOVE_LAST_DYNAMO_PARAMS };
+function replaceStack(args) {
+  return {
+    type: ACTIONS.REPLACE_STACK,
+    payload: args
+  };
 }
-function clearNavigationStack(navigation) {
+function goBack(args) {
+  return { type: ACTIONS.REMOVE_LAST_DYNAMO_PARAMS, payload: args };
+}
+function clearNavigationStack() {
   return { type: ACTIONS.CLEAR_STACK };
 }
 function alreadyVisible(args) {
@@ -1551,12 +1566,14 @@ function openConfirmation(id, message, params) {
     payload: { message: message, params: params, id: id }
   };
 }
-function defaultError(dispatch, customType, _meta) {
+function defaultError(dispatch, customType, _meta, throttleEnabled) {
   return {
     type: customType || "SHOW_MESSAGE",
     meta: function meta(action, state, res) {
       if (customType && res.status !== 401) dispatch(displayMessage(res.statusText || res.headers && res.headers.map && res.headers.map.errormessage && res.headers.map.errormessage[0] || "Sorry , an error occurred while processing your request"));
-
+      console.log(action);
+      var args = action[CALL_API];
+      if (throttleEnabled) throttled[args.endpoint + args.body] = (throttled[args.endpoint + args.body] || 5000) * 2;
       //session expired
       if (res.status == 401) {
         dispatch(showMessage$1("Session may have expired"));
@@ -1601,7 +1618,9 @@ function fetchDynamoProcess(id, args) {
             return response;
           });
         }
-      }, defaultError(dispatch, ACTIONS.FAILED_TO_FETCH_PROCESS)],
+      }, defaultError(dispatch, ACTIONS.FAILED_TO_FETCH_PROCESS, function () {
+        return id;
+      })],
       method: "GET",
       headers: {
         Accept: "application/json",
@@ -1660,6 +1679,16 @@ function getSingleItemForGrid(id, args, key) {
   });
 }
 
+function getRefreshToken() {
+  return function (dispatch, getState) {
+    dispatch(defineProperty({}, CALL_API, preRefeshToken({
+      endpoint: BASE_URL + "/api/refresh_token",
+      types: [GET_REFRESH_TOKEN, GOT_REFRESH_TOKEN, FAILED_TO_GET_REFRESH_TOKEN],
+      body: null
+    })));
+  };
+}
+
 function runDynamoProcessor(id, args, key) {
   var _ref = arguments.length > 3 && arguments[3] !== undefined ? arguments[3] : {},
       requestCustomType = _ref.requestCustomType,
@@ -1673,7 +1702,7 @@ function runDynamoProcessor(id, args, key) {
     var cacheKey = { id: id, args: args },
         hasKey = cache.hasKey(cacheKey);
     if (hasKey) {
-      var payload = JSON.parse(JSON.stringify(cache.get(cacheKey)));
+      var payload = copy(cache.get(cacheKey));
       payload.key = key;
 
       return function (dispatch) {
@@ -1686,35 +1715,41 @@ function runDynamoProcessor(id, args, key) {
   }
 
   return function (dispatch, getState) {
-    return dispatch(defineProperty({}, CALL_API, preDispatch({
-      endpoint: BASE_URL + "/api/processors/run/" + id,
-      types: [{
-        type: requestCustomType || ACTIONS.DYNAMO_PROCESSOR_RUNNING,
-        meta: { id: id, key: key, args: args }
-      }, {
-        type: resultCustomType || ACTIONS.DYNAMO_PROCESSOR_RAN,
-        payload: function payload(action, state, res) {
-          return res.json().then(function (data) {
-            if (data && typeof data.message == "string") {
-              dispatch(showMessage$1(data.message));
-            }
-            var response = { id: id, data: data, args: args, key: key, returnsUI: returnsUI };
-            if (config.cacheProcessorResponses && !disableCache) {
-              cache.store({ id: id, args: args }, response);
-            }
-            return response;
-          });
-        }
-      }, defaultError(dispatch, errorCustomType || ACTIONS.DYNAMO_PROCESSOR_FAILED, function () {
-        return key;
-      })],
-      method: "POST",
-      headers: {
-        Accept: "application/json",
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify(args)
-    }, getState())));
+    var body = JSON.stringify(args),
+        endpoint = BASE_URL + "/api/processors/run/" + id,
+        throttleKey = "" + endpoint + body;
+    setTimeout(function () {
+      dispatch(defineProperty({}, CALL_API, preDispatch({
+        endpoint: endpoint,
+        types: [{
+          type: requestCustomType || ACTIONS.DYNAMO_PROCESSOR_RUNNING,
+          meta: { id: id, key: key, args: args }
+        }, {
+          type: resultCustomType || ACTIONS.DYNAMO_PROCESSOR_RAN,
+          payload: function payload(action, state, res) {
+            return res.json().then(function (data) {
+              delete throttled[throttleKey];
+              if (data && typeof data.message == "string") {
+                dispatch(showMessage$1(data.message));
+              }
+              var response = { id: id, data: data, args: args, key: key, returnsUI: returnsUI };
+              if (config.cacheProcessorResponses && !disableCache) {
+                cache.store({ id: id, args: args }, response);
+              }
+              return response;
+            });
+          }
+        }, defaultError(dispatch, errorCustomType || ACTIONS.DYNAMO_PROCESSOR_FAILED, function () {
+          return key;
+        }, true)],
+        method: "POST",
+        headers: {
+          Accept: "application/json",
+          "Content-Type": "application/json"
+        },
+        body: body
+      }, getState())));
+    }, throttled[throttleKey] || 0);
   };
 }
 
@@ -1731,7 +1766,11 @@ function runDynamoProcess(details) {
       endpoint: BASE_URL + "/api/process/run/" + details.id,
       types: [{
         type: ACTIONS.DYNAMO_PROCESS_RUNNING,
-        meta: { id: details.id, form: details.form }
+        meta: {
+          id: details.id,
+          form: details.form,
+          currentStep: details.currentStep
+        }
       }, {
         type: ACTIONS.DYNAMO_PROCESS_RAN,
         payload: function payload(action, state, res) {
@@ -1739,24 +1778,37 @@ function runDynamoProcess(details) {
             if (d && typeof d.message == "string") {
               dispatch(showMessage$1(d.message));
             }
-
+            var id = details.id;
+            if (!(config.uiOnDemand && d.status == "COMPLETED") && !(!config.uiOnDemand && (state.dynamo[id].description.steps.length == 1 || state.dynamoNavigation.stack.length && state.dynamoNavigation.stack[state.dynamoNavigation.stack.length - 1].params.currentStep + 1 > state.dynamo[id].description.steps.length - 1)) && !state.dynamo[id].description.disableBackwardNavigation) {
+              var _p = copy(state.dynamoNavigation.stack[state.dynamoNavigation.stack.length - 1]);
+              _p.params.currentStep = (_p.params.currentStep || 0) + 1;
+              dispatch(setParams(_p));
+              if (config.notifyStepAdvance) {
+                config.notifyStepAdvance(dispatch, state, _p);
+              }
+            }
             return { id: details.id, data: d };
           }).catch(function (er) {
+            console.log(er);
             dispatch({
               type: "SHOW_MESSAGE",
               message: "An error occurred while trying to understand a response from the server."
             });
           });
         }
-      }, defaultError(dispatch, ACTIONS.DYNAMO_PROCESS_FAILED)],
+      }, defaultError(dispatch, ACTIONS.DYNAMO_PROCESS_FAILED, function () {
+        return details.id;
+      })],
       method: "POST",
       headers: {
         Accept: "application/json",
         "Content-Type": "application/json"
       },
       body: JSON.stringify(Object.assign({}, details.form, {
-        instanceId: details.instanceId
-      }, { $uiOnDemand: !!config.uiOnDemand }))
+        $instanceId: details.instanceId,
+        $uiOnDemand: !!config.uiOnDemand,
+        $currentStep: details.currentStep
+      }))
     }, getState())));
   };
 }
@@ -2027,6 +2079,24 @@ var dynamo_input = (function (LabelWrapper, Input, DatePicker, Checkbox) {
 	invariants.validComponent(DatePicker, "DatePicker");
 	invariants.validComponent(Checkbox, "Checkbox");
 
+	// const mapStateToProps = (_, initialProps) => (state, ownProps) => {
+	// 	if (ownProps.asyncValidators && ownProps.asyncValidators.length) {
+	// 		return {
+	// 			valid:
+	// 				state.dynamo[
+	// 					ownProps.asyncValidators[0] + ownProps.component_uid
+	// 				]
+	// 		};
+	// 	}
+	// 	return {};
+	// };
+	// const mapDispatchToProps = dispatch => {
+	// 	return {
+	// 		runAsyncValidator: (id, params, key) =>
+	// 			dispatch(runDynamoProcessor(id, params, key))
+	// 	};
+	// };
+
 	var DynamoInput = function (_Component) {
 		inherits(DynamoInput, _Component);
 
@@ -2124,6 +2194,7 @@ var dynamo_input = (function (LabelWrapper, Input, DatePicker, Checkbox) {
 		}, {
 			key: "render",
 			value: function render() {
+
 				/*jshint ignore:start */
 				var args = this.props.args,
 				    Result = void 0;
@@ -2170,14 +2241,17 @@ var dynamo_view = (function (Page, Container) {
 	invariants.validComponent(Container, "Container");
 	//map elements in DynamoView props to elements in store.
 	var mapStateToProps = function mapStateToProps(_$$1, initialProps) {
-		return function (state) {
+		return function (state, ownProps) {
 			//console.log("mapping state to props");
-			var description = state.dynamo.description,
-			    map = { value: state.dynamo.value };
-			if (description) {
-				var step = state.dynamo.currentStep || 0;
-				map.elements = description.steps[step].form.elements;
-				if (description.steps[step].mode == "VIEW") map.hideSubmit = true;
+			var _state = state.dynamo[ownProps.currentProcess],
+			    description = _state && _state.description,
+			    map = {
+				value: _state && _state[ownProps.currentStep] || null
+			};
+
+			if (description && description.steps[ownProps.currentStep]) {
+				map.elements = description.steps[ownProps.currentStep].form.elements;
+				if (description.steps[ownProps.currentStep].mode == "VIEW") map.hideSubmit = true;
 				map.title = description.title;
 			}
 			return map;
@@ -2203,6 +2277,13 @@ var dynamo_view = (function (Page, Container) {
 		}
 
 		createClass(DynamoView, [{
+			key: "componentWillReceiveProps",
+			value: function componentWillReceiveProps(next) {
+				if (next.value !== this.props.value) {
+					this.setState({ form: next.value });
+				}
+			}
+		}, {
 			key: "onValueChanged",
 			value: function onValueChanged(form) {
 				this.state.form = form.dynamo_view;
@@ -2213,6 +2294,7 @@ var dynamo_view = (function (Page, Container) {
 				var _this2 = this;
 
 				this.state.validator.validate().then(function () {
+					console.log("currentStep:" + (_this2.props.currentStep || "0"));
 					_this2.props.submit(_this2.state.form);
 				}, function () {
 					console.warn("the form is invalid");
@@ -2235,7 +2317,9 @@ var dynamo_view = (function (Page, Container) {
 						value: this.props.value,
 						valueChanged: this.onValueChanged,
 						validator: this.state.validator,
-						navigation: this.props.navigation
+						navigation: this.props.navigation,
+						currentStep: this.props.currentStep,
+						currentProcess: this.props.currentProcess
 					})
 				);
 				/*jshint ignore:end*/
@@ -2295,7 +2379,7 @@ var dynamo_container = (function () {
 					var _validations = next.elements.map(function (x) {
 						return {};
 					});
-					this.setState({ _validations: _validations });
+					this.setState({ _validations: _validations, form: next.value });
 				}
 			}
 		}, {
@@ -2350,7 +2434,9 @@ var dynamo_container = (function () {
 								value: value,
 								validator: _this3.state._validations[index],
 								valueChanged: _this3.onValueChanged,
-								navigation: _this3.props.navigation
+								navigation: _this3.props.navigation,
+								currentProcess: _this3.props.currentProcess,
+								currentStep: _this3.props.currentStep
 							}));
 							if (ComponentWrapper) return ComponentWrapper(x.elementType, x.uid, x.name, component);
 
@@ -2362,7 +2448,9 @@ var dynamo_container = (function () {
 						validator: _this3.state._validations[index],
 						key: x.name,
 						valueChanged: _this3.onValueChanged,
-						navigation: _this3.props.navigation
+						navigation: _this3.props.navigation,
+						currentProcess: _this3.props.currentProcess,
+						currentStep: _this3.props.currentStep
 					}));
 					return ComponentWrapper ? ComponentWrapper(x.elementType, x.uid, x.name, component) : component;
 					/*jshint ignore:end*/
@@ -2408,13 +2496,14 @@ var dynamo_process = (function (ProgressBar, TextView, DynamoView) {
 
 	//map elements in DynamoInput props to elements in store.
 	var mapStateToProps = function mapStateToProps(_$$1, initialProps) {
-		return function (state) {
+		return function (state, ownProps) {
+			var _state = state.dynamo["" + ownProps.id];
 			return {
-				busy: state.dynamo.busy,
-				description: state.dynamo.description,
-				instanceId: state.dynamo.instanceId,
+				busy: !!state.dynamo[ownProps.id + "-busy"],
+				description: _state && _state.description,
+				instanceId: _state && _state.instanceId,
 				message: state.dynamo.message,
-				completed: state.dynamo.completed
+				completed: _state && _state.completed
 			};
 		};
 	};
@@ -2454,7 +2543,7 @@ var dynamo_process = (function (ProgressBar, TextView, DynamoView) {
 			value: function componentWillReceiveProps(next) {
 				if (next.completed && next.completed != this.props.completed) return this.props.navigation.goBack();
 
-				if ((next.id !== this.props.id || !_.isEqual(next.fetchParams, this.props.fetchParams)) && !this.props.busy) this.props.fetch(next.id, next.fetchParams);
+				if ((next.id !== this.props.id || !_.isEqual(next.fetchParams, this.props.fetchParams)) && !next.busy && !next.description || next.id == this.props.id && !_.isEqual(next.fetchParams, this.props.fetchParams) && !next.busy) this.props.fetch(next.id, next.fetchParams);
 			}
 		}, {
 			key: "submit",
@@ -2462,6 +2551,7 @@ var dynamo_process = (function (ProgressBar, TextView, DynamoView) {
 				this.props.runProcess({
 					id: this.props.id,
 					form: form,
+					currentStep: this.props.currentStep,
 					instanceId: this.props.instanceId
 				});
 			}
@@ -2476,6 +2566,8 @@ var dynamo_process = (function (ProgressBar, TextView, DynamoView) {
 					return React__default.createElement(TextView, { text: "Sorry we couldnt load that process...please wait a few minutes and retry." });
 				}
 				return React__default.createElement(DynamoView, {
+					currentStep: this.props.currentStep || 0,
+					currentProcess: this.props.id,
 					navigation: this.props.navigation,
 					submit: this.submit
 				});
@@ -2526,7 +2618,9 @@ var dynamo_section = (function (Layout, Header, Container) {
 						value: this.props.value,
 						valueChanged: this.props.valueChanged,
 						validator: this.props.validator,
-						navigation: this.props.navigation
+						navigation: this.props.navigation,
+						currentProcess: this.props.currentProcess,
+						currentStep: this.props.currentStep
 					})
 				);
 				/*jshint ignore:end*/
@@ -2538,6 +2632,47 @@ var dynamo_section = (function (Layout, Header, Container) {
 	return DynamoSection;
 });
 
+function getTitleFromState(state) {
+	var id = state.dynamoNavigation.stack.length && state.dynamoNavigation.stack[state.dynamoNavigation.stack.length - 1].params.id;
+
+	if (!id) return "School Manager";
+	return state.dynamo[id] && state.dynamo[id + "-busy"] && "Loading..." || state.dynamo[id] && state.dynamo[id].description && state.dynamo[id].description.steps[state.dynamo[id].currentStep || 0].description || state.dynamo[id] && state.dynamo[id].description && state.dynamo[id].description.title || "School Manager";
+}
+
+function getCurrentStepFromState(state) {
+	return state.dynamoNavigation.stack.length && state.dynamoNavigation.stack[state.dynamoNavigation.stack.length - 1].params.currentStep || 0;
+}
+function getCurrentStep(state) {
+	return state.dynamoNavigation.stack.length && state.dynamoNavigation.stack[state.dynamoNavigation.stack.length - 1].params.currentStep || 0;
+}
+
+function getCurrentProcess(state) {
+	for (var i = state.dynamoNavigation.stack.length - 1; i >= 0; i--) {
+		if (state.dynamoNavigation.stack[i].key == "Dynamo") {
+			return state.dynamoNavigation.stack[i].params.id;
+		}
+	}
+	return null;
+}
+function getKey(state, key, ownProps) {
+	return ownProps.currentStep + "/" + ownProps.currentProcess + "/" + key;
+}
+var exp = /^(\d+)\/([a-f\d]{24})\/.+$/i;
+function isValidKey(key) {
+	var result = exp.exec(key);
+	if (!result) return false;
+
+	return { step: result[1], process: result[2] };
+}
+var view = {
+	getCurrentStepFromState: getCurrentStepFromState,
+	getTitleFromState: getTitleFromState,
+	getCurrentStep: getCurrentStep,
+	getCurrentProcess: getCurrentProcess,
+	isValidKey: isValidKey,
+	getKey: getKey
+};
+
 var dynamo_select = (function (ProgressIndicator, Layout, Container) {
 	if (invariants.validComponent(ProgressIndicator, "ProgressIndicator") && invariants.validComponent(Layout, "Layout") && !Container) throw new Error("Container cannot be null (dynamo_select)");
 
@@ -2545,10 +2680,12 @@ var dynamo_select = (function (ProgressIndicator, Layout, Container) {
 	var mapStateToProps = function mapStateToProps(_$$1, initialProps) {
 		return function (state, ownProps) {
 			if (ownProps.args.type == "PROCESSOR") {
-				var st = state.dynamo[ownProps.component_uid];
+				var component_uid = getKey(state, ownProps.component_uid, ownProps);
+				var st = state.dynamo[component_uid];
 				return {
 					items: st,
-					busy: !!state.dynamo[ownProps.component_uid + "-busy"]
+					busy: !!state.dynamo[ownProps.component_uid + "-busy"],
+					component_uid: component_uid
 				};
 			}
 			//evaluate stuff in the parent container to retrieve the
@@ -2735,9 +2872,11 @@ var dynamo_selectset = (function (Layout, Picker, ProgressBar, Container) {
 	};
 	var mapStateToProps = function mapStateToProps(_$$1, initialProps) {
 		return function (state, ownProps) {
+			var component_uid = getKey(state, ownProps.component_uid, ownProps);
 			return {
-				busy: state.dynamo[ownProps.component_uid + "-busy"],
-				items: state.dynamo[ownProps.component_uid] || ownProps.args.items
+				busy: state.dynamo[component_uid + "-busy"],
+				items: state.dynamo[component_uid] || ownProps.args.items,
+				component_uid: component_uid
 			};
 		};
 	};
@@ -2788,7 +2927,7 @@ var dynamo_selectset = (function (Layout, Picker, ProgressBar, Container) {
 					this.respondToPickerValueChanged(next.value, next.items);
 				}
 
-				if (next.args.processor !== this.props.args.processor || next.component_uid !== this.props.component_uid && next.args.processor) this.fetchItems(next.args.processor, next.args.processorArgs, next.component_uid);
+				if (next.args.processor !== this.props.args.processor || next.component_uid !== this.props.component_uid && next.args.processor || !next.items) this.fetchItems(next.args.processor, next.args.processorArgs, next.component_uid);
 
 				if (next.items && next.items.length == 1) {
 					this.selectFirstItem(next.items);
@@ -2938,6 +3077,7 @@ var dynamo_selectset = (function (Layout, Picker, ProgressBar, Container) {
 		}, {
 			key: "render",
 			value: function render() {
+				//console.log("selectset render called");
 				/*jshint ignore:start*/
 				if (this.props.busy) {
 					return React__default.createElement(ProgressBar, null);
@@ -2954,7 +3094,9 @@ var dynamo_selectset = (function (Layout, Picker, ProgressBar, Container) {
 						displayProperty: "displayLabel",
 						keyProperty: "id",
 						value: this.state.pickerValue,
-						valueChanged: this.onPickerValueChanged
+						valueChanged: this.onPickerValueChanged,
+						currentProcess: this.props.currentProcess,
+						currentStep: this.props.currentStep
 					}),
 					extraElements: React__default.createElement(Container, {
 						name: this.props.args.path || DynamoSelectSet.noPath(),
@@ -2962,7 +3104,9 @@ var dynamo_selectset = (function (Layout, Picker, ProgressBar, Container) {
 						valueChanged: this.onContainerValueChanged,
 						elements: this.state.items,
 						validator: this.state.containerValidator,
-						navigation: this.props.navigation
+						navigation: this.props.navigation,
+						currentProcess: this.props.currentProcess,
+						currentStep: this.props.currentStep
 					})
 				});
 				/*jshint ignore:end*/
@@ -2990,11 +3134,13 @@ var dynamo_list = (function (Layout, Button, List, Modal, ErrorText, ProgressBar
 
 	var mapStateToProps = function mapStateToProps(_$$1, initialProps) {
 		return function (state, ownProps) {
+			var component_uid = getKey(state, ownProps.component_uid, ownProps);
 			return {
-				confirmation: state.app && state.app.confirmationResult && state.app.confirmationResult[ownProps.component_uid],
+				confirmation: state.app && state.app.confirmationResult && state.app.confirmationResult[component_uid],
 				templateCache: state.dynamo.templateCache,
-				dataTemplate: state.dynamo[ownProps.component_uid],
-				busy: state.dynamo[ownProps.component_uid + "-busy"]
+				dataTemplate: state.dynamo[component_uid],
+				component_uid: component_uid,
+				busy: state.dynamo[component_uid + "-busy"]
 			};
 		};
 	};
@@ -3038,7 +3184,7 @@ var dynamo_list = (function (Layout, Button, List, Modal, ErrorText, ProgressBar
 
 			_this.state = {
 				validator: {},
-				items: _this.props.value || _this.props.args && _this.props.args.default || [],
+				items: _this.props.value && _this.props.value.slice() || _this.props.args && _this.props.args.default && _this.props.args.default.slice() || [],
 				modalVisible: false
 			};
 			_this.showModal = _this.showModal.bind(_this);
@@ -3111,9 +3257,9 @@ var dynamo_list = (function (Layout, Button, List, Modal, ErrorText, ProgressBar
 				}
 				//if theres a default then update everyone.
 				if (this.state.items && this.state.items.length) {
-					setTimeout(function () {
-						_this2.props.valueChanged(defineProperty({}, _this2.props.name, _this2.state.items));
-					}, 0);
+					//setTimeout(() => {
+					this.props.valueChanged(defineProperty({}, this.props.name, this.state.items));
+					//}, 0);
 				}
 				var equal = equivalent(this.props.dataTemplate, this.state.items);
 				//if theres a data template processor then run it.
@@ -3281,7 +3427,9 @@ var dynamo_list = (function (Layout, Button, List, Modal, ErrorText, ProgressBar
 								name: DynamoList.modalName(),
 								validator: this.state.validator,
 								valueChanged: this.valueChanged,
-								navigation: this.props.navigation
+								navigation: this.props.navigation,
+								currentProcess: this.props.currentProcess,
+								currentStep: this.props.currentStep
 							}),
 							visibility: this.state.modalVisible,
 							done: this.closeModal
@@ -3397,7 +3545,7 @@ var dynamo_nav = (function (Link, NavigationActions) {
 				if (firstItemIsLink) link = key_value.shift();
 				var params = key_value.reduce(function (sum, x) {
 					var sp = x.split("=");
-					return sum[sp[0]] = sp[1], sum;
+					return sum[sp[0]] = decodeURIComponent(sp[1]), sum;
 				}, {}),
 				    result = { params: params };
 				if (firstItemIsLink || !key_value.length) result.link = link;
@@ -3473,8 +3621,10 @@ var dynamo_grid = (function (Layout, List, ItemView, Header, ProgressBar, Comman
 	};
 	var mapStateToProps = function mapStateToProps(_$$1, initialProps) {
 		return function (state, ownProps) {
-			var result = state.dynamo[ownProps.component_uid];
+			var component_uid = getKey(state, ownProps.component_uid, ownProps);
+			var result = state.dynamo[component_uid];
 			return {
+				component_uid: component_uid,
 				items: result && result.data ? result.data.items : null,
 				total: result && result.data ? result.data.total : 0,
 				busy: result && !!result.fetchingGrid,
@@ -3485,9 +3635,9 @@ var dynamo_grid = (function (Layout, List, ItemView, Header, ProgressBar, Comman
 				fetchingSingleItem: result && result.fetchingSingleItem,
 				fetchingFilterTemplate: result && result.gettingFilterTemplate,
 				fetchingItemTemplate: result && result.gettingTemplate,
-				commandProcessed: state.dynamo[ownProps.component_uid + DynamoGrid.commandResultViewName()],
-				commandProcessing: state.dynamo[ownProps.component_uid + DynamoGrid.commandResultViewName() + "-busy"],
-				processed: state.dynamo[ownProps.component_uid + DynamoGrid.itemViewName()]
+				commandProcessed: state.dynamo[component_uid + DynamoGrid.commandResultViewName()],
+				commandProcessing: state.dynamo[component_uid + DynamoGrid.commandResultViewName() + "-busy"],
+				processed: state.dynamo[component_uid + DynamoGrid.itemViewName()]
 			};
 		};
 	};
@@ -3503,6 +3653,7 @@ var dynamo_grid = (function (Layout, List, ItemView, Header, ProgressBar, Comman
 			_this.state = {
 				validator: {},
 				showItemView: false,
+				filter: _this.props.filter,
 				count: _this.props.args.pageCount || 5,
 				showCommandResultView: false
 			};
@@ -3542,7 +3693,7 @@ var dynamo_grid = (function (Layout, List, ItemView, Header, ProgressBar, Comman
 		createClass(DynamoGrid, [{
 			key: "componentDidMount",
 			value: function componentDidMount() {
-				if (this.props.args.filterProcessor && !this.props.fetchingFilterTemplate) {
+				if (this.props.args.filterProcessor && !this.props.fetchingFilterTemplate && (!this.props.filterTemplate || !this.props.filterTemplate.length)) {
 					this.props.getFilterTemplate(this.props.args.filterProcessor, JSON.parse(this.props.args.gridArgs || "{}"), this.props.component_uid);
 				}
 			}
@@ -3773,7 +3924,9 @@ var dynamo_grid = (function (Layout, List, ItemView, Header, ProgressBar, Comman
 						valueChanged: this.filterValueChanged,
 						name: DynamoGrid.filterViewName(),
 						validator: this._filterValidator,
-						navigation: this.props.navigation
+						navigation: this.props.navigation,
+						currentProcess: this.props.currentProcess,
+						currentStep: this.props.currentStep
 					})
 				) : this.props.fetchingFilterTemplate ? React__default.createElement(ProgressBar, null) : null,
 				    footer = !this.finished() && this.props.busy ? React__default.createElement(ProgressBar, null) : null;
@@ -3805,7 +3958,9 @@ var dynamo_grid = (function (Layout, List, ItemView, Header, ProgressBar, Comman
 							name: DynamoGrid.itemViewName(),
 							validator: this.state.validator,
 							valueChanged: this.valueChanged,
-							navigation: this.props.navigation
+							navigation: this.props.navigation,
+							currentProcess: this.props.currentProcess,
+							currentStep: this.props.currentStep
 						})
 					}),
 					React__default.createElement(CommandsView, {
@@ -3821,7 +3976,9 @@ var dynamo_grid = (function (Layout, List, ItemView, Header, ProgressBar, Comman
 							elements: this.state.commandResult,
 							name: DynamoGrid.commandResultViewName(),
 							validator: {},
-							navigation: this.props.navigation
+							navigation: this.props.navigation,
+							currentProcess: this.props.currentProcess,
+							currentStep: this.props.currentStep
 						}),
 						title: "",
 						busy: this.props.commandProcessing
@@ -3963,6 +4120,7 @@ var dynamo_fileupload = (function (Uploader, ProgressBar, Text) {
 		}, {
 			key: "render",
 			value: function render() {
+				console.log("fileupload render called");
 				if (this.props.busy) return React__default.createElement(ProgressBar, null);
 				if (!this._supported) return React__default.createElement(Text, { message: "unsupported file upload type" });
 				return React__default.createElement(Uploader, {
@@ -3983,8 +4141,10 @@ var dynamo_fileupload = (function (Uploader, ProgressBar, Text) {
 
 	var mapStateToProps = function mapStateToProps(_$$1, initialProps) {
 		return function (state, ownProps) {
-			var st = state.dynamo[ownProps.component_uid] || {};
+			var component_uid = getKey(state, ownProps.component_uid, ownProps);
+			var st = state.dynamo[component_uid] || {};
 			return {
+				component_uid: component_uid,
 				preview: st.preview,
 				busy: st.busy,
 				uploadedId: st.uploadedId || ownProps.value
@@ -4034,11 +4194,13 @@ var dynamo_actionview = (function (Layout, ProgressBar, Filter, FilterContainer,
 	};
 	var mapStateToProps = function mapStateToProps(_$$1, initialProps) {
 		return function (state, ownProps) {
-			var _actionState = state.dynamo[ownProps.component_uid];
+			var component_uid = getKey(state, ownProps.component_uid, ownProps),
+			    _actionState = state.dynamo[component_uid];
 			return {
 				resultUI: _actionState && (_actionState.ui || _actionState),
 				resultData: _actionState && _actionState.data,
-				busy: !!state.dynamo[ownProps.component_uid + "-busy"]
+				busy: !!state.dynamo[component_uid + "-busy"],
+				component_uid: component_uid
 			};
 		};
 	};
@@ -4107,7 +4269,9 @@ var dynamo_actionview = (function (Layout, ProgressBar, Filter, FilterContainer,
 							name: DynamoActionView.itemViewName(),
 							validator: this._filterValidator,
 							valueChanged: this.valueChanged,
-							navigation: this.props.navigation
+							navigation: this.props.navigation,
+							currentProcess: this.props.currentProcess,
+							currentStep: this.props.currentStep
 						})
 					),
 					React__default.createElement(ContentContainer, {
@@ -4115,7 +4279,9 @@ var dynamo_actionview = (function (Layout, ProgressBar, Filter, FilterContainer,
 						value: this.props.resultData,
 						validator: {},
 						valueChanged: this.doNothing,
-						navigation: this.props.navigation
+						navigation: this.props.navigation,
+						currentProcess: this.props.currentProcess,
+						currentStep: this.props.currentStep
 					})
 				);
 			}
@@ -4661,7 +4827,7 @@ var defaultMap = {
 };
 
 function index () {
-	var _Object$assign9, _Object$assign11;
+	var _Object$assign7, _Object$assign16, _Object$assign17, _Object$assign19, _Object$assign20, _ref;
 
 	var state = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : {};
 	var action = arguments[1];
@@ -4684,26 +4850,78 @@ function index () {
 			delete state.navigationContext;
 			return Object.assign({}, state);
 		case ACTIONS.DYNAMO_PROCESS_FAILED:
-			return Object.assign({}, state, { busy: false });
+			return Object.assign({}, state, defineProperty({}, action.meta + "-busy", false));
+		case ACTIONS.REPLACE_STACK:
+			var _state = action.payload.reduce(function (sum, x) {
+				if (state[x.params.id]) {
+					sum[x.params.id] = state[x.params.id];
+				}
+				return sum;
+			}, {
+				navigationContext: state.navigationContext,
+				message: state.message
+			});
+			return _state;
+		case ACTIONS.REMOVE_LAST_DYNAMO_PARAMS:
+			//check if value is a dynamo screen
+			//if it is check if its a process navigation or step navigation
+			//if it is a process navigation remove the data from the process.
+			//if it is a step navigation remove the step data from the process.
+			if (action.payload.item.key == "Dynamo") {
+				//it is a dynamo navigation
+				//confirm there are no other references down the line.
+				var _state2 = state[action.payload.item.params.id],
+				    currentStep = _state2.currentStep || 0;
+				if (action.payload.references[action.payload.item.params.id][0] == 1) {
+					return Object.assign({},
+					//copy over state that does not belong to the removed object
+					Object.keys(state).reduce(function (sum, x) {
+						var key = isValidKey(x);
+						if (!key || key && key.step !== currentStep && key.process !== action.payload.item.params.id) sum[x] = state[x];
+						return sum;
+					}, {}), defineProperty({}, action.payload.item.params.id, null));
+				}
+				if (action.payload.item.params.currentStep) {
+					//it is a step navigation.
+					//remove one from current step.
+
+					state[action.payload.item.params.id].currentStep = state[action.payload.item.params.id].currentStep - 1 || 0;
+
+					return Object.assign({}, state, defineProperty({}, action.payload.item.params.id, Object.assign({}, _state2, defineProperty({}, action.payload.item.params.currentStep, null))));
+				}
+			}
+			return state;
 		case ACTIONS.DYNAMO_PROCESS_RAN:
-			var currentState = {
-				busy: false,
-				currentStep: state.currentStep || 0
-			};
-			if (config.uiOnDemand && action.payload.data.status == "COMPLETED" || !config.uiOnDemand && (state.description.steps.length == 1 || currentState.currentStep + 1 > state.description.steps.length - 1)) {
-				return {
-					busy: false,
-					completed: true,
-					message: _typeof(action.payload.data) == "object" && action.payload.data.message || null
-				};
+			if (action.error || !action.payload) {
+				return state;
+			}
+			var proc = state[action.payload.id],
+			    id = action.payload.id,
+			    data = action.payload.data,
+			    currentState = {
+				currentStep: proc.currentStep || 0
+			},
+			    busy = false,
+			    description = proc.description;
+			if (config.uiOnDemand && action.payload.data && action.payload.data.status == "COMPLETED" || !config.uiOnDemand && (description.steps.length == 1 || currentState.currentStep + 1 > description.steps.length - 1)) {
+				var _Object$assign6;
+
+				return Object.assign({}, state, (_Object$assign6 = {}, defineProperty(_Object$assign6, id, {
+					completed: true
+				}), defineProperty(_Object$assign6, id + "-busy", false), defineProperty(_Object$assign6, "message", (typeof data === "undefined" ? "undefined" : _typeof(data)) == "object" && data.message || null), _Object$assign6));
 			}
 
-			currentState.instanceId = action.payload && action.payload.data ? action.payload.data.instanceId : null;
-			if (config.uiOnDemand) state.description.steps[0] = action.payload.data.$nextStep;else currentState.currentStep = currentState.currentStep + 1;
-			//potentially costly will have to test and see what happens.
-			//currentState.templateCache = getTemplatesAndAddComponentUid(state.description.steps[currentState.currentStep].form.elements);
-			currentState.value = _typeof(action.payload.data) == "object" && _typeof(action.payload.data.message) == "object" && action.payload.data.message;
-			return Object.assign({}, state, currentState);
+			currentState.instanceId = data ? data.$instanceId : null;
+			if (config.uiOnDemand && description.disableBackwardNavigation) description.steps[0] = data.$nextStep;else {
+				if (config.uiOnDemand) {
+					if (description.steps.length == currentState.currentStep + 1) {
+						description.steps.push(data.$nextStep);
+					}
+				}
+				currentState.currentStep = currentState.currentStep + 1;
+			}
+			currentState[currentState.currentStep] = (typeof data === "undefined" ? "undefined" : _typeof(data)) == "object" && _typeof(data.message) == "object" && data.message;
+			return Object.assign({}, state, (_Object$assign7 = {}, defineProperty(_Object$assign7, id, Object.assign({}, state[id], currentState)), defineProperty(_Object$assign7, id + "-busy", busy), _Object$assign7));
 
 		case ACTIONS.FETCHING_GRID:
 			return Object.assign({}, state, defineProperty({}, action.meta.key, fetchingGrid(state[action.meta.key], action)));
@@ -4723,40 +4941,29 @@ function index () {
 			return Object.assign({}, state, defineProperty({}, action.payload.key, reduceGrid(state[action.payload.key], action)));
 
 		case ACTIONS.DYNAMO_PROCESS_RUNNING:
-			return Object.assign({}, state, {
-				busy: !action.error,
-				value: action.meta.form
-			});
+			return Object.assign({}, state, (_Object$assign16 = {}, defineProperty(_Object$assign16, action.meta.id + "-busy", !action.error), defineProperty(_Object$assign16, action.meta.id, Object.assign({}, state[action.meta.id], defineProperty({}, state[action.meta.id].currentStep || 0, action.meta.form))), _Object$assign16));
 		case ACTIONS.DYNAMO_PROCESSOR_RAN:
-			configureTemplates(state, action);
-			return Object.assign({}, state, (_Object$assign9 = {}, defineProperty(_Object$assign9, action.payload.key, action.payload.data), defineProperty(_Object$assign9, action.payload.key + "-busy", false), _Object$assign9));
+			//configureTemplates(state, action);
+			return Object.assign({}, state, (_Object$assign17 = {}, defineProperty(_Object$assign17, action.payload.key, action.payload.data), defineProperty(_Object$assign17, action.payload.key + "-busy", false), _Object$assign17));
+
+		//return Object.assign({ target }, state, {});
 
 		case ACTIONS.DYNAMO_PROCESSOR_RUNNING:
 			return Object.assign({}, state, defineProperty({}, action.meta.key + "-busy", !action.error));
 		case ACTIONS.DYNAMO_PROCESSOR_FAILED:
-			return Object.assign({}, state, (_Object$assign11 = {}, defineProperty(_Object$assign11, action.meta + "-busy", false), defineProperty(_Object$assign11, action.meta, null), _Object$assign11));
+			return Object.assign({}, state, (_Object$assign19 = {}, defineProperty(_Object$assign19, action.meta + "-busy", false), defineProperty(_Object$assign19, action.meta, null), _Object$assign19));
 		case ACTIONS.FETCHED_PROCESS:
 			var fetchedValue = Object.assign({}, action.payload.data.data);
 			var fetchedDescription = Object.assign({}, action.payload.data.description);
-			return {
+			return Object.assign({}, state, (_Object$assign20 = {}, defineProperty(_Object$assign20, action.payload.id, {
 				description: fetchedDescription,
-				currentStep: 0,
-				busy: false,
-				value: fetchedValue,
-				templateCache: {},
-				//always carry over the navigationContext.
-				navigationContext: state.navigationContext
-			};
+				0: fetchedValue,
+				templateCache: {}
+			}), defineProperty(_Object$assign20, "navigationContext", state.navigationContext), defineProperty(_Object$assign20, action.payload.id + "-busy", false), _Object$assign20));
 		case ACTIONS.FETCHING_PROCESS:
-			return Object.assign({}, state, {
-				busy: !action.error
-			});
+			return Object.assign({}, state, defineProperty({}, action.meta + "-busy", !action.error));
 		case ACTIONS.FAILED_TO_FETCH_PROCESS:
-			return {
-				busy: false,
-				//always carry over the navigationContext.
-				navigationContext: state.navigationContext
-			};
+			return _ref = {}, defineProperty(_ref, action.meta, null), defineProperty(_ref, "navigationContext", state.navigationContext), defineProperty(_ref, action.meta + "-busy", false), _ref;
 		case ACTIONS.START_FILE_UPLOAD:
 			return Object.assign({}, state, defineProperty({}, action.meta, startUpload(state[action.meta], action)));
 		case ACTIONS.FILE_UPLOADED:
@@ -4777,7 +4984,7 @@ function index () {
 		case ACTIONS.FAILED_TO_GET_ITEM_TEMPLATE:
 			return Object.assign({}, state, defineProperty({}, action.meta, failedToGetTemplate("gettingTemplate", state[action.meta], action)));
 		case ACTIONS.GET_FILTER_TEMPLATE:
-			return Object.assign({}, state, defineProperty({}, action.meta, getTemplate("gettingFilterTemplate", state[action.meta], action)));
+			return Object.assign({}, state, defineProperty({}, action.meta.key, getTemplate("gettingFilterTemplate", state[action.meta.key], action)));
 		case ACTIONS.GOT_FILTER_TEMPLATE:
 			if (action.error) {
 				return Object.assign({}, state, defineProperty({}, action.meta, failedToGetTemplate("gettingFilterTemplate", state[action.meta], action)));
@@ -4804,12 +5011,12 @@ function getTemplate(busyIndicator) {
 	return Object.assign({}, state, defineProperty({}, busyIndicator, !action.error));
 }
 function gotTemplate(busyIndicator, propName) {
-	var _Object$assign26;
+	var _Object$assign36;
 
 	var state = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : {};
 	var action = arguments[3];
 
-	return Object.assign({}, state, (_Object$assign26 = {}, defineProperty(_Object$assign26, propName, action.payload.data), defineProperty(_Object$assign26, busyIndicator, false), _Object$assign26));
+	return Object.assign({}, state, (_Object$assign36 = {}, defineProperty(_Object$assign36, propName, action.payload.data), defineProperty(_Object$assign36, busyIndicator, false), _Object$assign36));
 }
 function failedToGetTemplate(busyIndicator) {
 	var state = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : {};
@@ -4972,23 +5179,45 @@ function chat () {
 				return _extends$4({}, state, incoming);
 			}
 			return state;
+
 		case ACTIONS.LOGIN_CHAT:
-			return Object.assign({}, state, { busyWithChatLogin: true, chatHandle: null });
+			return Object.assign({}, state, {
+				busyWithChatLogin: true,
+				chatHandle: null
+			});
 		case ACTIONS.LOGGED_IN_CHAT:
-			return Object.assign({}, state, { busyWithChatLogin: false, chatHandle: action.payload.handle || action.meta.handle });
+			return Object.assign({}, state, {
+				busyWithChatLogin: false,
+				chatHandle: action.payload.handle || action.meta.handle
+			});
 		case ACTIONS.FAILED_TO_LOGIN_CHAT:
 			return Object.assign({}, state, { busyWithChatLogin: false });
 		case ACTIONS.SEND_FRIEND_REQUEST:
-			return Object.assign({}, state, { sentFriendRequest: false, busyWithFriendRequest: true });
+			return Object.assign({}, state, {
+				sentFriendRequest: false,
+				busyWithFriendRequest: true
+			});
 		case ACTIONS.SENT_FRIEND_REQUEST:
-			return Object.assign({}, state, { sentFriendRequest: true, busyWithFriendRequest: false });
+			return Object.assign({}, state, {
+				sentFriendRequest: true,
+				busyWithFriendRequest: false
+			});
 		case ACTIONS.FAILED_TO_SEND_FRIEND_REQUEST:
-			return Object.assign({}, state, { busyWithFriendRequest: false, sentFriendRequest: false });
+			return Object.assign({}, state, {
+				busyWithFriendRequest: false,
+				sentFriendRequest: false
+			});
 
 		case ACTIONS.SEARCH:
-			return Object.assign({}, state, { busyWithSearch: true, searchResult: [] });
+			return Object.assign({}, state, {
+				busyWithSearch: true,
+				searchResult: []
+			});
 		case ACTIONS.FOUND:
-			return Object.assign({}, state, { busyWithSearch: false, searchResult: action.payload });
+			return Object.assign({}, state, {
+				busyWithSearch: false,
+				searchResult: action.payload
+			});
 		case ACTIONS.NOT_FOUND:
 			return Object.assign({}, state, { busyWithSearch: false });
 
@@ -5014,13 +5243,19 @@ function chat () {
 		case ACTIONS.GET_INVITES:
 			return Object.assign({}, state, { busyWithInvites: true });
 		case ACTIONS.GOT_INVITES:
-			return Object.assign({}, state, { busyWithInvites: false, invites: action.payload });
+			return Object.assign({}, state, {
+				busyWithInvites: false,
+				invites: action.payload
+			});
 		case ACTIONS.FAILED_TO_GET_INVITES:
 			return Object.assign({}, state, { busyWithInvites: false });
 		case ACTIONS.GET_CONTACTS:
 			return Object.assign({}, state, { busyWithContacts: true });
 		case ACTIONS.GOT_CONTACTS:
-			return Object.assign({}, state, { busyWithContacts: false, contacts: action.payload });
+			return Object.assign({}, state, {
+				busyWithContacts: false,
+				contacts: action.payload
+			});
 		case ACTIONS.FAILED_TO_GET_CONTACTS:
 			return Object.assign({}, state, { busyWithContacts: false });
 		case ACTIONS.ADD_TO_OPEN_CHATS:
@@ -5034,7 +5269,10 @@ function chat () {
 			    msg = action.payload;
 			if (!openChats[msg.from]) {
 				openChats[msg.from] = {
-					contact: { handle: msg.from, type: action.type == ACTIONS.NEW_GROUP_MESSAGE && "group" },
+					contact: {
+						handle: msg.from,
+						type: action.type == ACTIONS.NEW_GROUP_MESSAGE && "group"
+					},
 					messages: []
 				};
 			}
@@ -5055,7 +5293,10 @@ function chat () {
 			    _msg = action.meta;
 			_openChats[_msg.to].messages.push(Object.assign({}, _msg, { from: state.chatHandle, id: uuid() }));
 			_openChats[_msg.to].messages = _openChats[_msg.to].messages.slice();
-			return Object.assign({}, state, { openChats: Object.assign({}, _openChats), messageDelivered: true });
+			return Object.assign({}, state, {
+				openChats: Object.assign({}, _openChats),
+				messageDelivered: true
+			});
 		default:
 			return state;
 	}
@@ -5085,29 +5326,75 @@ var index$1 = {
 	invariants: invariants,
 	memcache: MemCache,
 	formatExpression: formatExpression,
-	validator: Validator
+	validator: Validator,
+	view: view
 };
 
 function navigation () {
-	var state = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : { stack: [] };
+	var state = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : createStack();
 	var action = arguments[1];
 
 	switch (action.type) {
 		case ACTIONS.SET_DYNAMO_PARAMS:
 		case ACTIONS.ALREADY_VISIBLE:
-			state.stack.push(action.payload);
-			return Object.assign({}, state, { stack: state.stack.slice() });
-		case ACTIONS.REMOVE_LAST_DYNAMO_PARAMS:
-			state.stack.pop();
-			return Object.assign({}, state, { stack: state.stack.slice() });
-		case ACTIONS.CLEAR_STACK:
-			return {
-				stack: []
-			};
+			if (hasScreenAlready(state, action.payload)) {
+				makeTop(state, action.payload);
+			} else {
+				state.stack.push(action.payload);
+			}
+			var stack = copyStack(state);
+			countRef(stack, action.payload, stack.stack.length - 1);
+			return Object.assign({}, state, stack);
+		case ACTIONS.REPLACE_STACK:
+			var stack = createStack();
+			stack.stack = action.payload.slice();
+			stack.stack.forEach(countRef.bind(null, stack, stack.stack.length - 1));
+			return Object.assign({}, state, stack);
 
+		case ACTIONS.REMOVE_LAST_DYNAMO_PARAMS:
+			var stack = copyStack(state),
+			    item = stack.stack.pop();
+			if (item.key == "Dynamo") {
+				stack._references[0] = stack._references[item.params.id][0]--;
+				//clean up.
+				if (!stack._references[item.params.id][0]) delete stack._references[item.params.id];
+			}
+			return Object.assign({}, state, stack);
+		case ACTIONS.CLEAR_STACK:
+			return createStack();
 		default:
 			return state;
 	}
+}
+
+function copyStack(state) {
+	var stack = state.stack.slice(),
+	    _references = JSON.parse(JSON.stringify(state._references));
+	return { stack: stack, _references: _references };
+}
+function makeTop(state, curr) {
+	state.stack.push(state.stack.splice(state._references[curr.params.id][1], 1));
+	state._references[curr.params.id][1] = state.stack.length - 1;
+}
+function hasScreenAlready(state, current) {
+	return state.stack.filter(function (x) {
+		return _.isEqual(x, current);
+	}).length;
+}
+function countRef(stack, e, index) {
+	if (e.key == "Dynamo") {
+		if (stack._references[e.params.id]) {
+			stack._references[e.params.id][0] = stack._references[e.params.id][0] + 1;
+		} else {
+			stack._references[e.params.id] = [1, index];
+		}
+	}
+}
+
+function createStack() {
+	var stack = [],
+	    _references = {};
+	return { stack: stack, _references: _references };
 }
 
 exports.default = defaultMap;
@@ -5121,6 +5408,9 @@ exports.addNavigationContext = addNavigationContext;
 exports.removeNavigationContext = removeNavigationContext;
 exports.setParams = setParams;
 exports.goBack = goBack;
+exports.replaceStack = replaceStack;
 exports.clearNavigationStack = clearNavigationStack;
 exports.alreadyVisible = alreadyVisible;
+exports.getRefreshToken = getRefreshToken;
+exports.ACTIONS = ACTIONS;
 //# sourceMappingURL=bundle.js.map

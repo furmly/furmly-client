@@ -4,12 +4,18 @@ import openSocket from "socket.io-client";
 import MemCache from "../utils/memcache";
 
 const preDispatch = config.preDispatch,
+  preRefeshToken = config.preRefeshToken,
   BASE_URL = global.BASE_URL || config.baseUrl,
   CHAT_URL = global.CHAT_URL || config.chatUrl,
   preLogin = config.preLogin,
+  throttled = {},
   cache = new MemCache({ ttl: config.processorsCacheTimeout });
 export const ACTIONS = {
-  CLEAR_STACK:"CLEAR_STACK",
+  GET_REFRESH_TOKEN: "GET_REFRESH_TOKEN",
+  GOT_REFRESH_TOKEN: "GOT_REFRESH_TOKEN",
+  FAILED_TO_GET_REFRESH_TOKEN: "FAILED_TO_GET_REFRESH_TOKEN",
+  CLEAR_STACK: "CLEAR_STACK",
+  REPLACE_STACK: "REPLACE_STACK",
   SET_DYNAMO_PARAMS: "SET_DYNAMO_PARAMS",
   REMOVE_LAST_DYNAMO_PARAMS: "REMOVE_LAST_DYNAMO_PARAMS",
   ALREADY_VISIBLE: "ALREADY_VISIBLE",
@@ -93,6 +99,9 @@ export const displayMessage = text => {
     message: text
   };
 };
+function copy(value) {
+  return JSON.parse(JSON.stringify(value));
+}
 
 function getQueryParams(args) {
   return args
@@ -112,10 +121,16 @@ export function setParams(args) {
   };
 }
 
-export function goBack(navigation) {
-  return { type: ACTIONS.REMOVE_LAST_DYNAMO_PARAMS };
+export function replaceStack(args) {
+  return {
+    type: ACTIONS.REPLACE_STACK,
+    payload: args
+  };
 }
-export function clearNavigationStack(navigation) {
+export function goBack(args) {
+  return { type: ACTIONS.REMOVE_LAST_DYNAMO_PARAMS, payload: args };
+}
+export function clearNavigationStack() {
   return { type: ACTIONS.CLEAR_STACK };
 }
 export function alreadyVisible(args) {
@@ -143,7 +158,7 @@ export function openConfirmation(id, message, params) {
     payload: { message, params, id }
   };
 }
-function defaultError(dispatch, customType, meta) {
+function defaultError(dispatch, customType, meta, throttleEnabled) {
   return {
     type: customType || "SHOW_MESSAGE",
     meta: (action, state, res) => {
@@ -158,7 +173,11 @@ function defaultError(dispatch, customType, meta) {
               "Sorry , an error occurred while processing your request"
           )
         );
-
+      console.log(action);
+      let args = action[CALL_API];
+      if (throttleEnabled)
+        throttled[args.endpoint + args.body] =
+          (throttled[args.endpoint + args.body] || 5000) * 2;
       //session expired
       if (res.status == 401) {
         dispatch(showMessage("Session may have expired"));
@@ -210,7 +229,7 @@ export function fetchDynamoProcess(id, args) {
                 });
               }
             },
-            defaultError(dispatch, ACTIONS.FAILED_TO_FETCH_PROCESS)
+            defaultError(dispatch, ACTIONS.FAILED_TO_FETCH_PROCESS, () => id)
           ],
           method: "GET",
           headers: {
@@ -272,6 +291,22 @@ export function getSingleItemForGrid(id, args, key) {
   });
 }
 
+export function getRefreshToken() {
+  return (dispatch, getState) => {
+    dispatch({
+      [CALL_API]: preRefeshToken({
+        endpoint: `${BASE_URL}/api/refresh_token`,
+        types: [
+          GET_REFRESH_TOKEN,
+          GOT_REFRESH_TOKEN,
+          FAILED_TO_GET_REFRESH_TOKEN
+        ],
+        body: null
+      })
+    });
+  };
+}
+
 export function runDynamoProcessor(
   id,
   args,
@@ -289,7 +324,7 @@ export function runDynamoProcessor(
     let cacheKey = { id, args },
       hasKey = cache.hasKey(cacheKey);
     if (hasKey) {
-      let payload = JSON.parse(JSON.stringify(cache.get(cacheKey)));
+      let payload = copy(cache.get(cacheKey));
       payload.key = key;
 
       return dispatch => {
@@ -301,47 +336,55 @@ export function runDynamoProcessor(
     }
   }
 
-  return (dispatch, getState) =>
-    dispatch({
-      [CALL_API]: preDispatch(
-        {
-          endpoint: `${BASE_URL}/api/processors/run/${id}`,
-          types: [
-            {
-              type: requestCustomType || ACTIONS.DYNAMO_PROCESSOR_RUNNING,
-              meta: { id, key, args }
+  return (dispatch, getState) => {
+    let body = JSON.stringify(args),
+      endpoint = `${BASE_URL}/api/processors/run/${id}`,
+      throttleKey = `${endpoint}${body}`;
+    setTimeout(() => {
+      dispatch({
+        [CALL_API]: preDispatch(
+          {
+            endpoint,
+            types: [
+              {
+                type: requestCustomType || ACTIONS.DYNAMO_PROCESSOR_RUNNING,
+                meta: { id, key, args }
+              },
+              {
+                type: resultCustomType || ACTIONS.DYNAMO_PROCESSOR_RAN,
+                payload: (action, state, res) => {
+                  return res.json().then(data => {
+                    delete throttled[throttleKey];
+                    if (data && typeof data.message == "string") {
+                      dispatch(showMessage(data.message));
+                    }
+                    let response = { id, data, args, key, returnsUI };
+                    if (config.cacheProcessorResponses && !disableCache) {
+                      cache.store({ id, args }, response);
+                    }
+                    return response;
+                  });
+                }
+              },
+              defaultError(
+                dispatch,
+                errorCustomType || ACTIONS.DYNAMO_PROCESSOR_FAILED,
+                () => key,
+                true
+              )
+            ],
+            method: "POST",
+            headers: {
+              Accept: "application/json",
+              "Content-Type": "application/json"
             },
-            {
-              type: resultCustomType || ACTIONS.DYNAMO_PROCESSOR_RAN,
-              payload: (action, state, res) => {
-                return res.json().then(data => {
-                  if (data && typeof data.message == "string") {
-                    dispatch(showMessage(data.message));
-                  }
-                  let response = { id, data, args, key, returnsUI };
-                  if (config.cacheProcessorResponses && !disableCache) {
-                    cache.store({ id, args }, response);
-                  }
-                  return response;
-                });
-              }
-            },
-            defaultError(
-              dispatch,
-              errorCustomType || ACTIONS.DYNAMO_PROCESSOR_FAILED,
-              () => key
-            )
-          ],
-          method: "POST",
-          headers: {
-            Accept: "application/json",
-            "Content-Type": "application/json"
+            body
           },
-          body: JSON.stringify(args)
-        },
-        getState()
-      )
-    });
+          getState()
+        )
+      });
+    }, throttled[throttleKey] || 0);
+  };
 }
 
 export function showMessage(message) {
@@ -360,7 +403,11 @@ export function runDynamoProcess(details) {
           types: [
             {
               type: ACTIONS.DYNAMO_PROCESS_RUNNING,
-              meta: { id: details.id, form: details.form }
+              meta: {
+                id: details.id,
+                form: details.form,
+                currentStep: details.currentStep
+              }
             },
             {
               type: ACTIONS.DYNAMO_PROCESS_RAN,
@@ -371,10 +418,36 @@ export function runDynamoProcess(details) {
                     if (d && typeof d.message == "string") {
                       dispatch(showMessage(d.message));
                     }
-
+                    let id = details.id;
+                    if (
+                      !(config.uiOnDemand && d.status == "COMPLETED") &&
+                      !(
+                        !config.uiOnDemand &&
+                        (state.dynamo[id].description.steps.length == 1 ||
+                          (state.dynamoNavigation.stack.length &&
+                            state.dynamoNavigation.stack[
+                              state.dynamoNavigation.stack.length - 1
+                            ].params.currentStep +
+                              1 >
+                              state.dynamo[id].description.steps.length - 1))
+                      ) &&
+                      !state.dynamo[id].description.disableBackwardNavigation
+                    ) {
+                      let _p = copy(
+                        state.dynamoNavigation.stack[
+                          state.dynamoNavigation.stack.length - 1
+                        ]
+                      );
+                      _p.params.currentStep = (_p.params.currentStep || 0) + 1;
+                      dispatch(setParams(_p));
+                      if (config.notifyStepAdvance) {
+                        config.notifyStepAdvance(dispatch, state, _p);
+                      }
+                    }
                     return { id: details.id, data: d };
                   })
                   .catch(er => {
+                    console.log(er);
                     dispatch({
                       type: "SHOW_MESSAGE",
                       message:
@@ -383,7 +456,11 @@ export function runDynamoProcess(details) {
                   });
               }
             },
-            defaultError(dispatch, ACTIONS.DYNAMO_PROCESS_FAILED)
+            defaultError(
+              dispatch,
+              ACTIONS.DYNAMO_PROCESS_FAILED,
+              () => details.id
+            )
           ],
           method: "POST",
           headers: {
@@ -391,14 +468,11 @@ export function runDynamoProcess(details) {
             "Content-Type": "application/json"
           },
           body: JSON.stringify(
-            Object.assign(
-              {},
-              details.form,
-              {
-                instanceId: details.instanceId
-              },
-              { $uiOnDemand: !!config.uiOnDemand }
-            )
+            Object.assign({}, details.form, {
+              $instanceId: details.instanceId,
+              $uiOnDemand: !!config.uiOnDemand,
+              $currentStep: details.currentStep
+            })
           )
         },
         getState()

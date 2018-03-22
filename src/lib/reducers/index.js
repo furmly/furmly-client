@@ -2,6 +2,7 @@ import _ from "lodash";
 import uuid from "uuid/v4";
 import { ACTIONS } from "../actions";
 import config from "client_config";
+import { isValidKey } from "../utils/view";
 
 export default function(state = {}, action) {
 	switch (action.type) {
@@ -25,44 +26,124 @@ export default function(state = {}, action) {
 			delete state.navigationContext;
 			return Object.assign({}, state);
 		case ACTIONS.DYNAMO_PROCESS_FAILED:
-			return Object.assign({}, state, { busy: false });
+			return Object.assign({}, state, { [`${action.meta}-busy`]: false });
+		case ACTIONS.REPLACE_STACK:
+			var _state = action.payload.reduce(
+				(sum, x) => {
+					if (state[x.params.id]) {
+						sum[x.params.id] = state[x.params.id];
+					}
+					return sum;
+				},
+				{
+					navigationContext: state.navigationContext,
+					message: state.message
+				}
+			);
+			return _state;
+		case ACTIONS.REMOVE_LAST_DYNAMO_PARAMS:
+			//check if value is a dynamo screen
+			//if it is check if its a process navigation or step navigation
+			//if it is a process navigation remove the data from the process.
+			//if it is a step navigation remove the step data from the process.
+			if (action.payload.item.key == "Dynamo") {
+				//it is a dynamo navigation
+				//confirm there are no other references down the line.
+				let _state = state[action.payload.item.params.id],
+					currentStep = _state.currentStep || 0;
+				if (
+					action.payload.references[action.payload.item.params.id][0] ==
+					1
+				) {
+					return Object.assign(
+						{},
+						//copy over state that does not belong to the removed object
+						Object.keys(state).reduce((sum, x) => {
+							let key = isValidKey(x);
+							if (
+								!key ||
+								(key &&
+									key.step !== currentStep &&
+									key.process !==
+										action.payload.item.params.id)
+							)
+								sum[x] = state[x];
+							return sum;
+						}, {}),
+						{
+							[action.payload.item.params.id]: null
+						}
+					);
+				}
+				if (action.payload.item.params.currentStep) {
+					//it is a step navigation.
+					//remove one from current step.
+
+					state[action.payload.item.params.id].currentStep =
+						state[action.payload.item.params.id].currentStep - 1 ||
+						0;
+
+					return Object.assign({}, state, {
+						[action.payload.item.params
+							.id]: Object.assign({}, _state, {
+							[action.payload.item.params.currentStep]: null
+						})
+					});
+				}
+			}
+			return state;
 		case ACTIONS.DYNAMO_PROCESS_RAN:
-			let currentState = {
-				busy: false,
-				currentStep: state.currentStep || 0
-			};
+			if (action.error || !action.payload) {
+				return state;
+			}
+			let proc = state[action.payload.id],
+				id = action.payload.id,
+				data = action.payload.data,
+				currentState = {
+					currentStep: proc.currentStep || 0
+				},
+				busy = false,
+				description = proc.description;
 			if (
 				(config.uiOnDemand &&
+					action.payload.data &&
 					action.payload.data.status == "COMPLETED") ||
 				(!config.uiOnDemand &&
-					(state.description.steps.length == 1 ||
+					(description.steps.length == 1 ||
 						currentState.currentStep + 1 >
-							state.description.steps.length - 1))
+							description.steps.length - 1))
 			) {
-				return {
-					busy: false,
-					completed: true,
-					message:
-						(typeof action.payload.data == "object" &&
-							action.payload.data.message) ||
-						null
-				};
+				return Object.assign({}, state, {
+					[id]: {
+						completed: true
+					},
+					[`${id}-busy`]: false,
+					message: (typeof data == "object" && data.message) || null
+				});
 			}
 
-			currentState.instanceId =
-				action.payload && action.payload.data
-					? action.payload.data.instanceId
-					: null;
-			if (config.uiOnDemand)
-				state.description.steps[0] = action.payload.data.$nextStep;
-			else currentState.currentStep = currentState.currentStep + 1;
-			//potentially costly will have to test and see what happens.
-			//currentState.templateCache = getTemplatesAndAddComponentUid(state.description.steps[currentState.currentStep].form.elements);
-			currentState.value =
-				typeof action.payload.data == "object" &&
-				typeof action.payload.data.message == "object" &&
-				action.payload.data.message;
-			return Object.assign({}, state, currentState);
+			currentState.instanceId = data ? data.$instanceId : null;
+			if (config.uiOnDemand && description.disableBackwardNavigation)
+				description.steps[0] = data.$nextStep;
+			else {
+				if (config.uiOnDemand) {
+					if (
+						description.steps.length ==
+						currentState.currentStep + 1
+					) {
+						description.steps.push(data.$nextStep);
+					}
+				}
+				currentState.currentStep = currentState.currentStep + 1;
+			}
+			currentState[currentState.currentStep] =
+				typeof data == "object" &&
+				typeof data.message == "object" &&
+				data.message;
+			return Object.assign({}, state, {
+				[id]: Object.assign({}, state[id], currentState),
+				[`${id}-busy`]: busy
+			});
 
 		case ACTIONS.FETCHING_GRID:
 			return Object.assign({}, state, {
@@ -114,15 +195,19 @@ export default function(state = {}, action) {
 
 		case ACTIONS.DYNAMO_PROCESS_RUNNING:
 			return Object.assign({}, state, {
-				busy: !action.error,
-				value: action.meta.form
+				[`${action.meta.id}-busy`]: !action.error,
+				[action.meta.id]: Object.assign({}, state[action.meta.id], {
+					[state[action.meta.id].currentStep || 0]: action.meta.form
+				})
 			});
 		case ACTIONS.DYNAMO_PROCESSOR_RAN:
-			configureTemplates(state, action);
+			//configureTemplates(state, action);
 			return Object.assign({}, state, {
 				[action.payload.key]: action.payload.data,
 				[`${action.payload.key}-busy`]: false
 			});
+
+		//return Object.assign({ target }, state, {});
 
 		case ACTIONS.DYNAMO_PROCESSOR_RUNNING:
 			return Object.assign({}, state, {
@@ -139,24 +224,26 @@ export default function(state = {}, action) {
 				{},
 				action.payload.data.description
 			);
-			return {
-				description: fetchedDescription,
-				currentStep: 0,
-				busy: false,
-				value: fetchedValue,
-				templateCache: {},
+			return Object.assign({}, state, {
+				[action.payload.id]: {
+					description: fetchedDescription,
+					0: fetchedValue,
+					templateCache: {}
+				},
 				//always carry over the navigationContext.
-				navigationContext: state.navigationContext
-			};
+				navigationContext: state.navigationContext,
+				[`${action.payload.id}-busy`]: false
+			});
 		case ACTIONS.FETCHING_PROCESS:
 			return Object.assign({}, state, {
-				busy: !action.error
+				[`${action.meta}-busy`]: !action.error
 			});
 		case ACTIONS.FAILED_TO_FETCH_PROCESS:
 			return {
-				busy: false,
+				[action.meta]: null,
 				//always carry over the navigationContext.
-				navigationContext: state.navigationContext
+				navigationContext: state.navigationContext,
+				[`${action.meta}-busy`]: false
 			};
 		case ACTIONS.START_FILE_UPLOAD:
 			return Object.assign({}, state, {
@@ -216,9 +303,9 @@ export default function(state = {}, action) {
 			});
 		case ACTIONS.GET_FILTER_TEMPLATE:
 			return Object.assign({}, state, {
-				[action.meta]: getTemplate(
+				[action.meta.key]: getTemplate(
 					"gettingFilterTemplate",
-					state[action.meta],
+					state[action.meta.key],
 					action
 				)
 			});

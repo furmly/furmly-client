@@ -3,6 +3,7 @@ import { connect } from "react-redux";
 import { uploadDynamoFile, getDynamoFilePreview } from "./actions";
 import invariants from "./utils/invariants";
 import ValidationHelper from "./utils/validator";
+import { getKey } from "./utils/view";
 /**
  * This component should render a file uploader
  * @param  {Class} Uploader Component responsible for uploading the file
@@ -77,6 +78,7 @@ export default (Uploader, ProgressBar, Text, previews = []) => {
 			this.props.upload(file, this.props.component_uid);
 		}
 		render() {
+			console.log("fileupload render called");
 			if (this.props.busy) return <ProgressBar />;
 			if (!this._supported)
 				return <Text message={"unsupported file upload type"} />;
@@ -97,8 +99,10 @@ export default (Uploader, ProgressBar, Text, previews = []) => {
 	}
 
 	const mapStateToProps = (_, initialProps) => (state, ownProps) => {
-		let st = state.dynamo[ownProps.component_uid] || {};
+		let component_uid = getKey(state, ownProps.component_uid,ownProps);
+		let st = state.dynamo[component_uid] || {};
 		return {
+			component_uid,
 			preview: st.preview,
 			busy: st.busy,
 			uploadedId: st.uploadedId || ownProps.value

@@ -31,7 +31,7 @@ export default (Link, NavigationActions) => {
 			if (firstItemIsLink) link = key_value.shift();
 			let params = key_value.reduce((sum, x) => {
 					let sp = x.split("=");
-					return (sum[sp[0]] = sp[1]), sum;
+					return (sum[sp[0]] = decodeURIComponent(sp[1])), sum;
 				}, {}),
 				result = { params };
 			if (firstItemIsLink || !key_value.length) result.link = link;
@@ -70,7 +70,7 @@ export default (Link, NavigationActions) => {
 
 					case DynamoNav.NAV_TYPE.DYNAMO:
 						//const setParamsAction =
-						 NavigationActions.setParams(
+						NavigationActions.setParams(
 							{
 								params: { id: link, fetchParams: params },
 								key: "Dynamo"

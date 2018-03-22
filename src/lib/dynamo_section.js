@@ -24,6 +24,8 @@ export default (Layout, Header, Container) => {
 						valueChanged={this.props.valueChanged}
 						validator={this.props.validator}
 						navigation={this.props.navigation}
+						currentProcess={this.props.currentProcess}
+						currentStep={this.props.currentStep}
 					/>
 				</Layout>
 			);

@@ -3,6 +3,7 @@ import { connect } from "react-redux";
 import { runDynamoProcessor } from "./actions";
 import ValidationHelper, { VALIDATOR_TYPES } from "./utils/validator";
 import invariants from "./utils/invariants";
+import { getKey } from "./utils/view";
 export default (ProgressIndicator, Layout, Container) => {
 	if (
 		invariants.validComponent(ProgressIndicator, "ProgressIndicator") &&
@@ -14,10 +15,12 @@ export default (ProgressIndicator, Layout, Container) => {
 	//map elements in DynamoView props to elements in store.
 	const mapStateToProps = (_, initialProps) => (state, ownProps) => {
 		if (ownProps.args.type == "PROCESSOR") {
-			let st = state.dynamo[ownProps.component_uid];
+			let component_uid = getKey(state, ownProps.component_uid,ownProps);
+			let st = state.dynamo[component_uid];
 			return {
 				items: st,
-				busy: !!state.dynamo[`${ownProps.component_uid}-busy`]
+				busy: !!state.dynamo[`${ownProps.component_uid}-busy`],
+				component_uid
 			};
 		}
 		//evaluate stuff in the parent container to retrieve the
