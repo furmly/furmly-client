@@ -7,14 +7,17 @@ export default (Page, Container) => {
 	//map elements in DynamoView props to elements in store.
 	const mapStateToProps = (_, initialProps) => (state, ownProps) => {
 		//console.log("mapping state to props");
-		let description = state.dynamo.description,
-		map = {
-			value: state.dynamo[ownProps.currentStep]
-		};
-		if (description) {
+		let _state = state.dynamo[ownProps.currentProcess],
+			description = _state && _state.description,
+			map = {
+				value: (_state && _state[ownProps.currentStep]) || null
+			};
+
+		if (description && description.steps[ownProps.currentStep]) {
 			map.elements =
 				description.steps[ownProps.currentStep].form.elements;
-			if (description.steps[ownProps.currentStep].mode == "VIEW") map.hideSubmit = true;
+			if (description.steps[ownProps.currentStep].mode == "VIEW")
+				map.hideSubmit = true;
 			map.title = description.title;
 		}
 		return map;
@@ -31,6 +34,13 @@ export default (Page, Container) => {
 				validator: {}
 			};
 		}
+		componentWillReceiveProps(next) {
+			if (
+				next.value !== this.props.value
+			) {
+				this.setState({ form: next.value });
+			}
+		}
 		onValueChanged(form) {
 			this.state.form = form.dynamo_view;
 		}
@@ -39,6 +49,9 @@ export default (Page, Container) => {
 				.validate()
 				.then(
 					() => {
+						console.log(
+							"currentStep:" + (this.props.currentStep || "0")
+						);
 						this.props.submit(this.state.form);
 					},
 					() => {

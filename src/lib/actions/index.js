@@ -10,6 +10,7 @@ const preDispatch = config.preDispatch,
   cache = new MemCache({ ttl: config.processorsCacheTimeout });
 export const ACTIONS = {
   CLEAR_STACK: "CLEAR_STACK",
+  REPLACE_STACK: "REPLACE_STACK",
   SET_DYNAMO_PARAMS: "SET_DYNAMO_PARAMS",
   REMOVE_LAST_DYNAMO_PARAMS: "REMOVE_LAST_DYNAMO_PARAMS",
   ALREADY_VISIBLE: "ALREADY_VISIBLE",
@@ -115,10 +116,16 @@ export function setParams(args) {
   };
 }
 
-export function goBack(navigation) {
-  return { type: ACTIONS.REMOVE_LAST_DYNAMO_PARAMS };
+export function replaceStack(args) {
+  return {
+    type: ACTIONS.REPLACE_STACK,
+    payload: args
+  };
 }
-export function clearNavigationStack(navigation) {
+export function goBack(args) {
+  return { type: ACTIONS.REMOVE_LAST_DYNAMO_PARAMS, payload: args };
+}
+export function clearNavigationStack() {
   return { type: ACTIONS.CLEAR_STACK };
 }
 export function alreadyVisible(args) {
@@ -213,7 +220,7 @@ export function fetchDynamoProcess(id, args) {
                 });
               }
             },
-            defaultError(dispatch, ACTIONS.FAILED_TO_FETCH_PROCESS)
+            defaultError(dispatch, ACTIONS.FAILED_TO_FETCH_PROCESS, () => id)
           ],
           method: "GET",
           headers: {
@@ -363,7 +370,11 @@ export function runDynamoProcess(details) {
           types: [
             {
               type: ACTIONS.DYNAMO_PROCESS_RUNNING,
-              meta: { id: details.id, form: details.form }
+              meta: {
+                id: details.id,
+                form: details.form,
+                currentStep: details.currentStep
+              }
             },
             {
               type: ACTIONS.DYNAMO_PROCESS_RAN,
@@ -374,14 +385,20 @@ export function runDynamoProcess(details) {
                     if (d && typeof d.message == "string") {
                       dispatch(showMessage(d.message));
                     }
+                    let id = details.id;
                     if (
                       !(config.uiOnDemand && d.status == "COMPLETED") &&
                       !(
                         !config.uiOnDemand &&
-                        (state.description.steps.length == 1 ||
-                          state.currentStep + 1 >
-                            state.description.steps.length - 1)
-                      )
+                        (state.dynamo[id].description.steps.length == 1 ||
+                          (state.dynamoNavigation.stack.length &&
+                            state.dynamoNavigation.stack[
+                              state.dynamoNavigation.stack.length - 1
+                            ].params.currentStep +
+                              1 >
+                              state.dynamo[id].description.steps.length - 1))
+                      ) &&
+                      !state.dynamo[id].description.disableBackwardNavigation
                     ) {
                       let _p = copy(
                         state.dynamoNavigation.stack[

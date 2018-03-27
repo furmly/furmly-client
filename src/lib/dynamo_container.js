@@ -41,7 +41,7 @@ export default (...args) => {
 					next.elements.length !== this.props.elements.length)
 			) {
 				let _validations = next.elements.map(x => ({}));
-				this.setState({ _validations });
+				this.setState({ _validations, form: next.value });
 			}
 		}
 		setValidator() {

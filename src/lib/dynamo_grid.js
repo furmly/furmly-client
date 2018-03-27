@@ -10,7 +10,7 @@ import {
 	showMessage
 } from "./actions";
 import invariants from "./utils/invariants";
-
+import { getKey } from "./utils/view";
 export const GRID_MODES = {
 	CRUD: "CRUD",
 	EDITONLY: "EDITONLY"
@@ -69,8 +69,10 @@ export default (
 		};
 	};
 	const mapStateToProps = (_, initialProps) => (state, ownProps) => {
-		var result = state.dynamo[ownProps.component_uid];
+		let component_uid = getKey(state, ownProps.component_uid);
+		var result = state.dynamo[component_uid];
 		return {
+			component_uid,
 			items: result && result.data ? result.data.items : null,
 			total: result && result.data ? result.data.total : 0,
 			busy: result && !!result.fetchingGrid,
@@ -87,16 +89,13 @@ export default (
 			fetchingItemTemplate: result && result.gettingTemplate,
 			commandProcessed:
 				state.dynamo[
-					ownProps.component_uid + DynamoGrid.commandResultViewName()
+					component_uid + DynamoGrid.commandResultViewName()
 				],
 			commandProcessing:
 				state.dynamo[
-					ownProps.component_uid +
-						DynamoGrid.commandResultViewName() +
-						"-busy"
+					component_uid + DynamoGrid.commandResultViewName() + "-busy"
 				],
-			processed:
-				state.dynamo[ownProps.component_uid + DynamoGrid.itemViewName()]
+			processed: state.dynamo[component_uid + DynamoGrid.itemViewName()]
 		};
 	};
 	class DynamoGrid extends Component {
@@ -105,6 +104,7 @@ export default (
 			this.state = {
 				validator: {},
 				showItemView: false,
+				filter:this.props.filter,
 				count: this.props.args.pageCount || 5,
 				showCommandResultView: false
 			};
@@ -146,7 +146,9 @@ export default (
 		componentDidMount() {
 			if (
 				this.props.args.filterProcessor &&
-				!this.props.fetchingFilterTemplate
+				!this.props.fetchingFilterTemplate &&
+				(!this.props.filterTemplate ||
+					!this.props.filterTemplate.length)
 			) {
 				this.props.getFilterTemplate(
 					this.props.args.filterProcessor,

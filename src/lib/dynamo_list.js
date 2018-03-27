@@ -8,6 +8,7 @@ import {
 	openConfirmation,
 	clearElementData
 } from "./actions";
+import { getKey } from "./utils/view";
 
 export default (
 	Layout,
@@ -26,14 +27,16 @@ export default (
 	invariants.validComponent(Container, "Container");
 
 	const mapStateToProps = (_, initialProps) => (state, ownProps) => {
+		let component_uid = getKey(state, ownProps.component_uid);
 		return {
 			confirmation:
 				state.app &&
 				state.app.confirmationResult &&
-				state.app.confirmationResult[ownProps.component_uid],
+				state.app.confirmationResult[component_uid],
 			templateCache: state.dynamo.templateCache,
-			dataTemplate: state.dynamo[ownProps.component_uid],
-			busy: state.dynamo[`${ownProps.component_uid}-busy`]
+			dataTemplate: state.dynamo[component_uid],
+			component_uid,
+			busy: state.dynamo[`${component_uid}-busy`]
 		};
 	};
 	const equivalent = function(arr, arr2) {
@@ -174,11 +177,11 @@ export default (
 			}
 			//if theres a default then update everyone.
 			if (this.state.items && this.state.items.length) {
-				setTimeout(() => {
+				//setTimeout(() => {
 					this.props.valueChanged({
 						[this.props.name]: this.state.items
 					});
-				}, 0);
+				//}, 0);
 			}
 			let equal = equivalent(this.props.dataTemplate, this.state.items);
 			//if theres a data template processor then run it.

@@ -13,23 +13,45 @@ export default function(state = {}, action) {
 				};
 			}
 			return state;
+
 		case ACTIONS.LOGIN_CHAT:
-			return Object.assign({}, state, { busyWithChatLogin: true, chatHandle: null });
+			return Object.assign({}, state, {
+				busyWithChatLogin: true,
+				chatHandle: null
+			});
 		case ACTIONS.LOGGED_IN_CHAT:
-			return Object.assign({}, state, { busyWithChatLogin: false, chatHandle: action.payload.handle || action.meta.handle });
+			return Object.assign({}, state, {
+				busyWithChatLogin: false,
+				chatHandle: action.payload.handle || action.meta.handle
+			});
 		case ACTIONS.FAILED_TO_LOGIN_CHAT:
 			return Object.assign({}, state, { busyWithChatLogin: false });
 		case ACTIONS.SEND_FRIEND_REQUEST:
-			return Object.assign({}, state, { sentFriendRequest: false, busyWithFriendRequest: true });
+			return Object.assign({}, state, {
+				sentFriendRequest: false,
+				busyWithFriendRequest: true
+			});
 		case ACTIONS.SENT_FRIEND_REQUEST:
-			return Object.assign({}, state, { sentFriendRequest: true, busyWithFriendRequest: false });
+			return Object.assign({}, state, {
+				sentFriendRequest: true,
+				busyWithFriendRequest: false
+			});
 		case ACTIONS.FAILED_TO_SEND_FRIEND_REQUEST:
-			return Object.assign({}, state, { busyWithFriendRequest: false, sentFriendRequest: false });
+			return Object.assign({}, state, {
+				busyWithFriendRequest: false,
+				sentFriendRequest: false
+			});
 
 		case ACTIONS.SEARCH:
-			return Object.assign({}, state, { busyWithSearch: true, searchResult: [] });
+			return Object.assign({}, state, {
+				busyWithSearch: true,
+				searchResult: []
+			});
 		case ACTIONS.FOUND:
-			return Object.assign({}, state, { busyWithSearch: false, searchResult: action.payload });
+			return Object.assign({}, state, {
+				busyWithSearch: false,
+				searchResult: action.payload
+			});
 		case ACTIONS.NOT_FOUND:
 			return Object.assign({}, state, { busyWithSearch: false });
 
@@ -39,7 +61,9 @@ export default function(state = {}, action) {
 		case ACTIONS.ACCEPTED_FRIEND_REQUEST:
 		case ACTIONS.REJECTED_FRIEND_REQUEST:
 			if (state.invites) {
-				let req = state.invites.filter(x => x.handle == action.payload)[0];
+				let req = state.invites.filter(
+					x => x.handle == action.payload
+				)[0];
 				state.invites.splice(state.invites.indexOf(req), 1);
 			}
 			return Object.assign({}, state, {
@@ -53,13 +77,19 @@ export default function(state = {}, action) {
 		case ACTIONS.GET_INVITES:
 			return Object.assign({}, state, { busyWithInvites: true });
 		case ACTIONS.GOT_INVITES:
-			return Object.assign({}, state, { busyWithInvites: false, invites: action.payload });
+			return Object.assign({}, state, {
+				busyWithInvites: false,
+				invites: action.payload
+			});
 		case ACTIONS.FAILED_TO_GET_INVITES:
 			return Object.assign({}, state, { busyWithInvites: false });
 		case ACTIONS.GET_CONTACTS:
 			return Object.assign({}, state, { busyWithContacts: true });
 		case ACTIONS.GOT_CONTACTS:
-			return Object.assign({}, state, { busyWithContacts: false, contacts: action.payload });
+			return Object.assign({}, state, {
+				busyWithContacts: false,
+				contacts: action.payload
+			});
 		case ACTIONS.FAILED_TO_GET_CONTACTS:
 			return Object.assign({}, state, { busyWithContacts: false });
 		case ACTIONS.ADD_TO_OPEN_CHATS:
@@ -73,7 +103,11 @@ export default function(state = {}, action) {
 				msg = action.payload;
 			if (!openChats[msg.from]) {
 				openChats[msg.from] = {
-					contact: { handle: msg.from, type: action.type == ACTIONS.NEW_GROUP_MESSAGE && "group" },
+					contact: {
+						handle: msg.from,
+						type:
+							action.type == ACTIONS.NEW_GROUP_MESSAGE && "group"
+					},
 					messages: []
 				};
 			}
@@ -83,7 +117,11 @@ export default function(state = {}, action) {
 		case ACTIONS.OPEN_CHAT:
 			return Object.assign({}, state, {
 				chat: action.payload,
-				newMessage: state.newMessage && state.newMessage.from == action.payload.contact.handle ? null : state.newMessage
+				newMessage:
+					state.newMessage &&
+					state.newMessage.from == action.payload.contact.handle
+						? null
+						: state.newMessage
 			});
 		case ACTIONS.CLOSE_CHAT:
 			return Object.assign({}, state, { chat: null });
@@ -92,9 +130,14 @@ export default function(state = {}, action) {
 		case ACTIONS.SENT_CHAT:
 			let _openChats = state.openChats,
 				_msg = action.meta;
-			_openChats[_msg.to].messages.push(Object.assign({}, _msg, { from: state.chatHandle, id: uuid() }));
+			_openChats[_msg.to].messages.push(
+				Object.assign({}, _msg, { from: state.chatHandle, id: uuid() })
+			);
 			_openChats[_msg.to].messages = _openChats[_msg.to].messages.slice();
-			return Object.assign({}, state, { openChats: Object.assign({}, _openChats), messageDelivered: true });
+			return Object.assign({}, state, {
+				openChats: Object.assign({}, _openChats),
+				messageDelivered: true
+			});
 		default:
 			return state;
 	}

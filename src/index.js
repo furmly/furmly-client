@@ -9,6 +9,7 @@ export {
 	removeNavigationContext,
 	setParams,
 	goBack,
+	replaceStack,
 	clearNavigationStack,
 	alreadyVisible
 } from "./lib/actions";
