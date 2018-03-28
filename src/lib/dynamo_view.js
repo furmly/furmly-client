@@ -35,9 +35,7 @@ export default (Page, Container) => {
 			};
 		}
 		componentWillReceiveProps(next) {
-			if (
-				next.value !== this.props.value
-			) {
+			if (next.value !== this.props.value) {
 				this.setState({ form: next.value });
 			}
 		}
@@ -75,6 +73,8 @@ export default (Page, Container) => {
 						valueChanged={this.onValueChanged}
 						validator={this.state.validator}
 						navigation={this.props.navigation}
+						currentStep={this.props.currentStep}
+						currentProcess={this.props.currentProcess}
 					/>
 				</Page>
 			);

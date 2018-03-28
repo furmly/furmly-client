@@ -46,8 +46,8 @@ export function getCurrentProcess(state) {
 	}
 	return null;
 }
-export function getKey(state, key) {
-	return `${getCurrentStep(state)}/${getCurrentProcess(state)}/${key}`;
+export function getKey(state, key, ownProps) {
+	return `${ownProps.currentStep}/${ownProps.currentProcess}/${key}`;
 }
 const exp = /^(\d+)\/([a-f\d]{24})\/.+$/i;
 export function isValidKey(key) {

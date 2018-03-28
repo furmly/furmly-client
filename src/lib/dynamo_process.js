@@ -55,9 +55,12 @@ export default (ProgressBar, TextView, DynamoView) => {
 				return this.props.navigation.goBack();
 
 			if (
-				(next.id !== this.props.id ||
+				((next.id !== this.props.id ||
 					!_.isEqual(next.fetchParams, this.props.fetchParams)) &&
-				!this.props.busy
+					!next.busy &&
+					!next.description) ||
+				(next.id == this.props.id &&
+					!_.isEqual(next.fetchParams, this.props.fetchParams) && !next.busy)
 			)
 				this.props.fetch(next.id, next.fetchParams);
 		}

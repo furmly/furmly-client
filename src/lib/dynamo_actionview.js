@@ -28,7 +28,7 @@ export default (
 		};
 	};
 	const mapStateToProps = (_, initialProps) => (state, ownProps) => {
-		var component_uid = getKey(state, ownProps.component_uid),
+		var component_uid = getKey(state, ownProps.component_uid,ownProps),
 			_actionState = state.dynamo[component_uid];
 		return {
 			resultUI: _actionState && (_actionState.ui || _actionState),
@@ -92,6 +92,8 @@ export default (
 							validator={this._filterValidator}
 							valueChanged={this.valueChanged}
 							navigation={this.props.navigation}
+							currentProcess={this.props.currentProcess}
+							currentStep={this.props.currentStep}
 						/>
 					</Filter>
 					<ContentContainer
@@ -100,6 +102,8 @@ export default (
 						validator={{}}
 						valueChanged={this.doNothing}
 						navigation={this.props.navigation}
+						currentProcess={this.props.currentProcess}
+						currentStep={this.props.currentStep}
 					/>
 				</Layout>
 			);

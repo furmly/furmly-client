@@ -15,7 +15,7 @@ export default (ProgressIndicator, Layout, Container) => {
 	//map elements in DynamoView props to elements in store.
 	const mapStateToProps = (_, initialProps) => (state, ownProps) => {
 		if (ownProps.args.type == "PROCESSOR") {
-			let component_uid = getKey(state, ownProps.component_uid);
+			let component_uid = getKey(state, ownProps.component_uid,ownProps);
 			let st = state.dynamo[component_uid];
 			return {
 				items: st,

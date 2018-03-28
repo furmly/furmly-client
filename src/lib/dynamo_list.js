@@ -27,7 +27,7 @@ export default (
 	invariants.validComponent(Container, "Container");
 
 	const mapStateToProps = (_, initialProps) => (state, ownProps) => {
-		let component_uid = getKey(state, ownProps.component_uid);
+		let component_uid = getKey(state, ownProps.component_uid, ownProps);
 		return {
 			confirmation:
 				state.app &&
@@ -76,8 +76,10 @@ export default (
 			this.state = {
 				validator: {},
 				items:
-					this.props.value ||
-					(this.props.args && this.props.args.default) ||
+					(this.props.value && this.props.value.slice()) ||
+					(this.props.args &&
+						this.props.args.default &&
+						this.props.args.default.slice()) ||
 					[],
 				modalVisible: false
 			};
@@ -178,9 +180,9 @@ export default (
 			//if theres a default then update everyone.
 			if (this.state.items && this.state.items.length) {
 				//setTimeout(() => {
-					this.props.valueChanged({
-						[this.props.name]: this.state.items
-					});
+				this.props.valueChanged({
+					[this.props.name]: this.state.items
+				});
 				//}, 0);
 			}
 			let equal = equivalent(this.props.dataTemplate, this.state.items);
@@ -389,6 +391,8 @@ export default (
 								validator={this.state.validator}
 								valueChanged={this.valueChanged}
 								navigation={this.props.navigation}
+								currentProcess={this.props.currentProcess}
+								currentStep={this.props.currentStep}
 							/>
 						}
 						visibility={this.state.modalVisible}

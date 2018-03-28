@@ -1422,6 +1422,7 @@ var preDispatch = config.preDispatch;
 var BASE_URL = global.BASE_URL || config.baseUrl;
 var CHAT_URL = global.CHAT_URL || config.chatUrl;
 var preLogin = config.preLogin;
+var throttled = {};
 var cache = new MemCache({ ttl: config.processorsCacheTimeout });
 var ACTIONS = {
   CLEAR_STACK: "CLEAR_STACK",
@@ -1561,12 +1562,14 @@ function openConfirmation(id, message, params) {
     payload: { message: message, params: params, id: id }
   };
 }
-function defaultError(dispatch, customType, _meta) {
+function defaultError(dispatch, customType, _meta, throttleEnabled) {
   return {
     type: customType || "SHOW_MESSAGE",
     meta: function meta(action, state, res) {
       if (customType && res.status !== 401) dispatch(displayMessage(res.statusText || res.headers && res.headers.map && res.headers.map.errormessage && res.headers.map.errormessage[0] || "Sorry , an error occurred while processing your request"));
-
+      console.log(action);
+      var args = action[CALL_API];
+      if (throttleEnabled) throttled[args.endpoint + args.body] = (throttled[args.endpoint + args.body] || 5000) * 2;
       //session expired
       if (res.status == 401) {
         dispatch(showMessage$1("Session may have expired"));
@@ -1698,35 +1701,41 @@ function runDynamoProcessor(id, args, key) {
   }
 
   return function (dispatch, getState) {
-    return dispatch(defineProperty({}, CALL_API, preDispatch({
-      endpoint: BASE_URL + "/api/processors/run/" + id,
-      types: [{
-        type: requestCustomType || ACTIONS.DYNAMO_PROCESSOR_RUNNING,
-        meta: { id: id, key: key, args: args }
-      }, {
-        type: resultCustomType || ACTIONS.DYNAMO_PROCESSOR_RAN,
-        payload: function payload(action, state, res) {
-          return res.json().then(function (data) {
-            if (data && typeof data.message == "string") {
-              dispatch(showMessage$1(data.message));
-            }
-            var response = { id: id, data: data, args: args, key: key, returnsUI: returnsUI };
-            if (config.cacheProcessorResponses && !disableCache) {
-              cache.store({ id: id, args: args }, response);
-            }
-            return response;
-          });
-        }
-      }, defaultError(dispatch, errorCustomType || ACTIONS.DYNAMO_PROCESSOR_FAILED, function () {
-        return key;
-      })],
-      method: "POST",
-      headers: {
-        Accept: "application/json",
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify(args)
-    }, getState())));
+    var body = JSON.stringify(args),
+        endpoint = BASE_URL + "/api/processors/run/" + id,
+        throttleKey = "" + endpoint + body;
+    setTimeout(function () {
+      dispatch(defineProperty({}, CALL_API, preDispatch({
+        endpoint: endpoint,
+        types: [{
+          type: requestCustomType || ACTIONS.DYNAMO_PROCESSOR_RUNNING,
+          meta: { id: id, key: key, args: args }
+        }, {
+          type: resultCustomType || ACTIONS.DYNAMO_PROCESSOR_RAN,
+          payload: function payload(action, state, res) {
+            return res.json().then(function (data) {
+              delete throttled[throttleKey];
+              if (data && typeof data.message == "string") {
+                dispatch(showMessage$1(data.message));
+              }
+              var response = { id: id, data: data, args: args, key: key, returnsUI: returnsUI };
+              if (config.cacheProcessorResponses && !disableCache) {
+                cache.store({ id: id, args: args }, response);
+              }
+              return response;
+            });
+          }
+        }, defaultError(dispatch, errorCustomType || ACTIONS.DYNAMO_PROCESSOR_FAILED, function () {
+          return key;
+        }, true)],
+        method: "POST",
+        headers: {
+          Accept: "application/json",
+          "Content-Type": "application/json"
+        },
+        body: body
+      }, getState())));
+    }, throttled[throttleKey] || 0);
   };
 }
 
@@ -1760,23 +1769,29 @@ function runDynamoProcess(details) {
               var _p = copy(state.dynamoNavigation.stack[state.dynamoNavigation.stack.length - 1]);
               _p.params.currentStep = (_p.params.currentStep || 0) + 1;
               dispatch(setParams(_p));
+              if (config.notifyStepAdvance) {
+                config.notifyStepAdvance(dispatch, state, _p);
+              }
             }
             return { id: details.id, data: d };
           }).catch(function (er) {
+            console.log(er);
             dispatch({
               type: "SHOW_MESSAGE",
               message: "An error occurred while trying to understand a response from the server."
             });
           });
         }
-      }, defaultError(dispatch, ACTIONS.DYNAMO_PROCESS_FAILED)],
+      }, defaultError(dispatch, ACTIONS.DYNAMO_PROCESS_FAILED, function () {
+        return details.id;
+      })],
       method: "POST",
       headers: {
         Accept: "application/json",
         "Content-Type": "application/json"
       },
       body: JSON.stringify(Object.assign({}, details.form, {
-        instanceId: details.instanceId,
+        $instanceId: details.instanceId,
         $uiOnDemand: !!config.uiOnDemand,
         $currentStep: details.currentStep
       }))
@@ -2288,7 +2303,9 @@ var dynamo_view = (function (Page, Container) {
 						value: this.props.value,
 						valueChanged: this.onValueChanged,
 						validator: this.state.validator,
-						navigation: this.props.navigation
+						navigation: this.props.navigation,
+						currentStep: this.props.currentStep,
+						currentProcess: this.props.currentProcess
 					})
 				);
 				/*jshint ignore:end*/
@@ -2403,7 +2420,9 @@ var dynamo_container = (function () {
 								value: value,
 								validator: _this3.state._validations[index],
 								valueChanged: _this3.onValueChanged,
-								navigation: _this3.props.navigation
+								navigation: _this3.props.navigation,
+								currentProcess: _this3.props.currentProcess,
+								currentStep: _this3.props.currentStep
 							}));
 							if (ComponentWrapper) return ComponentWrapper(x.elementType, x.uid, x.name, component);
 
@@ -2415,7 +2434,9 @@ var dynamo_container = (function () {
 						validator: _this3.state._validations[index],
 						key: x.name,
 						valueChanged: _this3.onValueChanged,
-						navigation: _this3.props.navigation
+						navigation: _this3.props.navigation,
+						currentProcess: _this3.props.currentProcess,
+						currentStep: _this3.props.currentStep
 					}));
 					return ComponentWrapper ? ComponentWrapper(x.elementType, x.uid, x.name, component) : component;
 					/*jshint ignore:end*/
@@ -2508,7 +2529,7 @@ var dynamo_process = (function (ProgressBar, TextView, DynamoView) {
 			value: function componentWillReceiveProps(next) {
 				if (next.completed && next.completed != this.props.completed) return this.props.navigation.goBack();
 
-				if ((next.id !== this.props.id || !_.isEqual(next.fetchParams, this.props.fetchParams)) && !this.props.busy) this.props.fetch(next.id, next.fetchParams);
+				if ((next.id !== this.props.id || !_.isEqual(next.fetchParams, this.props.fetchParams)) && !next.busy && !next.description || next.id == this.props.id && !_.isEqual(next.fetchParams, this.props.fetchParams) && !next.busy) this.props.fetch(next.id, next.fetchParams);
 			}
 		}, {
 			key: "submit",
@@ -2583,7 +2604,9 @@ var dynamo_section = (function (Layout, Header, Container) {
 						value: this.props.value,
 						valueChanged: this.props.valueChanged,
 						validator: this.props.validator,
-						navigation: this.props.navigation
+						navigation: this.props.navigation,
+						currentProcess: this.props.currentProcess,
+						currentStep: this.props.currentStep
 					})
 				);
 				/*jshint ignore:end*/
@@ -2617,8 +2640,8 @@ function getCurrentProcess(state) {
 	}
 	return null;
 }
-function getKey(state, key) {
-	return getCurrentStep(state) + "/" + getCurrentProcess(state) + "/" + key;
+function getKey(state, key, ownProps) {
+	return ownProps.currentStep + "/" + ownProps.currentProcess + "/" + key;
 }
 var exp = /^(\d+)\/([a-f\d]{24})\/.+$/i;
 function isValidKey(key) {
@@ -2643,7 +2666,7 @@ var dynamo_select = (function (ProgressIndicator, Layout, Container) {
 	var mapStateToProps = function mapStateToProps(_$$1, initialProps) {
 		return function (state, ownProps) {
 			if (ownProps.args.type == "PROCESSOR") {
-				var component_uid = getKey(state, ownProps.component_uid);
+				var component_uid = getKey(state, ownProps.component_uid, ownProps);
 				var st = state.dynamo[component_uid];
 				return {
 					items: st,
@@ -2835,7 +2858,7 @@ var dynamo_selectset = (function (Layout, Picker, ProgressBar, Container) {
 	};
 	var mapStateToProps = function mapStateToProps(_$$1, initialProps) {
 		return function (state, ownProps) {
-			var component_uid = getKey(state, ownProps.component_uid);
+			var component_uid = getKey(state, ownProps.component_uid, ownProps);
 			return {
 				busy: state.dynamo[component_uid + "-busy"],
 				items: state.dynamo[component_uid] || ownProps.args.items,
@@ -2890,7 +2913,7 @@ var dynamo_selectset = (function (Layout, Picker, ProgressBar, Container) {
 					this.respondToPickerValueChanged(next.value, next.items);
 				}
 
-				if (next.args.processor !== this.props.args.processor || next.component_uid !== this.props.component_uid && next.args.processor) this.fetchItems(next.args.processor, next.args.processorArgs, next.component_uid);
+				if (next.args.processor !== this.props.args.processor || next.component_uid !== this.props.component_uid && next.args.processor || !next.items) this.fetchItems(next.args.processor, next.args.processorArgs, next.component_uid);
 
 				if (next.items && next.items.length == 1) {
 					this.selectFirstItem(next.items);
@@ -3057,7 +3080,9 @@ var dynamo_selectset = (function (Layout, Picker, ProgressBar, Container) {
 						displayProperty: "displayLabel",
 						keyProperty: "id",
 						value: this.state.pickerValue,
-						valueChanged: this.onPickerValueChanged
+						valueChanged: this.onPickerValueChanged,
+						currentProcess: this.props.currentProcess,
+						currentStep: this.props.currentStep
 					}),
 					extraElements: React__default.createElement(Container, {
 						name: this.props.args.path || DynamoSelectSet.noPath(),
@@ -3065,7 +3090,9 @@ var dynamo_selectset = (function (Layout, Picker, ProgressBar, Container) {
 						valueChanged: this.onContainerValueChanged,
 						elements: this.state.items,
 						validator: this.state.containerValidator,
-						navigation: this.props.navigation
+						navigation: this.props.navigation,
+						currentProcess: this.props.currentProcess,
+						currentStep: this.props.currentStep
 					})
 				});
 				/*jshint ignore:end*/
@@ -3093,7 +3120,7 @@ var dynamo_list = (function (Layout, Button, List, Modal, ErrorText, ProgressBar
 
 	var mapStateToProps = function mapStateToProps(_$$1, initialProps) {
 		return function (state, ownProps) {
-			var component_uid = getKey(state, ownProps.component_uid);
+			var component_uid = getKey(state, ownProps.component_uid, ownProps);
 			return {
 				confirmation: state.app && state.app.confirmationResult && state.app.confirmationResult[component_uid],
 				templateCache: state.dynamo.templateCache,
@@ -3143,7 +3170,7 @@ var dynamo_list = (function (Layout, Button, List, Modal, ErrorText, ProgressBar
 
 			_this.state = {
 				validator: {},
-				items: _this.props.value || _this.props.args && _this.props.args.default || [],
+				items: _this.props.value && _this.props.value.slice() || _this.props.args && _this.props.args.default && _this.props.args.default.slice() || [],
 				modalVisible: false
 			};
 			_this.showModal = _this.showModal.bind(_this);
@@ -3386,7 +3413,9 @@ var dynamo_list = (function (Layout, Button, List, Modal, ErrorText, ProgressBar
 								name: DynamoList.modalName(),
 								validator: this.state.validator,
 								valueChanged: this.valueChanged,
-								navigation: this.props.navigation
+								navigation: this.props.navigation,
+								currentProcess: this.props.currentProcess,
+								currentStep: this.props.currentStep
 							}),
 							visibility: this.state.modalVisible,
 							done: this.closeModal
@@ -3578,7 +3607,7 @@ var dynamo_grid = (function (Layout, List, ItemView, Header, ProgressBar, Comman
 	};
 	var mapStateToProps = function mapStateToProps(_$$1, initialProps) {
 		return function (state, ownProps) {
-			var component_uid = getKey(state, ownProps.component_uid);
+			var component_uid = getKey(state, ownProps.component_uid, ownProps);
 			var result = state.dynamo[component_uid];
 			return {
 				component_uid: component_uid,
@@ -3881,7 +3910,9 @@ var dynamo_grid = (function (Layout, List, ItemView, Header, ProgressBar, Comman
 						valueChanged: this.filterValueChanged,
 						name: DynamoGrid.filterViewName(),
 						validator: this._filterValidator,
-						navigation: this.props.navigation
+						navigation: this.props.navigation,
+						currentProcess: this.props.currentProcess,
+						currentStep: this.props.currentStep
 					})
 				) : this.props.fetchingFilterTemplate ? React__default.createElement(ProgressBar, null) : null,
 				    footer = !this.finished() && this.props.busy ? React__default.createElement(ProgressBar, null) : null;
@@ -3913,7 +3944,9 @@ var dynamo_grid = (function (Layout, List, ItemView, Header, ProgressBar, Comman
 							name: DynamoGrid.itemViewName(),
 							validator: this.state.validator,
 							valueChanged: this.valueChanged,
-							navigation: this.props.navigation
+							navigation: this.props.navigation,
+							currentProcess: this.props.currentProcess,
+							currentStep: this.props.currentStep
 						})
 					}),
 					React__default.createElement(CommandsView, {
@@ -3929,7 +3962,9 @@ var dynamo_grid = (function (Layout, List, ItemView, Header, ProgressBar, Comman
 							elements: this.state.commandResult,
 							name: DynamoGrid.commandResultViewName(),
 							validator: {},
-							navigation: this.props.navigation
+							navigation: this.props.navigation,
+							currentProcess: this.props.currentProcess,
+							currentStep: this.props.currentStep
 						}),
 						title: "",
 						busy: this.props.commandProcessing
@@ -4092,7 +4127,7 @@ var dynamo_fileupload = (function (Uploader, ProgressBar, Text) {
 
 	var mapStateToProps = function mapStateToProps(_$$1, initialProps) {
 		return function (state, ownProps) {
-			var component_uid = getKey(state, ownProps.component_uid);
+			var component_uid = getKey(state, ownProps.component_uid, ownProps);
 			var st = state.dynamo[component_uid] || {};
 			return {
 				component_uid: component_uid,
@@ -4145,7 +4180,7 @@ var dynamo_actionview = (function (Layout, ProgressBar, Filter, FilterContainer,
 	};
 	var mapStateToProps = function mapStateToProps(_$$1, initialProps) {
 		return function (state, ownProps) {
-			var component_uid = getKey(state, ownProps.component_uid),
+			var component_uid = getKey(state, ownProps.component_uid, ownProps),
 			    _actionState = state.dynamo[component_uid];
 			return {
 				resultUI: _actionState && (_actionState.ui || _actionState),
@@ -4220,7 +4255,9 @@ var dynamo_actionview = (function (Layout, ProgressBar, Filter, FilterContainer,
 							name: DynamoActionView.itemViewName(),
 							validator: this._filterValidator,
 							valueChanged: this.valueChanged,
-							navigation: this.props.navigation
+							navigation: this.props.navigation,
+							currentProcess: this.props.currentProcess,
+							currentStep: this.props.currentStep
 						})
 					),
 					React__default.createElement(ContentContainer, {
@@ -4228,7 +4265,9 @@ var dynamo_actionview = (function (Layout, ProgressBar, Filter, FilterContainer,
 						value: this.props.resultData,
 						validator: {},
 						valueChanged: this.doNothing,
-						navigation: this.props.navigation
+						navigation: this.props.navigation,
+						currentProcess: this.props.currentProcess,
+						currentStep: this.props.currentStep
 					})
 				);
 			}
@@ -4774,7 +4813,7 @@ var defaultMap = {
 };
 
 function index () {
-	var _Object$assign6, _Object$assign15, _Object$assign16, _Object$assign18, _Object$assign19, _ref;
+	var _Object$assign7, _Object$assign16, _Object$assign17, _Object$assign19, _Object$assign20, _ref;
 
 	var state = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : {};
 	var action = arguments[1];
@@ -4797,7 +4836,7 @@ function index () {
 			delete state.navigationContext;
 			return Object.assign({}, state);
 		case ACTIONS.DYNAMO_PROCESS_FAILED:
-			return Object.assign({}, state, { busy: false });
+			return Object.assign({}, state, defineProperty({}, action.meta + "-busy", false));
 		case ACTIONS.REPLACE_STACK:
 			var _state = action.payload.reduce(function (sum, x) {
 				if (state[x.params.id]) {
@@ -4851,14 +4890,14 @@ function index () {
 			    busy = false,
 			    description = proc.description;
 			if (config.uiOnDemand && action.payload.data && action.payload.data.status == "COMPLETED" || !config.uiOnDemand && (description.steps.length == 1 || currentState.currentStep + 1 > description.steps.length - 1)) {
-				var _Object$assign5;
+				var _Object$assign6;
 
-				return Object.assign({}, state, (_Object$assign5 = {}, defineProperty(_Object$assign5, id, {
+				return Object.assign({}, state, (_Object$assign6 = {}, defineProperty(_Object$assign6, id, {
 					completed: true
-				}), defineProperty(_Object$assign5, id + "-busy", false), defineProperty(_Object$assign5, "message", (typeof data === "undefined" ? "undefined" : _typeof(data)) == "object" && data.message || null), _Object$assign5));
+				}), defineProperty(_Object$assign6, id + "-busy", false), defineProperty(_Object$assign6, "message", (typeof data === "undefined" ? "undefined" : _typeof(data)) == "object" && data.message || null), _Object$assign6));
 			}
 
-			currentState.instanceId = data ? data.instanceId : null;
+			currentState.instanceId = data ? data.$instanceId : null;
 			if (config.uiOnDemand && description.disableBackwardNavigation) description.steps[0] = data.$nextStep;else {
 				if (config.uiOnDemand) {
 					if (description.steps.length == currentState.currentStep + 1) {
@@ -4868,7 +4907,7 @@ function index () {
 				currentState.currentStep = currentState.currentStep + 1;
 			}
 			currentState[currentState.currentStep] = (typeof data === "undefined" ? "undefined" : _typeof(data)) == "object" && _typeof(data.message) == "object" && data.message;
-			return Object.assign({}, state, (_Object$assign6 = {}, defineProperty(_Object$assign6, id, Object.assign({}, state[id], currentState)), defineProperty(_Object$assign6, id + "-busy", busy), _Object$assign6));
+			return Object.assign({}, state, (_Object$assign7 = {}, defineProperty(_Object$assign7, id, Object.assign({}, state[id], currentState)), defineProperty(_Object$assign7, id + "-busy", busy), _Object$assign7));
 
 		case ACTIONS.FETCHING_GRID:
 			return Object.assign({}, state, defineProperty({}, action.meta.key, fetchingGrid(state[action.meta.key], action)));
@@ -4888,25 +4927,25 @@ function index () {
 			return Object.assign({}, state, defineProperty({}, action.payload.key, reduceGrid(state[action.payload.key], action)));
 
 		case ACTIONS.DYNAMO_PROCESS_RUNNING:
-			return Object.assign({}, state, (_Object$assign15 = {}, defineProperty(_Object$assign15, action.meta.id + "-busy", !action.error), defineProperty(_Object$assign15, action.meta.id, Object.assign({}, state[action.meta.id], defineProperty({}, state[action.meta.id].currentStep || 0, action.meta.form))), _Object$assign15));
+			return Object.assign({}, state, (_Object$assign16 = {}, defineProperty(_Object$assign16, action.meta.id + "-busy", !action.error), defineProperty(_Object$assign16, action.meta.id, Object.assign({}, state[action.meta.id], defineProperty({}, state[action.meta.id].currentStep || 0, action.meta.form))), _Object$assign16));
 		case ACTIONS.DYNAMO_PROCESSOR_RAN:
 			//configureTemplates(state, action);
-			return Object.assign({}, state, (_Object$assign16 = {}, defineProperty(_Object$assign16, action.payload.key, action.payload.data), defineProperty(_Object$assign16, action.payload.key + "-busy", false), _Object$assign16));
+			return Object.assign({}, state, (_Object$assign17 = {}, defineProperty(_Object$assign17, action.payload.key, action.payload.data), defineProperty(_Object$assign17, action.payload.key + "-busy", false), _Object$assign17));
 
 		//return Object.assign({ target }, state, {});
 
 		case ACTIONS.DYNAMO_PROCESSOR_RUNNING:
 			return Object.assign({}, state, defineProperty({}, action.meta.key + "-busy", !action.error));
 		case ACTIONS.DYNAMO_PROCESSOR_FAILED:
-			return Object.assign({}, state, (_Object$assign18 = {}, defineProperty(_Object$assign18, action.meta + "-busy", false), defineProperty(_Object$assign18, action.meta, null), _Object$assign18));
+			return Object.assign({}, state, (_Object$assign19 = {}, defineProperty(_Object$assign19, action.meta + "-busy", false), defineProperty(_Object$assign19, action.meta, null), _Object$assign19));
 		case ACTIONS.FETCHED_PROCESS:
 			var fetchedValue = Object.assign({}, action.payload.data.data);
 			var fetchedDescription = Object.assign({}, action.payload.data.description);
-			return Object.assign({}, state, (_Object$assign19 = {}, defineProperty(_Object$assign19, action.payload.id, {
+			return Object.assign({}, state, (_Object$assign20 = {}, defineProperty(_Object$assign20, action.payload.id, {
 				description: fetchedDescription,
 				0: fetchedValue,
 				templateCache: {}
-			}), defineProperty(_Object$assign19, "navigationContext", state.navigationContext), defineProperty(_Object$assign19, action.payload.id + "-busy", false), _Object$assign19));
+			}), defineProperty(_Object$assign20, "navigationContext", state.navigationContext), defineProperty(_Object$assign20, action.payload.id + "-busy", false), _Object$assign20));
 		case ACTIONS.FETCHING_PROCESS:
 			return Object.assign({}, state, defineProperty({}, action.meta + "-busy", !action.error));
 		case ACTIONS.FAILED_TO_FETCH_PROCESS:
@@ -4958,12 +4997,12 @@ function getTemplate(busyIndicator) {
 	return Object.assign({}, state, defineProperty({}, busyIndicator, !action.error));
 }
 function gotTemplate(busyIndicator, propName) {
-	var _Object$assign35;
+	var _Object$assign36;
 
 	var state = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : {};
 	var action = arguments[3];
 
-	return Object.assign({}, state, (_Object$assign35 = {}, defineProperty(_Object$assign35, propName, action.payload.data), defineProperty(_Object$assign35, busyIndicator, false), _Object$assign35));
+	return Object.assign({}, state, (_Object$assign36 = {}, defineProperty(_Object$assign36, propName, action.payload.data), defineProperty(_Object$assign36, busyIndicator, false), _Object$assign36));
 }
 function failedToGetTemplate(busyIndicator) {
 	var state = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : {};

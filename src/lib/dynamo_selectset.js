@@ -17,7 +17,7 @@ export default (Layout, Picker, ProgressBar, Container) => {
 		};
 	};
 	const mapStateToProps = (_, initialProps) => (state, ownProps) => {
-		let component_uid = getKey(state, ownProps.component_uid);
+		let component_uid = getKey(state, ownProps.component_uid, ownProps);
 		return {
 			busy: state.dynamo[`${component_uid}-busy`],
 			items: state.dynamo[component_uid] || ownProps.args.items,
@@ -78,7 +78,8 @@ export default (Layout, Picker, ProgressBar, Container) => {
 			if (
 				next.args.processor !== this.props.args.processor ||
 				(next.component_uid !== this.props.component_uid &&
-					next.args.processor)
+					next.args.processor) ||
+				!next.items
 			)
 				this.fetchItems(
 					next.args.processor,
@@ -255,6 +256,8 @@ export default (Layout, Picker, ProgressBar, Container) => {
 							keyProperty="id"
 							value={this.state.pickerValue}
 							valueChanged={this.onPickerValueChanged}
+							currentProcess={this.props.currentProcess}
+							currentStep={this.props.currentStep}
 						/>
 					}
 					extraElements={
@@ -267,6 +270,8 @@ export default (Layout, Picker, ProgressBar, Container) => {
 							elements={this.state.items}
 							validator={this.state.containerValidator}
 							navigation={this.props.navigation}
+							currentProcess={this.props.currentProcess}
+							currentStep={this.props.currentStep}
 						/>
 					}
 				/>

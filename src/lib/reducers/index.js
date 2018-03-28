@@ -26,7 +26,7 @@ export default function(state = {}, action) {
 			delete state.navigationContext;
 			return Object.assign({}, state);
 		case ACTIONS.DYNAMO_PROCESS_FAILED:
-			return Object.assign({}, state, { busy: false });
+			return Object.assign({}, state, { [`${action.meta}-busy`]: false });
 		case ACTIONS.REPLACE_STACK:
 			var _state = action.payload.reduce(
 				(sum, x) => {
@@ -122,7 +122,7 @@ export default function(state = {}, action) {
 				});
 			}
 
-			currentState.instanceId = data ? data.instanceId : null;
+			currentState.instanceId = data ? data.$instanceId : null;
 			if (config.uiOnDemand && description.disableBackwardNavigation)
 				description.steps[0] = data.$nextStep;
 			else {

@@ -69,7 +69,7 @@ export default (
 		};
 	};
 	const mapStateToProps = (_, initialProps) => (state, ownProps) => {
-		let component_uid = getKey(state, ownProps.component_uid);
+		let component_uid = getKey(state, ownProps.component_uid,ownProps);
 		var result = state.dynamo[component_uid];
 		return {
 			component_uid,
@@ -104,7 +104,7 @@ export default (
 			this.state = {
 				validator: {},
 				showItemView: false,
-				filter:this.props.filter,
+				filter: this.props.filter,
 				count: this.props.args.pageCount || 5,
 				showCommandResultView: false
 			};
@@ -466,6 +466,8 @@ export default (
 							name={DynamoGrid.filterViewName()}
 							validator={this._filterValidator}
 							navigation={this.props.navigation}
+							currentProcess={this.props.currentProcess}
+							currentStep={this.props.currentStep}
 						/>
 					</Header>
 				) : this.props.fetchingFilterTemplate ? (
@@ -514,6 +516,8 @@ export default (
 								validator={this.state.validator}
 								valueChanged={this.valueChanged}
 								navigation={this.props.navigation}
+								currentProcess={this.props.currentProcess}
+								currentStep={this.props.currentStep}
 							/>
 						}
 					/>
@@ -532,6 +536,8 @@ export default (
 								name={DynamoGrid.commandResultViewName()}
 								validator={{}}
 								navigation={this.props.navigation}
+								currentProcess={this.props.currentProcess}
+								currentStep={this.props.currentStep}
 							/>
 						}
 						title={""}
