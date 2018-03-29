@@ -52,7 +52,7 @@ export default function(state = {}, action) {
 				let _state = state[action.payload.item.params.id],
 					currentStep = _state.currentStep || 0;
 				if (
-					action.payload.references[action.payload.item.params.id] ==
+					action.payload.references[action.payload.item.params.id][0] ==
 					1
 				) {
 					return Object.assign(

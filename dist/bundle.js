@@ -4858,7 +4858,7 @@ function index () {
 				//confirm there are no other references down the line.
 				var _state2 = state[action.payload.item.params.id],
 				    currentStep = _state2.currentStep || 0;
-				if (action.payload.references[action.payload.item.params.id] == 1) {
+				if (action.payload.references[action.payload.item.params.id][0] == 1) {
 					return Object.assign({},
 					//copy over state that does not belong to the removed object
 					Object.keys(state).reduce(function (sum, x) {
@@ -5323,23 +5323,27 @@ function navigation () {
 	switch (action.type) {
 		case ACTIONS.SET_DYNAMO_PARAMS:
 		case ACTIONS.ALREADY_VISIBLE:
-			state.stack.push(action.payload);
+			if (hasScreenAlready(state, action.payload)) {
+				makeTop(state, action.payload);
+			} else {
+				state.stack.push(action.payload);
+			}
 			var stack = copyStack(state);
-			countRef(stack, action.payload);
+			countRef(stack, action.payload, stack.stack.length - 1);
 			return Object.assign({}, state, stack);
 		case ACTIONS.REPLACE_STACK:
 			var stack = createStack();
 			stack.stack = action.payload.slice();
-			stack.stack.forEach(countRef.bind(null, stack));
+			stack.stack.forEach(countRef.bind(null, stack, stack.stack.length - 1));
 			return Object.assign({}, state, stack);
 
 		case ACTIONS.REMOVE_LAST_DYNAMO_PARAMS:
 			var stack = copyStack(state),
 			    item = stack.stack.pop();
 			if (item.key == "Dynamo") {
-				stack._references[item.params.id]--;
+				stack._references[0] = stack._references[item.params.id][0]--;
 				//clean up.
-				if (!stack._references[item.params.id]) delete stack._references[item.params.id];
+				if (!stack._references[item.params.id][0]) delete stack._references[item.params.id];
 			}
 			return Object.assign({}, state, stack);
 		case ACTIONS.CLEAR_STACK:
@@ -5354,9 +5358,23 @@ function copyStack(state) {
 	    _references = JSON.parse(JSON.stringify(state._references));
 	return { stack: stack, _references: _references };
 }
-
-function countRef(stack, e) {
-	if (e.key == "Dynamo") stack._references[e.params.id] = (stack._references[e.params.id] || 0) + 1;
+function makeTop(state, curr) {
+	state.stack.push(state.stack.splice(state._references[curr.params.id][1], 1));
+	state._references[curr.params.id][1] = state.stack.length - 1;
+}
+function hasScreenAlready(state, current) {
+	return state.stack.filter(function (x) {
+		return _.isEqual(x, current);
+	}).length;
+}
+function countRef(stack, e, index) {
+	if (e.key == "Dynamo") {
+		if (stack._references[e.params.id]) {
+			stack._references[e.params.id][0] = stack._references[e.params.id][0] + 1;
+		} else {
+			stack._references[e.params.id] = [1, index];
+		}
+	}
 }
 
 function createStack() {
