@@ -294,15 +294,18 @@ export function getSingleItemForGrid(id, args, key) {
 export function getRefreshToken() {
   return (dispatch, getState) => {
     dispatch({
-      [CALL_API]: preRefeshToken({
-        endpoint: `${BASE_URL}/api/refresh_token`,
-        types: [
-          GET_REFRESH_TOKEN,
-          GOT_REFRESH_TOKEN,
-          FAILED_TO_GET_REFRESH_TOKEN
-        ],
-        body: null
-      })
+      [CALL_API]: preRefeshToken(
+        {
+          endpoint: `${BASE_URL}/api/refresh_token`,
+          types: [
+            GET_REFRESH_TOKEN,
+            GOT_REFRESH_TOKEN,
+            FAILED_TO_GET_REFRESH_TOKEN
+          ],
+          body: null
+        },
+        getState()
+      )
     });
   };
 }
