@@ -51,7 +51,7 @@ export default (
 	invariants.validComponent(ChatLayout, "ChatLayout");
 
 	const mapStateToProps = state => {
-		let _state = state.chat;
+		let _state = state.dynamo.chat;
 		return {
 			chat: _state.chat,
 			contacts: _state.contacts,

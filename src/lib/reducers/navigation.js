@@ -24,7 +24,7 @@ export default function(state = createStack(), action) {
 		case ACTIONS.REMOVE_LAST_DYNAMO_PARAMS:
 			var stack = copyStack(state),
 				item = stack.stack.pop();
-			if (item.key == "Dynamo") {
+			if (item && item.key == "Dynamo" && stack._references[item.params.id]) {
 				stack._references[0] = stack._references[item.params.id][0]--;
 				//clean up.
 				if (!stack._references[item.params.id][0])
@@ -49,7 +49,7 @@ function makeTop(state, curr) {
 	);
 	state._references[curr.params.id][1] = state.stack.length - 1;
 }
-function hasScreenAlready(state, current) {
+export function hasScreenAlready(state, current) {
 	return state.stack.filter(x => _.isEqual(x, current)).length;
 }
 function countRef(stack, e, index) {

@@ -1,13 +1,14 @@
 import React, { Component } from "react";
 import { connect } from "react-redux";
 import invariants from "./utils/invariants";
+import { valueChanged } from "./actions";
 export default (Page, Container) => {
 	invariants.validComponent(Page, "Page");
 	invariants.validComponent(Container, "Container");
 	//map elements in DynamoView props to elements in store.
 	const mapStateToProps = (_, initialProps) => (state, ownProps) => {
 		//console.log("mapping state to props");
-		let _state = state.dynamo[ownProps.currentProcess],
+		let _state = state.dynamo.view[ownProps.currentProcess],
 			description = _state && _state.description,
 			map = {
 				value: (_state && _state[ownProps.currentStep]) || null
@@ -22,6 +23,11 @@ export default (Page, Container) => {
 		}
 		return map;
 	};
+	const mapDispatchToProps = dispatch => {
+		return {
+			valueChanged: args => dispatch(valueChanged(args))
+		};
+	};
 
 	class DynamoView extends Component {
 		constructor(props) {
@@ -30,17 +36,22 @@ export default (Page, Container) => {
 			this.submit = this.submit.bind(this);
 			//pass reference to validate func
 			this.state = {
-				form: this.props.value,
+			//	form: this.props.value,
 				validator: {}
 			};
 		}
 		componentWillReceiveProps(next) {
-			if (next.value !== this.props.value) {
-				this.setState({ form: next.value });
-			}
+			// if (next.value !== this.props.value) {
+			// 	this.setState({ form: next.value });
+			// }
 		}
 		onValueChanged(form) {
-			this.state.form = form.dynamo_view;
+			//this.state.form = form.dynamo_view;
+			this.props.valueChanged({
+				form: form.dynamo_view,
+				id: this.props.currentProcess,
+				step: this.props.currentStep
+			});
 		}
 		submit() {
 			this.state.validator
@@ -50,7 +61,7 @@ export default (Page, Container) => {
 						console.log(
 							"currentStep:" + (this.props.currentStep || "0")
 						);
-						this.props.submit(this.state.form);
+						this.props.submit(this.props.value);
 					},
 					() => {
 						console.warn("the form is invalid");
@@ -82,5 +93,5 @@ export default (Page, Container) => {
 		}
 	}
 
-	return connect(mapStateToProps)(DynamoView);
+	return connect(mapStateToProps, mapDispatchToProps)(DynamoView);
 };

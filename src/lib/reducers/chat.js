@@ -1,19 +1,7 @@
 import { ACTIONS } from "../actions";
-import { toggleAllBusyIndicators } from "./index";
 import uuid from "uuid/v4";
 export default function(state = {}, action) {
 	switch (action.type) {
-		case "persist/REHYDRATE":
-			var incoming = action.payload.chat;
-			if (incoming) {
-				toggleAllBusyIndicators(incoming);
-				return {
-					...state,
-					...incoming
-				};
-			}
-			return state;
-
 		case ACTIONS.LOGIN_CHAT:
 			return Object.assign({}, state, {
 				busyWithChatLogin: true,

@@ -28,38 +28,35 @@ export default (
 		};
 	};
 	const mapStateToProps = (_, initialProps) => (state, ownProps) => {
-		var component_uid = getKey(state, ownProps.component_uid,ownProps),
-			_actionState = state.dynamo[component_uid];
+		var component_uid = getKey(state, ownProps.component_uid, ownProps),
+			_actionState = state.dynamo.view[component_uid];
 		return {
 			resultUI: _actionState && (_actionState.ui || _actionState),
 			resultData: _actionState && _actionState.data,
-			busy: !!state.dynamo[component_uid + "-busy"],
+			busy: !!state.dynamo.view[component_uid + "-busy"],
 			component_uid
 		};
 	};
+	const itemViewName = "_item_view";
+	const contentViewName = "_content_view";
 	class DynamoActionView extends Component {
 		constructor(props) {
 			super(props);
-			this.state = { form: this.props.value };
-			this._filterValidator = {};
+			this.state = { _filterValidator: {}, validator: {} };
 			this.filter = this.filter.bind(this);
 			this.valueChanged = this.valueChanged.bind(this);
 		}
 		componentWillReceiveProps(next) {
-			if (_.isEqual(next.value, this.state.form)) {
-				//setTimeout(() => {
-				this.setState({
-					form: next.value
-				});
-				//}, 0);
+			if (!_.isEqual(next.resultData, this.props.resultData)) {
+				this.resultValueChanged(next.resultData);
 			}
 		}
 		filter() {
-			this._filterValidator.validate().then(
+			this.state._filterValidator.validate().then(
 				() => {
 					this.props.run(
 						this.props.args.action,
-						this.state.form,
+						this.props.value,
 						this.props.component_uid
 					);
 				},
@@ -68,15 +65,14 @@ export default (
 				}
 			);
 		}
-		static itemViewName() {
-			return "_itemView_";
+		resultValueChanged(value) {
+			this.valueChanged(this.props.value, value);
 		}
-		valueChanged(value) {
-			this.state.form = value
-				? value[DynamoActionView.itemViewName()]
-				: null;
+		valueChanged(value, resultValue = this.props.resultData) {
+			this.props.valueChanged({
+				[this.props.name]: Object.assign(value || {}, resultValue || {})
+			});
 		}
-		doNothing() {}
 		render() {
 			if (this.props.busy) return <ProgressBar />;
 			return (
@@ -87,9 +83,12 @@ export default (
 					>
 						<FilterContainer
 							elements={this.props.args.elements}
-							value={this.state.form}
-							name={DynamoActionView.itemViewName()}
-							validator={this._filterValidator}
+							value={
+								this.props.value &&
+								this.props.value[itemViewName]
+							}
+							name={itemViewName}
+							validator={this.state._filterValidator}
 							valueChanged={this.valueChanged}
 							navigation={this.props.navigation}
 							currentProcess={this.props.currentProcess}
@@ -97,10 +96,14 @@ export default (
 						/>
 					</Filter>
 					<ContentContainer
+						name={contentViewName}
 						elements={this.props.resultUI}
-						value={this.props.resultData}
-						validator={{}}
-						valueChanged={this.doNothing}
+						value={
+							this.props.value &&
+							this.props.value[contentViewName]
+						}
+						validator={this.state.validator}
+						valueChanged={this.resultValueChanged}
 						navigation={this.props.navigation}
 						currentProcess={this.props.currentProcess}
 						currentStep={this.props.currentStep}

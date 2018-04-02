@@ -15,7 +15,7 @@ export default (Link, NavigationActions) => {
 
 	const mapStateToProps = (_, initialProps) => state => {
 		return {
-			context: state && state.dynamo && state.dynamo.navigationContext
+			context: state && state.dynamo.view && state.dynamo.view.navigationContext
 		};
 	};
 

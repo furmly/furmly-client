@@ -16,12 +16,12 @@ export default (ProgressBar, TextView, DynamoView) => {
 
 	//map elements in DynamoInput props to elements in store.
 	const mapStateToProps = (_, initialProps) => (state, ownProps) => {
-		let _state = state.dynamo[`${ownProps.id}`];
+		let _state = state.dynamo.view[`${ownProps.id}`];
 		return {
-			busy: !!state.dynamo[`${ownProps.id}-busy`],
+			busy: !!state.dynamo.view[`${ownProps.id}-busy`],
 			description: _state && _state.description,
 			instanceId: _state && _state.instanceId,
-			message: state.dynamo.message,
+			message: state.dynamo.view.message,
 			completed: _state && _state.completed
 		};
 	};
@@ -45,7 +45,8 @@ export default (ProgressBar, TextView, DynamoView) => {
 		componentDidMount() {
 			if (
 				!this.props.description ||
-				this.props.id !== this.props.description._id
+				(this.props.id !== this.props.description._id &&
+					this.props.id !== this.props.description.uid)
 			) {
 				this.props.fetch(this.props.id, this.props.fetchParams);
 			}
@@ -60,7 +61,8 @@ export default (ProgressBar, TextView, DynamoView) => {
 					!next.busy &&
 					!next.description) ||
 				(next.id == this.props.id &&
-					!_.isEqual(next.fetchParams, this.props.fetchParams) && !next.busy)
+					!_.isEqual(next.fetchParams, this.props.fetchParams) &&
+					!next.busy)
 			)
 				this.props.fetch(next.id, next.fetchParams);
 		}

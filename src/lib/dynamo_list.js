@@ -33,10 +33,10 @@ export default (
 				state.app &&
 				state.app.confirmationResult &&
 				state.app.confirmationResult[component_uid],
-			templateCache: state.dynamo.templateCache,
-			dataTemplate: state.dynamo[component_uid],
+			templateCache: state.dynamo.view.templateCache,
+			dataTemplate: state.dynamo.view[component_uid],
 			component_uid,
-			busy: state.dynamo[`${component_uid}-busy`]
+			busy: state.dynamo.view[`${component_uid}-busy`]
 		};
 	};
 	const equivalent = function(arr, arr2) {
@@ -264,27 +264,32 @@ export default (
 		closeModal(result) {
 			//he/she clicked ok
 			if (result) {
-				this.state.validator.validate().then(() => {
-					let items = this.state.items || [];
+				this.state.validator
+					.validate()
+					.then(() => {
+						let items = this.state.items || [];
 
-					if (!this.state.edit) items.push(this.state.form);
-					else
-						items.splice(
-							items.indexOf(this.state.edit),
-							1,
-							this.state.form
-						);
-					this.props.valueChanged({ [this.props.name]: items });
-					this.setState({
-						items: Object.assign([], items),
-						modalVisible: false,
-						edit: null,
-						form: null
+						if (!this.state.edit) items.push(this.state.form);
+						else
+							items.splice(
+								items.indexOf(this.state.edit),
+								1,
+								this.state.form
+							);
+						this.props.valueChanged({ [this.props.name]: items });
+						this.setState({
+							items: Object.assign([], items),
+							modalVisible: false,
+							edit: null,
+							form: null
+						});
+
+						if (this.props.args.listItemDataTemplateProcessor)
+							this.getListItemDataTemplate(items);
+					})
+					.catch(er => {
+						console.log(er);
 					});
-
-					if (this.props.args.listItemDataTemplateProcessor)
-						this.getListItemDataTemplate(items);
-				});
 				return;
 			}
 			//canceled the modal box.
