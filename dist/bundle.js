@@ -1419,12 +1419,16 @@ var MemCache = function () {
 }();
 
 var preDispatch = config.preDispatch;
+var preRefeshToken = config.preRefeshToken;
 var BASE_URL = global.BASE_URL || config.baseUrl;
 var CHAT_URL = global.CHAT_URL || config.chatUrl;
 var preLogin = config.preLogin;
 var throttled = {};
 var cache = new MemCache({ ttl: config.processorsCacheTimeout });
 var ACTIONS = {
+  GET_REFRESH_TOKEN: "GET_REFRESH_TOKEN",
+  GOT_REFRESH_TOKEN: "GOT_REFRESH_TOKEN",
+  FAILED_TO_GET_REFRESH_TOKEN: "FAILED_TO_GET_REFRESH_TOKEN",
   CLEAR_STACK: "CLEAR_STACK",
   REPLACE_STACK: "REPLACE_STACK",
   SET_DYNAMO_PARAMS: "SET_DYNAMO_PARAMS",
@@ -1673,6 +1677,16 @@ function getSingleItemForGrid(id, args, key) {
     errorCustomType: ACTIONS.ERROR_WHILE_GETTING_SINGLE_ITEM_FOR_GRID,
     disableCache: true
   });
+}
+
+function getRefreshToken() {
+  return function (dispatch, getState) {
+    dispatch(defineProperty({}, CALL_API, preRefeshToken({
+      endpoint: BASE_URL + "/api/refresh_token",
+      types: [GET_REFRESH_TOKEN, GOT_REFRESH_TOKEN, FAILED_TO_GET_REFRESH_TOKEN],
+      body: null
+    })));
+  };
 }
 
 function runDynamoProcessor(id, args, key) {
@@ -3531,7 +3545,7 @@ var dynamo_nav = (function (Link, NavigationActions) {
 				if (firstItemIsLink) link = key_value.shift();
 				var params = key_value.reduce(function (sum, x) {
 					var sp = x.split("=");
-					return sum[sp[0]] = sp[1], sum;
+					return sum[sp[0]] = decodeURIComponent(sp[1]), sum;
 				}, {}),
 				    result = { params: params };
 				if (firstItemIsLink || !key_value.length) result.link = link;
@@ -5397,4 +5411,6 @@ exports.goBack = goBack;
 exports.replaceStack = replaceStack;
 exports.clearNavigationStack = clearNavigationStack;
 exports.alreadyVisible = alreadyVisible;
+exports.getRefreshToken = getRefreshToken;
+exports.ACTIONS = ACTIONS;
 //# sourceMappingURL=bundle.js.map

@@ -4,12 +4,16 @@ import openSocket from "socket.io-client";
 import MemCache from "../utils/memcache";
 
 const preDispatch = config.preDispatch,
+  preRefeshToken = config.preRefeshToken,
   BASE_URL = global.BASE_URL || config.baseUrl,
   CHAT_URL = global.CHAT_URL || config.chatUrl,
   preLogin = config.preLogin,
   throttled = {},
   cache = new MemCache({ ttl: config.processorsCacheTimeout });
 export const ACTIONS = {
+  GET_REFRESH_TOKEN: "GET_REFRESH_TOKEN",
+  GOT_REFRESH_TOKEN: "GOT_REFRESH_TOKEN",
+  FAILED_TO_GET_REFRESH_TOKEN: "FAILED_TO_GET_REFRESH_TOKEN",
   CLEAR_STACK: "CLEAR_STACK",
   REPLACE_STACK: "REPLACE_STACK",
   SET_DYNAMO_PARAMS: "SET_DYNAMO_PARAMS",
@@ -285,6 +289,22 @@ export function getSingleItemForGrid(id, args, key) {
     errorCustomType: ACTIONS.ERROR_WHILE_GETTING_SINGLE_ITEM_FOR_GRID,
     disableCache: true
   });
+}
+
+export function getRefreshToken() {
+  return (dispatch, getState) => {
+    dispatch({
+      [CALL_API]: preRefeshToken({
+        endpoint: `${BASE_URL}/api/refresh_token`,
+        types: [
+          GET_REFRESH_TOKEN,
+          GOT_REFRESH_TOKEN,
+          FAILED_TO_GET_REFRESH_TOKEN
+        ],
+        body: null
+      })
+    });
+  };
 }
 
 export function runDynamoProcessor(
