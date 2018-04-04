@@ -29,11 +29,11 @@ export default (
 	};
 	const mapStateToProps = (_, initialProps) => (state, ownProps) => {
 		var component_uid = getKey(state, ownProps.component_uid,ownProps),
-			_actionState = state.dynamo[component_uid];
+			_actionState = state.dynamo.view[component_uid];
 		return {
 			resultUI: _actionState && (_actionState.ui || _actionState),
 			resultData: _actionState && _actionState.data,
-			busy: !!state.dynamo[component_uid + "-busy"],
+			busy: !!state.dynamo.view[component_uid + "-busy"],
 			component_uid
 		};
 	};

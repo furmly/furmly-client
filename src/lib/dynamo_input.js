@@ -16,23 +16,6 @@ export default (LabelWrapper, Input, DatePicker, Checkbox) => {
 	invariants.validComponent(DatePicker, "DatePicker");
 	invariants.validComponent(Checkbox, "Checkbox");
 
-	// const mapStateToProps = (_, initialProps) => (state, ownProps) => {
-	// 	if (ownProps.asyncValidators && ownProps.asyncValidators.length) {
-	// 		return {
-	// 			valid:
-	// 				state.dynamo[
-	// 					ownProps.asyncValidators[0] + ownProps.component_uid
-	// 				]
-	// 		};
-	// 	}
-	// 	return {};
-	// };
-	// const mapDispatchToProps = dispatch => {
-	// 	return {
-	// 		runAsyncValidator: (id, params, key) =>
-	// 			dispatch(runDynamoProcessor(id, params, key))
-	// 	};
-	// };
 	class DynamoInput extends Component {
 		constructor(props) {
 			super(props);

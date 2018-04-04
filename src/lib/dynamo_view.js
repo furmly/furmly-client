@@ -1,13 +1,14 @@
 import React, { Component } from "react";
 import { connect } from "react-redux";
 import invariants from "./utils/invariants";
+import { valueChanged } from "./actions";
 export default (Page, Container) => {
 	invariants.validComponent(Page, "Page");
 	invariants.validComponent(Container, "Container");
 	//map elements in DynamoView props to elements in store.
 	const mapStateToProps = (_, initialProps) => (state, ownProps) => {
 		//console.log("mapping state to props");
-		let _state = state.dynamo[ownProps.currentProcess],
+		let _state = state.dynamo.view[ownProps.currentProcess],
 			description = _state && _state.description,
 			map = {
 				value: (_state && _state[ownProps.currentStep]) || null
@@ -21,6 +22,11 @@ export default (Page, Container) => {
 			map.title = description.title;
 		}
 		return map;
+	};
+	const mapDispatchToProps = dispatch => {
+		return {
+			valueChanged: args => dispatch(valueChanged(args))
+		};
 	};
 
 	class DynamoView extends Component {
@@ -41,6 +47,11 @@ export default (Page, Container) => {
 		}
 		onValueChanged(form) {
 			this.state.form = form.dynamo_view;
+			this.props.valueChanged({
+				form: form.dynamo_view,
+				id: this.props.currentProcess,
+				step: this.props.currentStep
+			});
 		}
 		submit() {
 			this.state.validator
@@ -82,5 +93,5 @@ export default (Page, Container) => {
 		}
 	}
 
-	return connect(mapStateToProps)(DynamoView);
+	return connect(mapStateToProps, mapDispatchToProps)(DynamoView);
 };

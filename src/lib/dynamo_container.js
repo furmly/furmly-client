@@ -63,6 +63,7 @@ export default (...args) => {
 				this.state.form || {},
 				...Array.prototype.slice.call(arguments)
 			);
+
 			this.props.valueChanged({ [this.props.name]: this.state.form });
 		}
 
@@ -84,7 +85,7 @@ export default (...args) => {
 						//this._validations.push(validator);
 						if (
 							source &&
-							self.props.value[x.name] &&
+							source.hasOwnProperty(x.name) &&
 							keys.indexOf(x.name) !== -1
 						)
 							keys.splice(keys.indexOf(x.name), 1);

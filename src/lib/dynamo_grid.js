@@ -70,7 +70,7 @@ export default (
 	};
 	const mapStateToProps = (_, initialProps) => (state, ownProps) => {
 		let component_uid = getKey(state, ownProps.component_uid,ownProps);
-		var result = state.dynamo[component_uid];
+		var result = state.dynamo.view[component_uid];
 		return {
 			component_uid,
 			items: result && result.data ? result.data.items : null,
@@ -88,14 +88,14 @@ export default (
 			fetchingFilterTemplate: result && result.gettingFilterTemplate,
 			fetchingItemTemplate: result && result.gettingTemplate,
 			commandProcessed:
-				state.dynamo[
+				state.dynamo.view[
 					component_uid + DynamoGrid.commandResultViewName()
 				],
 			commandProcessing:
-				state.dynamo[
+				state.dynamo.view[
 					component_uid + DynamoGrid.commandResultViewName() + "-busy"
 				],
-			processed: state.dynamo[component_uid + DynamoGrid.itemViewName()]
+			processed: state.dynamo.view[component_uid + DynamoGrid.itemViewName()]
 		};
 	};
 	class DynamoGrid extends Component {

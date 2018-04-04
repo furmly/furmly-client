@@ -100,7 +100,7 @@ export default (Uploader, ProgressBar, Text, previews = []) => {
 
 	const mapStateToProps = (_, initialProps) => (state, ownProps) => {
 		let component_uid = getKey(state, ownProps.component_uid,ownProps);
-		let st = state.dynamo[component_uid] || {};
+		let st = state.dynamo.view[component_uid] || {};
 		return {
 			component_uid,
 			preview: st.preview,

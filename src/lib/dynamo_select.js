@@ -3,7 +3,8 @@ import { connect } from "react-redux";
 import { runDynamoProcessor } from "./actions";
 import ValidationHelper, { VALIDATOR_TYPES } from "./utils/validator";
 import invariants from "./utils/invariants";
-import { getKey } from "./utils/view";
+import { getKey, unwrapObjectValue } from "./utils/view";
+
 export default (ProgressIndicator, Layout, Container) => {
 	if (
 		invariants.validComponent(ProgressIndicator, "ProgressIndicator") &&
@@ -15,11 +16,11 @@ export default (ProgressIndicator, Layout, Container) => {
 	//map elements in DynamoView props to elements in store.
 	const mapStateToProps = (_, initialProps) => (state, ownProps) => {
 		if (ownProps.args.type == "PROCESSOR") {
-			let component_uid = getKey(state, ownProps.component_uid,ownProps);
-			let st = state.dynamo[component_uid];
+			let component_uid = getKey(state, ownProps.component_uid, ownProps);
+			let st = state.dynamo.view[component_uid];
 			return {
 				items: st,
-				busy: !!state.dynamo[`${ownProps.component_uid}-busy`],
+				busy: !!state.dynamo.view[`${ownProps.component_uid}-busy`],
 				component_uid
 			};
 		}
@@ -41,15 +42,13 @@ export default (ProgressIndicator, Layout, Container) => {
 			this.fetchItems = this.fetchItems.bind(this);
 			this.onValueChanged = this.onValueChanged.bind(this);
 			this.selectFirstItem = this.selectFirstItem.bind(this);
+			this.getValueBasedOnMode = this.getValueBasedOnMode.bind(this);
 			this.props.validator.validate = () => {
 				return this.runValidators();
 			};
 			this.isValidValue = this.isValidValue.bind(this);
 			this.state = {
-				value:
-					props.value && typeof props.value == "object"
-						? props.value.$objectID
-						: props.value || props.args.default
+				value: unwrapObjectValue(props.value)
 			};
 			this.isObjectIdMode = this.isObjectIdMode.bind(this);
 		}
@@ -61,21 +60,10 @@ export default (ProgressIndicator, Layout, Container) => {
 		}
 		onValueChanged(value) {
 			if (this._mounted) {
-				let obid = this.isObjectIdMode(),
-					updateValue =
-						(obid &&
-							value &&
-							typeof value == "object" &&
-							value.$objectID) ||
-						value;
 				this.props.valueChanged({
-					[this.props.name]:
-						(obid &&
-						typeof value !== "object" && {
-							$objectID: value
-						}) ||
-						value
+					[this.props.name]: this.getValueBasedOnMode(value)
 				});
+				let updateValue = unwrapObjectValue(value);
 				if (this.state.value !== updateValue) {
 					console.log("onValueChanged value:" + updateValue);
 					this.setState({
@@ -101,7 +89,15 @@ export default (ProgressIndicator, Layout, Container) => {
 				items.filter(x => x._id == value).length
 			);
 		}
-
+		getValueBasedOnMode(v) {
+			return (
+				(this.props.args &&
+				this.props.args.mode &&
+				typeof v !== "object" &&
+				this.props.args.mode == "ObjectId" && { $objectID: v }) ||
+				v
+			);
+		}
 		componentWillReceiveProps(next) {
 			if (
 				next.args.config.value !== this.props.args.config.value ||
@@ -168,10 +164,10 @@ export default (ProgressIndicator, Layout, Container) => {
 			if (this.props.items && this.props.items.length == 1) {
 				return this.selectFirstItem(this.props.items[0]._id);
 			}
-			if (this.isObjectIdMode() && this.props.value)
-				return setTimeout(() => {
-					this.onValueChanged(this.props.value);
-				});
+			// if (this.isObjectIdMode() && this.props.value)
+			// 	return setTimeout(() => {
+			// 		this.onValueChanged(this.props.value);
+			// 	});
 		}
 		isEmptyOrNull(v) {
 			return !v || !v.length;
