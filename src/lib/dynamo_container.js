@@ -26,7 +26,6 @@ export default (...args) => {
 			super(props);
 			this.onValueChanged = this.onValueChanged.bind(this);
 			this.state = {
-				form: this.props.value,
 				_validations: (this.props.elements || []).map(x => ({}))
 			};
 			//this._validations = [];
@@ -34,14 +33,13 @@ export default (...args) => {
 			this.setValidator();
 		}
 		componentWillReceiveProps(next) {
-			//console.log("container will receive new props");
 			if (
 				next.elements &&
 				(next.elements !== this.props.elements ||
 					next.elements.length !== this.props.elements.length)
 			) {
 				let _validations = next.elements.map(x => ({}));
-				this.setState({ _validations, form: next.value });
+				this.setState({ _validations });
 			}
 		}
 		setValidator() {
@@ -58,13 +56,13 @@ export default (...args) => {
 			};
 		}
 		onValueChanged() {
-			this.state.form = Object.assign(
+			let form = Object.assign(
 				{},
-				this.state.form || {},
+				this.props.value || {},
 				...Array.prototype.slice.call(arguments)
 			);
 
-			this.props.valueChanged({ [this.props.name]: this.state.form });
+			this.props.valueChanged({ [this.props.name]: form });
 		}
 
 		render() {

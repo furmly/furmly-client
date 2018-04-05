@@ -19,14 +19,24 @@ export default (Layout, Picker, ProgressBar, Container) => {
 		};
 	};
 	const mapStateToProps = (_, initialProps) => (state, ownProps) => {
-		let component_uid = getKey(state, ownProps.component_uid, ownProps);
+		let component_uid = getKey(state, ownProps.component_uid, ownProps),
+			items = state.dynamo.view[component_uid] || ownProps.args.items;
 		return {
 			busy: state.dynamo.view[`${component_uid}-busy`],
-			items: state.dynamo.view[component_uid] || ownProps.args.items,
+			items,
+			contentItems: getPickerItemsById(ownProps.value, items),
 			component_uid
 		};
 	};
+	const getPickerItemsById = function(v, items) {
+		if (v && items && items.length) {
+			let z = unwrapObjectValue(v);
+			let r = items.filter(x => x.id == z);
+			return (r.length && r[0].elements) || [];
+		}
 
+		return [];
+	};
 	class DynamoSelectSet extends Component {
 		constructor(props) {
 			super(props);
@@ -36,15 +46,14 @@ export default (Layout, Picker, ProgressBar, Container) => {
 				this
 			);
 			this.getPickerValue = this.getPickerValue.bind(this);
-			this.getPickerItemsById = this.getPickerItemsById.bind(this);
-			let items = this.getPickerItemsById(this.props.value),
-				containerValues = (items || []).reduce((sum, x) => {
+			this.getContainerValue = this.getContainerValue.bind(this);
+			let containerValues = (props.contentItems || [])
+				.reduce((sum, x) => {
 					if (this.props.extra.hasOwnProperty(x.name))
 						sum[x.name] = this.props.extra[x.name];
 					return sum;
 				}, {});
 			this.state = {
-				items,
 				containerValues,
 				containerValidator: {}
 			};
@@ -71,16 +80,6 @@ export default (Layout, Picker, ProgressBar, Container) => {
 
 		componentWillReceiveProps(next) {
 			if (
-				(next.value && !_.isEqual(next.value, this.props.value)) ||
-				(next.items &&
-					next.items.length &&
-					(!this.props.items || !this.props.items.length)) ||
-				next.component_uid !== this.props.component_uid
-			) {
-				this.respondToPickerValueChanged(next.value, next.items);
-			}
-
-			if (
 				next.args.processor !== this.props.args.processor ||
 				(next.component_uid !== this.props.component_uid &&
 					next.args.processor) ||
@@ -92,7 +91,7 @@ export default (Layout, Picker, ProgressBar, Container) => {
 					next.component_uid
 				);
 
-			if (next.items && next.items.length == 1) {
+			if (next.items && next.items.length == 1 && !next.value) {
 				this.selectFirstItem(next.items);
 			}
 		}
@@ -133,24 +132,14 @@ export default (Layout, Picker, ProgressBar, Container) => {
 				this.fetchItems(this.props.args.processor);
 			}
 
-			if (this.props.items && this.props.items.length == 1) {
+			if (
+				this.props.items &&
+				this.props.items.length == 1 &&
+				!this.props.value
+			) {
 				return setTimeout(() => {
 					this.selectFirstItem();
 				}, 0);
-			}
-
-			if (
-				this.isObjectIdMode() &&
-				this.props.value &&
-				typeof this.props.value !== "object"
-			) {
-				return setTimeout(() => {
-					this.props.valueChanged({
-						[this.props.name]: this.getValueBasedOnMode(
-							this.props.value
-						)
-					});
-				});
 			}
 		}
 
@@ -168,36 +157,38 @@ export default (Layout, Picker, ProgressBar, Container) => {
 				[this.props.name]: this.getValueBasedOnMode(value)
 			};
 		}
-		getPickerItemsById(v, items = this.props.items) {
-			if (v && items && items.length) {
-				let z = unwrapObjectValue(v);
-				let r = items.filter(x => x.id == z);
-				return (r.length && r[0].elements) || [];
-			}
 
-			return [];
-		}
 		onContainerValueChanged(value, pickerValue) {
 			this.props.valueChanged.apply(
 				this,
 				this._onContainerValueChanged.call(this, value, pickerValue)
 			);
 		}
-
+		shouldComponentUpdate(nextProps, nextState) {
+			if (
+				_.isEqual(this.props, nextProps) &&
+				_.isEqual(this.state.errors, nextState.errors)
+			) {
+				return false;
+			}
+			return true;
+		}
 		_onContainerValueChanged(value, pickerValue) {
+			pickerValue = pickerValue || this.getPickerValue();
+			if (this.props.args.path) {
+				let _p = [pickerValue];
+				//push this to unset previous value
+				if (!value) _p.push({ [this.props.args.path]: undefined });
+				else _p.push(value);
+				return _p;
+			}
+
 			let superCancel =
 				this.state.containerValues &&
 				Object.keys(this.state.containerValues).reduce((sum, x) => {
 					return (sum[x] = undefined), sum;
 				}, {});
 
-			pickerValue = pickerValue || this.getPickerValue();
-			if (this.props.args.path) {
-				let _p = [pickerValue];
-				if (value) _p.push(value);
-				if (superCancel) _p.push(superCancel);
-				return _p;
-			}
 			//path is not defined so unpack the properties and send.
 			let result = [
 				pickerValue,
@@ -210,9 +201,14 @@ export default (Layout, Picker, ProgressBar, Container) => {
 				//insert this to remove previous values.
 				result.splice(1, 0, superCancel);
 			}
-			this.setState({
-				containerValues: (value && value._no_path) || null
+			setTimeout(() => {
+				if (this._mounted) {
+					this.setState({
+						containerValues: (value && value._no_path) || null
+					});
+				}
 			});
+
 			return result;
 		}
 
@@ -225,29 +221,16 @@ export default (Layout, Picker, ProgressBar, Container) => {
 				v
 			);
 		}
-		respondToPickerValueChanged(v, items = this.props.items) {
-			let _items = this.getPickerItemsById(v, items),
-				pickerHasElements =
-					items &&
-					items.length &&
-					items.filter(x => x.id == v).length,
-				pickerValue = (pickerHasElements && v) || null;
-			if (this._mounted) {
-				this.setState({
-					//pickerValue,
-					items: _items
-				});
-			}
-			if (pickerHasElements) {
-				//set the picker value.
-				this.onContainerValueChanged(null, this.getPickerValue(v));
-			}
+		respondToPickerValueChanged(v) {
+			this.onContainerValueChanged(null, this.getPickerValue(v));
 		}
-		onPickerValueChanged(v, items = this.props.items) {
-			this.respondToPickerValueChanged(
-				v,
-				(Array.prototype.isPrototypeOf(items) && items) || undefined
-			);
+		onPickerValueChanged(v) {
+			this.respondToPickerValueChanged(v);
+		}
+		getContainerValue() {
+			return this.props.args.path
+				? this.props.extra ? this.props.extra[this.props.args.path] : {}
+				: this.props.extra;
 		}
 		isEmptyOrNull(v) {
 			return !v || !v.length;
@@ -256,15 +239,12 @@ export default (Layout, Picker, ProgressBar, Container) => {
 			return "_no_path";
 		}
 		render() {
-			//console.log("selectset render called");
+			console.log("selectset render called");
 			/*jshint ignore:start*/
 			if (this.props.busy) {
 				return <ProgressBar onClick={this.props.retryFetch} />;
 			}
 
-			let initialElementsData = this.props.args.path
-				? this.props.extra ? this.props.extra[this.props.args.path] : {}
-				: this.props.extra;
 			return (
 				<Layout
 					value={this.props.label}
@@ -289,9 +269,9 @@ export default (Layout, Picker, ProgressBar, Container) => {
 							name={
 								this.props.args.path || DynamoSelectSet.noPath()
 							}
-							value={initialElementsData}
+							value={this.getContainerValue()}
 							valueChanged={this.onContainerValueChanged}
-							elements={this.state.items}
+							elements={this.props.contentItems}
 							validator={this.state.containerValidator}
 							navigation={this.props.navigation}
 							currentProcess={this.props.currentProcess}

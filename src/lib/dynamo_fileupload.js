@@ -67,11 +67,9 @@ export default (Uploader, ProgressBar, Text, previews = []) => {
 				next.component_uid !== this.props.component_uid
 			) {
 				this._getPreview(next.uploadedId);
-				//setTimeout(() => {
 				this.props.valueChanged({
 					[this.props.name]: next.uploadedId
 				});
-				//}, 0);
 			}
 		}
 		upload(file) {

@@ -36,17 +36,17 @@ export default (Page, Container) => {
 			this.submit = this.submit.bind(this);
 			//pass reference to validate func
 			this.state = {
-				form: this.props.value,
+			//	form: this.props.value,
 				validator: {}
 			};
 		}
 		componentWillReceiveProps(next) {
-			if (next.value !== this.props.value) {
-				this.setState({ form: next.value });
-			}
+			// if (next.value !== this.props.value) {
+			// 	this.setState({ form: next.value });
+			// }
 		}
 		onValueChanged(form) {
-			this.state.form = form.dynamo_view;
+			//this.state.form = form.dynamo_view;
 			this.props.valueChanged({
 				form: form.dynamo_view,
 				id: this.props.currentProcess,
@@ -61,7 +61,7 @@ export default (Page, Container) => {
 						console.log(
 							"currentStep:" + (this.props.currentStep || "0")
 						);
-						this.props.submit(this.state.form);
+						this.props.submit(this.props.value);
 					},
 					() => {
 						console.warn("the form is invalid");

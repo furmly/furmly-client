@@ -103,8 +103,9 @@ export default (
 			super(props);
 			this.state = {
 				validator: {},
+				_filterValidator:{},
 				showItemView: false,
-				filter: this.props.filter,
+				//filter: this.props.filter,
 				count: this.props.args.pageCount || 5,
 				showCommandResultView: false
 			};
@@ -219,7 +220,7 @@ export default (
 			}
 		}
 		getItemsFromSource(
-			filter = this.props.filter,
+			filter = this.props.value,
 			methodName = "run",
 			extra
 		) {
@@ -237,9 +238,9 @@ export default (
 		}
 
 		filter() {
-			this._filterValidator.validate().then(
+			this.state._filterValidator.validate().then(
 				() => {
-					this.getItemsFromSource(this.state.filter, "filterGrid");
+					this.getItemsFromSource(this.props.value, "filterGrid");
 				},
 				() => {
 					console.warn("a field in filter is invalid");
@@ -255,12 +256,14 @@ export default (
 		static commandResultViewName() {
 			return "_commandResultView_";
 		}
-		valueChanged(value) {
-			this.state.form = value ? value[DynamoGrid.itemViewName()] : null;
+		valueChanged(value,modalValue) {
+			this.props.valueChanged({
+				[this.props.name]: value ? value[DynamoGrid.itemViewName()] : null
+			});
 		}
 		done(submitted) {
 			if (!submitted)
-				return this.setState({ showItemView: false, form: null });
+				return this.setState({ showItemView: false });
 
 			this.state.validator.validate().then(
 				() => {
@@ -289,7 +292,7 @@ export default (
 						Object.assign(
 							JSON.parse(this.props.args.gridArgs || "{}"),
 							{
-								entity: this.state.form
+								entity: this.props.value
 							}
 						),
 						this.props.component_uid + DynamoGrid.itemViewName()
