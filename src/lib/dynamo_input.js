@@ -4,7 +4,7 @@ import { connect } from "react-redux";
 import { runDynamoProcessor } from "./actions";
 import ValidationHelper, { VALIDATOR_TYPES } from "./utils/validator";
 import invariants from "./utils/invariants";
-
+import debug from "debug";
 /**
  * Higher order function that recieves Platform specific implementation of Input
  * @param  {Function} Input Input class
@@ -15,7 +15,7 @@ export default (LabelWrapper, Input, DatePicker, Checkbox) => {
 	invariants.validComponent(Input, "Input");
 	invariants.validComponent(DatePicker, "DatePicker");
 	invariants.validComponent(Checkbox, "Checkbox");
-
+const log = debug("dynamo-client-components:input");
 	class DynamoInput extends Component {
 		constructor(props) {
 			super(props);

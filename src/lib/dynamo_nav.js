@@ -2,11 +2,11 @@ import React, { Component } from "react";
 import { connect } from "react-redux";
 import { fetchDynamoProcess } from "./actions";
 import invariants from "./utils/invariants";
-
+import debug from "debug";
 export default (Link, NavigationActions) => {
 	if (invariants.validComponent(Link, "Link") && !NavigationActions)
 		throw new Error("NavigationActions cannot be null (dynamo_nav)");
-
+	const log = debug("dynamo-client-components:nav");
 	const mapDispatchToState = dispatch => {
 		return {
 			dispatch
@@ -15,7 +15,10 @@ export default (Link, NavigationActions) => {
 
 	const mapStateToProps = (_, initialProps) => state => {
 		return {
-			context: state && state.dynamo.view && state.dynamo.view.navigationContext
+			context:
+				state &&
+				state.dynamo.view &&
+				state.dynamo.view.navigationContext
 		};
 	};
 

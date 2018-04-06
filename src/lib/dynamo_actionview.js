@@ -4,7 +4,8 @@ import { runDynamoProcessor } from "./actions";
 import invariants from "./utils/invariants";
 import _ from "lodash";
 import { getKey } from "./utils/view";
-
+import debug from "debug";
+import DynamoBase from "./dynamo_base";
 export default (
 	Layout,
 	ProgressBar,
@@ -17,7 +18,7 @@ export default (
 	invariants.validComponent(ContentContainer, "ContentContainer");
 	invariants.validComponent(ProgressBar, "ProgressBar");
 	invariants.validComponent(Layout, "Layout");
-
+	const log = debug("dynamo-client-components:actionview");
 	const mapDispatchToProps = dispatch => {
 		return {
 			run: (id, args, key) =>
@@ -39,16 +40,17 @@ export default (
 	};
 	const itemViewName = "_item_view";
 	const contentViewName = "_content_view";
-	class DynamoActionView extends Component {
+	class DynamoActionView extends DynamoBase {
 		constructor(props) {
-			super(props);
+			super(props, log);
 			this.state = { _filterValidator: {}, validator: {} };
 			this.filter = this.filter.bind(this);
 			this.valueChanged = this.valueChanged.bind(this);
+			this.filterValueChanged = this.filterValueChanged.bind(this);
 		}
 		componentWillReceiveProps(next) {
 			if (!_.isEqual(next.resultData, this.props.resultData)) {
-				this.resultValueChanged(next.resultData);
+				this.valueChanged({ [contentViewName]: next.resultData });
 			}
 		}
 		filter() {
@@ -61,20 +63,28 @@ export default (
 					);
 				},
 				() => {
-					console.warn("a field in filter is invalid");
+					this.log("a field in filter is invalid");
 				}
 			);
 		}
-		resultValueChanged(value) {
-			this.valueChanged(this.props.value, value);
+		filterValueChanged(value) {
+			this.valueChanged(value && value[itemViewName]);
 		}
-		valueChanged(value, resultValue = this.props.resultData) {
+		valueChanged(value) {
+			this.log(`value changed in action view ${value}`);
 			this.props.valueChanged({
-				[this.props.name]: Object.assign(value || {}, resultValue || {})
+				[this.props.name]: Object.assign(
+					{},
+					this.props.value || {},
+					value || {}
+				)
 			});
 		}
 		render() {
+			this.log("rendering");
 			if (this.props.busy) return <ProgressBar />;
+			let { [contentViewName]: contentValue = {}, ...rest } =
+				this.props.value || {};
 			return (
 				<Layout>
 					<Filter
@@ -83,13 +93,10 @@ export default (
 					>
 						<FilterContainer
 							elements={this.props.args.elements}
-							value={
-								this.props.value &&
-								this.props.value[itemViewName]
-							}
+							value={rest}
 							name={itemViewName}
 							validator={this.state._filterValidator}
-							valueChanged={this.valueChanged}
+							valueChanged={this.filterValueChanged}
 							navigation={this.props.navigation}
 							currentProcess={this.props.currentProcess}
 							currentStep={this.props.currentStep}
@@ -98,12 +105,9 @@ export default (
 					<ContentContainer
 						name={contentViewName}
 						elements={this.props.resultUI}
-						value={
-							this.props.value &&
-							this.props.value[contentViewName]
-						}
+						value={contentValue}
 						validator={this.state.validator}
-						valueChanged={this.resultValueChanged}
+						valueChanged={this.valueChanged}
 						navigation={this.props.navigation}
 						currentProcess={this.props.currentProcess}
 						currentStep={this.props.currentStep}

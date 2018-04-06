@@ -4,17 +4,19 @@ import { uploadDynamoFile, getDynamoFilePreview } from "./actions";
 import invariants from "./utils/invariants";
 import ValidationHelper from "./utils/validator";
 import { getKey } from "./utils/view";
+import debug from "debug";
 /**
  * This component should render a file uploader
  * @param  {Class} Uploader Component responsible for uploading the file
  * @param  {Array} previews Array of component definitions with an id property
  * @return {Class}          Configured component.
  */
+
 export default (Uploader, ProgressBar, Text, previews = []) => {
 	invariants.validComponent(Uploader, "Uploader");
 	invariants.validComponent(ProgressBar, "ProgressBar");
 	invariants.validComponent(Text, "Text");
-
+	const log = debug("dynamo-client-components:fileupload");
 	class DynamoFileUpload extends Component {
 		constructor(props) {
 			super(props);
@@ -66,7 +68,7 @@ export default (Uploader, ProgressBar, Text, previews = []) => {
 				next.uploadedId !== this.props.uploadedId ||
 				next.component_uid !== this.props.component_uid
 			) {
-				this._getPreview(next.uploadedId);
+				if (next.uploadedId) this._getPreview(next.uploadedId);
 				this.props.valueChanged({
 					[this.props.name]: next.uploadedId
 				});
@@ -76,7 +78,7 @@ export default (Uploader, ProgressBar, Text, previews = []) => {
 			this.props.upload(file, this.props.component_uid);
 		}
 		render() {
-			console.log("fileupload render called");
+			log(`render called for ${this.props.name}`);
 			if (this.props.busy) return <ProgressBar />;
 			if (!this._supported)
 				return <Text message={"unsupported file upload type"} />;
@@ -97,7 +99,7 @@ export default (Uploader, ProgressBar, Text, previews = []) => {
 	}
 
 	const mapStateToProps = (_, initialProps) => (state, ownProps) => {
-		let component_uid = getKey(state, ownProps.component_uid,ownProps);
+		let component_uid = getKey(state, ownProps.component_uid, ownProps);
 		let st = state.dynamo.view[component_uid] || {};
 		return {
 			component_uid,

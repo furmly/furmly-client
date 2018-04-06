@@ -1,6 +1,7 @@
 import React, { Component } from "react";
-
+import debug from "debug";
 export default PlatformComponent => {
+	const log = debug("dynamo-client-components:html-view");
 	return class DynamoHTMLViewer extends Component {
 		constructor(props) {
 			super(props);

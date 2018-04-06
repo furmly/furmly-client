@@ -1,10 +1,11 @@
 import React, { Component } from "react";
 import invariants from "./utils/invariants";
-
+import debug from "debug";
 export default (Layout, Header, Container) => {
 	invariants.validComponent(Layout, "Layout");
 	invariants.validComponent(Header, "Header");
 	invariants.validComponent(Container, "Container");
+	const log = debug("dynamo-client-components:session");
 	class DynamoSection extends Component {
 		constructor(props) {
 			super(props);
@@ -14,9 +15,7 @@ export default (Layout, Header, Container) => {
 			//get the container for retrieving
 			return (
 				<Layout>
-					<Header>
-						{this.props.label}
-					</Header>
+					<Header>{this.props.label}</Header>
 					<Container
 						elements={this.props.args.elements}
 						name={this.props.name}

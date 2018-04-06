@@ -3,7 +3,7 @@ import { connect } from "react-redux";
 import { fetchDynamoProcess, runDynamoProcess } from "./actions";
 import _ from "lodash";
 import invariants from "./utils/invariants";
-
+import debug from "debug";
 /**
  * Higher order function that recieves Platform specific implementation of Input
  * @param  {Function} Input Input class
@@ -13,6 +13,7 @@ export default (ProgressBar, TextView, DynamoView) => {
 	invariants.validComponent(ProgressBar, "ProgressBar");
 	invariants.validComponent(TextView, "TextView");
 	invariants.validComponent(DynamoView, "DynamoView");
+	const log = debug("dynamo-client-components:process");
 
 	//map elements in DynamoInput props to elements in store.
 	const mapStateToProps = (_, initialProps) => (state, ownProps) => {
