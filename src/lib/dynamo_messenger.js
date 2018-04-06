@@ -16,7 +16,7 @@ import {
 	openChat,
 	closeChat
 } from "./actions";
-
+import debug from "debug";
 export default (
 	Layout,
 	Pane,
@@ -49,7 +49,7 @@ export default (
 	invariants.validComponent(AddNewContact, "AddNewContact");
 	invariants.validComponent(PendingInvites, "PendingInvites");
 	invariants.validComponent(ChatLayout, "ChatLayout");
-
+	const log = debug("dynamo-client-components:messenger");
 	const mapStateToProps = state => {
 		let _state = state.dynamo.chat;
 		return {
@@ -131,15 +131,13 @@ export default (
 			}
 		}
 		openChatModal(chat = this.props.chat) {
-		   //	setTimeout(() => {
-				this.setState({
-					modalTemplate: () => this.getMessageLayout(chat),
-					showModal: true
-				});
-			//}, 0);
+			this.setState({
+				modalTemplate: () => this.getMessageLayout(chat),
+				showModal: true
+			});
 		}
 		componentDidMount() {
-			console.log("logging in...");
+			log("logging in...");
 			this.props.login({ username: this.props.username });
 
 			if (this.props.chat) {
@@ -299,7 +297,6 @@ export default (
 						hideDone={true}
 						done={this.hideModal}
 						visibility={this.state.showModal}
-						
 					/>
 					{this.state._panes[this.state.selectedPane].render()}
 				</Layout>

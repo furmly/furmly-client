@@ -1,6 +1,6 @@
 import React, { Component } from "react";
 import invariants from "./utils/invariants";
-
+import debug from "debug";
 export default (...args) => {
 	//invariants
 	let Section = args[0],
@@ -20,7 +20,7 @@ export default (...args) => {
 		!ComponentLocator
 	)
 		throw new Error("ComponentLocator cannot be null (dynamo_container)");
-
+	const log = debug("dynamo-client-components:container");
 	return class extends Component {
 		constructor(props) {
 			super(props);
@@ -28,7 +28,6 @@ export default (...args) => {
 			this.state = {
 				_validations: (this.props.elements || []).map(x => ({}))
 			};
-			//this._validations = [];
 			this.setValidator = this.setValidator.bind(this);
 			this.setValidator();
 		}
@@ -39,6 +38,7 @@ export default (...args) => {
 					next.elements.length !== this.props.elements.length)
 			) {
 				let _validations = next.elements.map(x => ({}));
+				log(`creating new validators for container ${this.props.name}`);
 				this.setState({ _validations });
 			}
 		}

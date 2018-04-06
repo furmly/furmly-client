@@ -11,6 +11,7 @@ import {
 } from "./actions";
 import invariants from "./utils/invariants";
 import { getKey } from "./utils/view";
+import debug from "debug";
 export const GRID_MODES = {
 	CRUD: "CRUD",
 	EDITONLY: "EDITONLY"
@@ -43,7 +44,7 @@ export default (
 		!NavigationActions
 	)
 		throw new Error("NavigationActions cannot be null (dynamo_grid)");
-
+	const log = debug("dynamo-client-components:grid");
 	const mapDispatchToProps = dispatch => {
 		return {
 			run: (id, args, key) =>
@@ -69,7 +70,7 @@ export default (
 		};
 	};
 	const mapStateToProps = (_, initialProps) => (state, ownProps) => {
-		let component_uid = getKey(state, ownProps.component_uid,ownProps);
+		let component_uid = getKey(state, ownProps.component_uid, ownProps);
 		var result = state.dynamo.view[component_uid];
 		return {
 			component_uid,
@@ -95,7 +96,8 @@ export default (
 				state.dynamo.view[
 					component_uid + DynamoGrid.commandResultViewName() + "-busy"
 				],
-			processed: state.dynamo.view[component_uid + DynamoGrid.itemViewName()]
+			processed:
+				state.dynamo.view[component_uid + DynamoGrid.itemViewName()]
 		};
 	};
 	class DynamoGrid extends Component {
@@ -103,7 +105,7 @@ export default (
 			super(props);
 			this.state = {
 				validator: {},
-				_filterValidator:{},
+				_filterValidator: {},
 				showItemView: false,
 				//filter: this.props.filter,
 				count: this.props.args.pageCount || 5,
@@ -117,9 +119,10 @@ export default (
 			this.valueChanged = this.valueChanged.bind(this);
 			this.getItemsFromSource = this.getItemsFromSource.bind(this);
 			this.done = this.done.bind(this);
-			this._filterValidator = {};
+			//this._filterValidator = {};
 			this.filter = this.filter.bind(this);
-			this.filterValueChanged = this.filterValueChanged.bind(this);
+			this.getFilterValue = this.getFilterValue.bind(this);
+			this.getItemValue = this.getItemValue.bind(this);
 			this.more = this.more.bind(this);
 			this.finished = this.finished.bind(this);
 			this.openCommandMenu = this.openCommandMenu.bind(this);
@@ -173,7 +176,7 @@ export default (
 		}
 		componentWillReceiveProps(next) {
 			if (next.processed !== this.props.processed) {
-				//console.log("componentWillReceiveProps fired get items");
+				//log("componentWillReceiveProps fired get items");
 				this.getItemsFromSource(null, "filterGrid");
 			}
 
@@ -213,14 +216,14 @@ export default (
 			) {
 				this.showItemView(
 					this.state.mode,
-					this.state.existingValue || this.props.singleItem,
+					this.getItemValue() || this.props.singleItem,
 					true,
 					next.itemTemplate
 				);
 			}
 		}
 		getItemsFromSource(
-			filter = this.props.value,
+			filter = getFilterValue(),
 			methodName = "run",
 			extra
 		) {
@@ -236,14 +239,31 @@ export default (
 				this.props.component_uid
 			);
 		}
+		getItemValue() {
+			return (
+				(this.props.value &&
+					this.props.value[DynamoGrid.itemViewName()]) ||
+				null
+			);
+		}
+		getFilterValue() {
+			return (
+				(this.props.value &&
+					this.props.value[DynamoGrid.filterViewName()]) ||
+				null
+			);
+		}
 
 		filter() {
 			this.state._filterValidator.validate().then(
 				() => {
-					this.getItemsFromSource(this.props.value, "filterGrid");
+					this.getItemsFromSource(
+						this.getFilterValue(),
+						"filterGrid"
+					);
 				},
 				() => {
-					console.warn("a field in filter is invalid");
+					log("a field in filter is invalid");
 				}
 			);
 		}
@@ -256,14 +276,17 @@ export default (
 		static commandResultViewName() {
 			return "_commandResultView_";
 		}
-		valueChanged(value,modalValue) {
+		valueChanged(value) {
 			this.props.valueChanged({
-				[this.props.name]: value ? value[DynamoGrid.itemViewName()] : null
+				[this.props.name]: Object.assign(
+					{},
+					this.props.value || {},
+					value || {}
+				)
 			});
 		}
 		done(submitted) {
-			if (!submitted)
-				return this.setState({ showItemView: false });
+			if (!submitted) return this.setState({ showItemView: false });
 
 			this.state.validator.validate().then(
 				() => {
@@ -292,16 +315,16 @@ export default (
 						Object.assign(
 							JSON.parse(this.props.args.gridArgs || "{}"),
 							{
-								entity: this.props.value
+								entity: this.getItemValue()
 							}
 						),
 						this.props.component_uid + DynamoGrid.itemViewName()
 					);
-					//this.setState({ showItemView: false });
+
 					this.cancel();
 				},
 				() => {
-					console.log("some modal fields are invalid");
+					log("some modal fields are invalid");
 				}
 			);
 		}
@@ -376,17 +399,22 @@ export default (
 			}
 
 			this.setState({
+				validator: {},
 				showItemView: true,
 				mode: mode,
 				showCommandsView: false,
-				itemViewElements: template,
-				existingValue: existingValue
+				itemViewElements: template
+				//,existingValue: existingValue
+			});
+			//update the existing value.
+			this.valueChanged({
+				[DynamoGrid.itemViewName()]: existingValue
 			});
 		}
 
 		more() {
 			if (!this.finished() && !this.props.busy) {
-				//console.log("more fired getItemsFromSource");
+				//log("more fired getItemsFromSource");
 				let query = {
 					count: this.state.count
 				};
@@ -397,10 +425,10 @@ export default (
 					query._id = this.props.items[
 						this.props.items.length - 1
 					]._id;
-					console.log("most recent id:" + query._id);
+					log("most recent id:" + query._id);
 				}
 
-				this.getItemsFromSource(null, "more", query);
+				this.getItemsFromSource(this.getFilterValue(), "more", query);
 			}
 		}
 		finished() {
@@ -413,15 +441,12 @@ export default (
 				mode: null,
 				showItemView: false,
 				itemViewElements: null,
-				showCommandsView: false,
-				existingValue: null
+				showCommandsView: false
+				//existingValue: null
 			});
+			this.valueChanged({ [DynamoGrid.itemViewName()]: null });
 		}
-		filterValueChanged(value) {
-			this.state.filter = value
-				? value[DynamoGrid.filterViewName()]
-				: null;
-		}
+
 		closeCommandView() {
 			this.setState({ showCommandsView: false });
 		}
@@ -459,15 +484,17 @@ export default (
 			return this.props.args.mode == GRID_MODES.EDITONLY;
 		}
 		render() {
+			log(`rendering ${this.props.name}`);
+
 			let args = this.props.args,
 				header = this.props.filterTemplate ? (
 					<Header filter={() => this.filter()}>
 						<Container
 							elements={this.props.filterTemplate}
-							value={this.state.filter}
-							valueChanged={this.filterValueChanged}
+							value={this.getFilterValue()}
+							valueChanged={this.valueChanged}
 							name={DynamoGrid.filterViewName()}
-							validator={this._filterValidator}
+							validator={this.state._filterValidator}
 							navigation={this.props.navigation}
 							currentProcess={this.props.currentProcess}
 							currentStep={this.props.currentStep}
@@ -500,6 +527,7 @@ export default (
 						commands={this.props.args.commands}
 						execCommand={this.execCommand}
 						openCommandMenu={this.openCommandMenu}
+						busy={!this.finished() && this.props.busy}
 					/>
 					<ItemView
 						visibility={
@@ -514,7 +542,7 @@ export default (
 						template={
 							<Container
 								elements={this.state.itemViewElements}
-								value={this.state.existingValue}
+								value={this.getItemValue()}
 								name={DynamoGrid.itemViewName()}
 								validator={this.state.validator}
 								valueChanged={this.valueChanged}

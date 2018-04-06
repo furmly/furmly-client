@@ -4,7 +4,7 @@ import { runDynamoProcessor } from "./actions";
 import ValidationHelper, { VALIDATOR_TYPES } from "./utils/validator";
 import invariants from "./utils/invariants";
 import { getKey, unwrapObjectValue } from "./utils/view";
-
+import debug from "debug";
 export default (ProgressIndicator, Layout, Container) => {
 	if (
 		invariants.validComponent(ProgressIndicator, "ProgressIndicator") &&
@@ -12,6 +12,8 @@ export default (ProgressIndicator, Layout, Container) => {
 		!Container
 	)
 		throw new Error("Container cannot be null (dynamo_select)");
+
+	const log = debug("dynamo-client-components:select");
 
 	//map elements in DynamoView props to elements in store.
 	const mapStateToProps = (_, initialProps) => (state, ownProps) => {
@@ -38,7 +40,7 @@ export default (ProgressIndicator, Layout, Container) => {
 	class DynamoSelect extends Component {
 		constructor(props) {
 			super(props);
-
+			this.state = {};
 			this.fetchItems = this.fetchItems.bind(this);
 			this.onValueChanged = this.onValueChanged.bind(this);
 			this.selectFirstItem = this.selectFirstItem.bind(this);
@@ -47,13 +49,10 @@ export default (ProgressIndicator, Layout, Container) => {
 				return this.runValidators();
 			};
 			this.isValidValue = this.isValidValue.bind(this);
-			this.state = {
-				value: unwrapObjectValue(props.value)
-			};
 			this.isObjectIdMode = this.isObjectIdMode.bind(this);
 		}
 		hasValue() {
-			return !!this.state.value || "is required";
+			return !!this.props.value || "is required";
 		}
 		runValidators() {
 			return new ValidationHelper(this).run();
@@ -63,13 +62,6 @@ export default (ProgressIndicator, Layout, Container) => {
 				this.props.valueChanged({
 					[this.props.name]: this.getValueBasedOnMode(value)
 				});
-				let updateValue = unwrapObjectValue(value);
-				if (this.state.value !== updateValue) {
-					console.log("onValueChanged value:" + updateValue);
-					this.setState({
-						value: updateValue
-					});
-				}
 			}
 		}
 		fetchItems(source, args, component_uid) {
@@ -83,6 +75,7 @@ export default (ProgressIndicator, Layout, Container) => {
 				);
 		}
 		isValidValue(items = this.props.items, value = this.props.value) {
+			value = unwrapObjectValue(value);
 			return (
 				items &&
 				items.length &&
@@ -116,7 +109,7 @@ export default (ProgressIndicator, Layout, Container) => {
 				);
 			}
 
-			if (next.items && next.items.length == 1) {
+			if (next.items && next.items.length == 1 && !next.value) {
 				return this.selectFirstItem(next.items[0]._id);
 			}
 
@@ -127,16 +120,6 @@ export default (ProgressIndicator, Layout, Container) => {
 				!next.items
 			) {
 				return this.onValueChanged(null);
-			}
-
-			if (
-				(next.items &&
-					next.value &&
-					this.isValidValue(next.items, next.value)) ||
-				(this.props.items &&
-					this.isValidValue(this.props.items, next.value))
-			) {
-				return this.onValueChanged(next.value);
 			}
 		}
 
@@ -154,7 +137,7 @@ export default (ProgressIndicator, Layout, Container) => {
 		componentDidMount() {
 			this._mounted = true;
 			if (!this.props.items) {
-				console.log(
+				log(
 					"fetching items in componentDidMount for current:" +
 						this.props.name
 				);
@@ -164,10 +147,6 @@ export default (ProgressIndicator, Layout, Container) => {
 			if (this.props.items && this.props.items.length == 1) {
 				return this.selectFirstItem(this.props.items[0]._id);
 			}
-			// if (this.isObjectIdMode() && this.props.value)
-			// 	return setTimeout(() => {
-			// 		this.onValueChanged(this.props.value);
-			// 	});
 		}
 		isEmptyOrNull(v) {
 			return !v || !v.length;
@@ -175,9 +154,9 @@ export default (ProgressIndicator, Layout, Container) => {
 		render() {
 			/*jshint ignore:start*/
 
+			log(`rendering ${this.props.name}`);
 			if (this.isEmptyOrNull(this.props.items)) {
-				//console.log("items is null or undefined");
-				//console.log(this.props);
+				log(`${this.props.name} is empty`);
 				return <ProgressIndicator />;
 			}
 			return (
@@ -195,7 +174,7 @@ export default (ProgressIndicator, Layout, Container) => {
 							items={this.props.items}
 							displayProperty="displayLabel"
 							keyProperty="_id"
-							value={this.state.value}
+							value={unwrapObjectValue(this.props.value)}
 							valueChanged={this.onValueChanged}
 						/>
 					}

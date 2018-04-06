@@ -1,17 +1,21 @@
-import React, { Component } from "react";
+import React from "react";
 import invariants from "./utils/invariants";
 import { unwrapObjectValue } from "./utils/view";
 import { connect } from "react-redux";
 import { runDynamoProcessor } from "./actions";
 import ValidationHelper, { VALIDATOR_TYPES } from "./utils/validator";
 import { getKey } from "./utils/view";
+import debug from "debug";
 import _ from "lodash";
+import DynamoBase from "./dynamo_base";
+
 export default (Layout, Picker, ProgressBar, Container) => {
 	//map elements in DynamoView props to elements in store.
 	invariants.validComponent(Layout, "Layout");
 	invariants.validComponent(Picker, "Picker");
 	invariants.validComponent(Container, "Container");
-
+	const log = debug("dynamo-client-components:selectset");
+	const noPath = "selectset_no_path";
 	const mapDispatchToProps = dispatch => {
 		return {
 			getItems: (id, args, key, extra) =>
@@ -37,9 +41,9 @@ export default (Layout, Picker, ProgressBar, Container) => {
 
 		return [];
 	};
-	class DynamoSelectSet extends Component {
+	class DynamoSelectSet extends DynamoBase {
 		constructor(props) {
-			super(props);
+			super(props, log);
 			this.retryFetch = this.retryFetch.bind(this);
 			this.onPickerValueChanged = this.onPickerValueChanged.bind(this);
 			this.onContainerValueChanged = this.onContainerValueChanged.bind(
@@ -80,10 +84,11 @@ export default (Layout, Picker, ProgressBar, Container) => {
 
 		componentWillReceiveProps(next) {
 			if (
-				next.args.processor !== this.props.args.processor ||
-				(next.component_uid !== this.props.component_uid &&
-					next.args.processor) ||
-				typeof next.items == "undefined"
+				(next.args.processor !== this.props.args.processor ||
+					(next.component_uid !== this.props.component_uid &&
+						next.args.processor) ||
+					typeof next.items == "undefined") &&
+				!next.busy
 			)
 				this.fetchItems(
 					next.args.processor,
@@ -97,6 +102,7 @@ export default (Layout, Picker, ProgressBar, Container) => {
 		}
 
 		retryFetch() {
+			this.log(`retrying fetch`);
 			this.fetchItems(
 				this.props.args.processor,
 				this.props.args.processorArgs,
@@ -111,6 +117,7 @@ export default (Layout, Picker, ProgressBar, Container) => {
 				this.state.containerValues
 			);
 			_args.shift();
+			this.log(`fetching items`);
 			this.props.getItems(
 				source,
 				Object.assign(
@@ -164,13 +171,33 @@ export default (Layout, Picker, ProgressBar, Container) => {
 				this._onContainerValueChanged.call(this, value, pickerValue)
 			);
 		}
+		_shouldComponentUpdateComparer(x, y, a, b, key) {
+			if (a == b) return true;
+			if (key == "extra") {
+				if (y.contentItems && y.contentItems.length)
+					return _.isEqual(a[y.args.path], b[y.args.path]);
+
+				return true;
+			}
+		}
 		shouldComponentUpdate(nextProps, nextState) {
 			if (
-				_.isEqual(this.props, nextProps) &&
-				_.isEqual(this.state.errors, nextState.errors)
+				(nextProps.args.path ||
+					(!nextProps.args.path && !nextProps.contentItems.length)) &&
+				_.isEqual(this.state.errors, nextState.errors) &&
+				_.isEqualWith(
+					this.props,
+					nextProps,
+					this._shouldComponentUpdateComparer.bind(
+						this,
+						this.props,
+						nextProps
+					)
+				)
 			) {
 				return false;
 			}
+
 			return true;
 		}
 		_onContainerValueChanged(value, pickerValue) {
@@ -192,8 +219,8 @@ export default (Layout, Picker, ProgressBar, Container) => {
 			//path is not defined so unpack the properties and send.
 			let result = [
 				pickerValue,
-				...Object.keys((value && value._no_path) || {}).map(x => {
-					return { [x]: value._no_path[x] };
+				...Object.keys((value && value[noPath]) || {}).map(x => {
+					return { [x]: value[noPath][x] };
 				})
 			];
 
@@ -204,11 +231,11 @@ export default (Layout, Picker, ProgressBar, Container) => {
 			setTimeout(() => {
 				if (this._mounted) {
 					this.setState({
-						containerValues: (value && value._no_path) || null
+						containerValues: (value && value[noPath]) || null
 					});
 				}
 			});
-
+			this.log(`container values changed ${JSON.stringify(result)}`);
 			return result;
 		}
 
@@ -235,13 +262,11 @@ export default (Layout, Picker, ProgressBar, Container) => {
 		isEmptyOrNull(v) {
 			return !v || !v.length;
 		}
-		static noPath() {
-			return "_no_path";
-		}
 		render() {
-			console.log("selectset render called");
+			this.log(`rendering called`);
 			/*jshint ignore:start*/
 			if (this.props.busy) {
+				this.log(`${this.props.name} is busy`);
 				return <ProgressBar onClick={this.props.retryFetch} />;
 			}
 
@@ -266,9 +291,7 @@ export default (Layout, Picker, ProgressBar, Container) => {
 					}
 					extraElements={
 						<Container
-							name={
-								this.props.args.path || DynamoSelectSet.noPath()
-							}
+							name={this.props.args.path || noPath}
 							value={this.getContainerValue()}
 							valueChanged={this.onContainerValueChanged}
 							elements={this.props.contentItems}

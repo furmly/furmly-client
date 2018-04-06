@@ -13,6 +13,7 @@ var _ = _interopDefault(require('lodash'));
 var config = _interopDefault(require('client_config'));
 var CALL_API = _interopDefault(require('call_api'));
 var openSocket = _interopDefault(require('socket.io-client'));
+var debug = _interopDefault(require('debug'));
 var uuid$1 = _interopDefault(require('uuid/v4'));
 
 var subscriptionShape = PropTypes.shape({
@@ -1496,6 +1497,8 @@ var index = (function () {
 	return enhancers;
 });
 
+var log = debug("dynamo-actions");
+
 var preDispatch = config.preDispatch;
 var preRefreshToken = config.preRefreshToken;
 var BASE_URL = global.BASE_URL || config.baseUrl;
@@ -1657,7 +1660,8 @@ function defaultError(dispatch, customType, _meta, throttleEnabled) {
     type: customType || "SHOW_MESSAGE",
     meta: function meta(action, state, res) {
       if (customType && res.status !== 401) dispatch(displayMessage(res.statusText || res.headers && res.headers.map && res.headers.map.errormessage && res.headers.map.errormessage[0] || "Sorry , an error occurred while processing your request"));
-      console.log(action);
+      log("an error occurred");
+      log(action);
       var args = action[CALL_API];
       if (throttleEnabled) {
         var throttleKey = args.endpoint + args.body;
@@ -1790,7 +1794,6 @@ function runDynamoProcessor(id, args, key) {
       disableRetry = _ref2.disableRetry,
       retry = _ref2.retry;
 
-  //console.log(arguments);
   if (config.cacheProcessorResponses && !disableCache) {
     var cacheKey = { id: id, args: args },
         hasKey = cache.hasKey(cacheKey);
@@ -1889,7 +1892,7 @@ function runDynamoProcess(details) {
             }
             return { id: details.id, data: d };
           }).catch(function (er) {
-            console.log(er);
+            log(er);
             dispatch({
               type: "SHOW_MESSAGE",
               message: "An error occurred while trying to understand a response from the server."
@@ -2178,6 +2181,7 @@ var dynamo_input = (function (LabelWrapper, Input, DatePicker, Checkbox) {
 	invariants.validComponent(Input, "Input");
 	invariants.validComponent(DatePicker, "DatePicker");
 	invariants.validComponent(Checkbox, "Checkbox");
+	var log = debug("dynamo-client-components:input");
 
 	var DynamoInput = function (_Component) {
 		inherits(DynamoInput, _Component);
@@ -2322,9 +2326,10 @@ var dynamo_view = (function (Page, Container) {
 	invariants.validComponent(Page, "Page");
 	invariants.validComponent(Container, "Container");
 	//map elements in DynamoView props to elements in store.
+	var log = debug("dynamo-client-components:view");
 	var mapStateToProps = function mapStateToProps(_$$1, initialProps) {
 		return function (state, ownProps) {
-			//console.log("mapping state to props");
+			//log("mapping state to props");
 			var _state = state.dynamo.view[ownProps.currentProcess],
 			    description = _state && _state.description,
 			    map = {
@@ -2359,20 +2364,12 @@ var dynamo_view = (function (Page, Container) {
 			_this.submit = _this.submit.bind(_this);
 			//pass reference to validate func
 			_this.state = {
-				//	form: this.props.value,
 				validator: {}
 			};
 			return _this;
 		}
 
 		createClass(DynamoView, [{
-			key: "componentWillReceiveProps",
-			value: function componentWillReceiveProps(next) {
-				// if (next.value !== this.props.value) {
-				// 	this.setState({ form: next.value });
-				// }
-			}
-		}, {
 			key: "onValueChanged",
 			value: function onValueChanged(form) {
 				//this.state.form = form.dynamo_view;
@@ -2388,13 +2385,13 @@ var dynamo_view = (function (Page, Container) {
 				var _this2 = this;
 
 				this.state.validator.validate().then(function () {
-					console.log("currentStep:" + (_this2.props.currentStep || "0"));
+					log("currentStep:" + (_this2.props.currentStep || "0"));
 					_this2.props.submit(_this2.props.value);
 				}, function () {
-					console.warn("the form is invalid");
+					log("the form is invalid");
 				}).catch(function (er) {
-					console.log("an error occurred while validating form ");
-					console.error(er);
+					log("an error occurred while validating form ");
+					log(er);
 				});
 			}
 		}, {
@@ -2443,7 +2440,7 @@ var dynamo_container = (function () {
 	}
 
 	if (invariants.validComponent(Section, "Section") && invariants.validComponent(Header, "Header") && !ComponentLocator) throw new Error("ComponentLocator cannot be null (dynamo_container)");
-
+	var log = debug("dynamo-client-components:container");
 	return function (_Component) {
 		inherits(_class, _Component);
 
@@ -2458,7 +2455,6 @@ var dynamo_container = (function () {
 					return {};
 				})
 			};
-			//this._validations = [];
 			_this.setValidator = _this.setValidator.bind(_this);
 			_this.setValidator();
 			return _this;
@@ -2471,6 +2467,7 @@ var dynamo_container = (function () {
 					var _validations = next.elements.map(function (x) {
 						return {};
 					});
+					log("creating new validators for container " + this.props.name);
 					this.setState({ _validations: _validations });
 				}
 			}
@@ -2586,6 +2583,7 @@ var dynamo_process = (function (ProgressBar, TextView, DynamoView) {
 	invariants.validComponent(ProgressBar, "ProgressBar");
 	invariants.validComponent(TextView, "TextView");
 	invariants.validComponent(DynamoView, "DynamoView");
+	var log = debug("dynamo-client-components:process");
 
 	//map elements in DynamoInput props to elements in store.
 	var mapStateToProps = function mapStateToProps(_$$1, initialProps) {
@@ -2683,6 +2681,7 @@ var dynamo_section = (function (Layout, Header, Container) {
 	invariants.validComponent(Layout, "Layout");
 	invariants.validComponent(Header, "Header");
 	invariants.validComponent(Container, "Container");
+	var log = debug("dynamo-client-components:session");
 
 	var DynamoSection = function (_Component) {
 		inherits(DynamoSection, _Component);
@@ -2794,7 +2793,6 @@ var getTemplatesAndAddComponentUid = runThroughObj.bind(null, [function (key, da
 	if (key == "elementType" && !data.component_uid) {
 		data.component_uid = uuid();
 	}
-	//console.log(parent ? parent : "n/a");
 }]);
 
 var toggleAllBusyIndicators = runThroughObj.bind(null, [function (key, data) {
@@ -2814,6 +2812,8 @@ var view = {
 
 var dynamo_select = (function (ProgressIndicator, Layout, Container) {
 	if (invariants.validComponent(ProgressIndicator, "ProgressIndicator") && invariants.validComponent(Layout, "Layout") && !Container) throw new Error("Container cannot be null (dynamo_select)");
+
+	var log = debug("dynamo-client-components:select");
 
 	//map elements in DynamoView props to elements in store.
 	var mapStateToProps = function mapStateToProps(_$$1, initialProps) {
@@ -2847,6 +2847,7 @@ var dynamo_select = (function (ProgressIndicator, Layout, Container) {
 
 			var _this = possibleConstructorReturn(this, (DynamoSelect.__proto__ || Object.getPrototypeOf(DynamoSelect)).call(this, props));
 
+			_this.state = {};
 			_this.fetchItems = _this.fetchItems.bind(_this);
 			_this.onValueChanged = _this.onValueChanged.bind(_this);
 			_this.selectFirstItem = _this.selectFirstItem.bind(_this);
@@ -2855,9 +2856,6 @@ var dynamo_select = (function (ProgressIndicator, Layout, Container) {
 				return _this.runValidators();
 			};
 			_this.isValidValue = _this.isValidValue.bind(_this);
-			_this.state = {
-				value: unwrapObjectValue(props.value)
-			};
 			_this.isObjectIdMode = _this.isObjectIdMode.bind(_this);
 			return _this;
 		}
@@ -2865,7 +2863,7 @@ var dynamo_select = (function (ProgressIndicator, Layout, Container) {
 		createClass(DynamoSelect, [{
 			key: "hasValue",
 			value: function hasValue() {
-				return !!this.state.value || "is required";
+				return !!this.props.value || "is required";
 			}
 		}, {
 			key: "runValidators",
@@ -2877,13 +2875,6 @@ var dynamo_select = (function (ProgressIndicator, Layout, Container) {
 			value: function onValueChanged(value) {
 				if (this._mounted) {
 					this.props.valueChanged(defineProperty({}, this.props.name, this.getValueBasedOnMode(value)));
-					var updateValue = unwrapObjectValue(value);
-					if (this.state.value !== updateValue) {
-						console.log("onValueChanged value:" + updateValue);
-						this.setState({
-							value: updateValue
-						});
-					}
 				}
 			}
 		}, {
@@ -2897,6 +2888,7 @@ var dynamo_select = (function (ProgressIndicator, Layout, Container) {
 				var items = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : this.props.items;
 				var value = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : this.props.value;
 
+				value = unwrapObjectValue(value);
 				return items && items.length && items.filter(function (x) {
 					return x._id == value;
 				}).length;
@@ -2913,16 +2905,12 @@ var dynamo_select = (function (ProgressIndicator, Layout, Container) {
 					return this.fetchItems(next.args.config.value, next.args.config.customArgs, next.component_uid);
 				}
 
-				if (next.items && next.items.length == 1) {
+				if (next.items && next.items.length == 1 && !next.value) {
 					return this.selectFirstItem(next.items[0]._id);
 				}
 
 				if (next.items && next.value && !this.isValidValue(next.items, next.value) || !next.items) {
 					return this.onValueChanged(null);
-				}
-
-				if (next.items && next.value && this.isValidValue(next.items, next.value) || this.props.items && this.isValidValue(this.props.items, next.value)) {
-					return this.onValueChanged(next.value);
 				}
 			}
 		}, {
@@ -2949,17 +2937,13 @@ var dynamo_select = (function (ProgressIndicator, Layout, Container) {
 			value: function componentDidMount() {
 				this._mounted = true;
 				if (!this.props.items) {
-					console.log("fetching items in componentDidMount for current:" + this.props.name);
+					log("fetching items in componentDidMount for current:" + this.props.name);
 					this.fetchItems(this.props.args.config.value);
 				}
 
 				if (this.props.items && this.props.items.length == 1) {
 					return this.selectFirstItem(this.props.items[0]._id);
 				}
-				// if (this.isObjectIdMode() && this.props.value)
-				// 	return setTimeout(() => {
-				// 		this.onValueChanged(this.props.value);
-				// 	});
 			}
 		}, {
 			key: "isEmptyOrNull",
@@ -2971,9 +2955,9 @@ var dynamo_select = (function (ProgressIndicator, Layout, Container) {
 			value: function render() {
 				/*jshint ignore:start*/
 
+				log("rendering " + this.props.name);
 				if (this.isEmptyOrNull(this.props.items)) {
-					//console.log("items is null or undefined");
-					//console.log(this.props);
+					log(this.props.name + " is empty");
 					return React__default.createElement(ProgressIndicator, null);
 				}
 				return React__default.createElement(Layout, {
@@ -2985,7 +2969,7 @@ var dynamo_select = (function (ProgressIndicator, Layout, Container) {
 						items: this.props.items,
 						displayProperty: "displayLabel",
 						keyProperty: "_id",
-						value: this.state.value,
+						value: unwrapObjectValue(this.props.value),
 						valueChanged: this.onValueChanged
 					})
 				});
@@ -2998,12 +2982,36 @@ var dynamo_select = (function (ProgressIndicator, Layout, Container) {
 	return connect(mapStateToProps, mapDispatchToProps)(DynamoSelect);
 });
 
+var DynamoComponentBase = function (_React$Component) {
+	inherits(DynamoComponentBase, _React$Component);
+
+	function DynamoComponentBase(props, log) {
+		classCallCheck(this, DynamoComponentBase);
+
+		var _this = possibleConstructorReturn(this, (DynamoComponentBase.__proto__ || Object.getPrototypeOf(DynamoComponentBase)).call(this, props));
+
+		_this.log = function (m) {
+			log(m + " for " + _this.props.name);
+		};
+		return _this;
+	}
+
+	createClass(DynamoComponentBase, [{
+		key: "render",
+		value: function render() {
+			return null;
+		}
+	}]);
+	return DynamoComponentBase;
+}(React__default.Component);
+
 var dynamo_selectset = (function (Layout, Picker, ProgressBar, Container) {
 	//map elements in DynamoView props to elements in store.
 	invariants.validComponent(Layout, "Layout");
 	invariants.validComponent(Picker, "Picker");
 	invariants.validComponent(Container, "Container");
-
+	var log = debug("dynamo-client-components:selectset");
+	var noPath = "selectset_no_path";
 	var mapDispatchToProps = function mapDispatchToProps(dispatch) {
 		return {
 			getItems: function getItems(id, args, key, extra) {
@@ -3035,13 +3043,13 @@ var dynamo_selectset = (function (Layout, Picker, ProgressBar, Container) {
 		return [];
 	};
 
-	var DynamoSelectSet = function (_Component) {
-		inherits(DynamoSelectSet, _Component);
+	var DynamoSelectSet = function (_DynamoBase) {
+		inherits(DynamoSelectSet, _DynamoBase);
 
 		function DynamoSelectSet(props) {
 			classCallCheck(this, DynamoSelectSet);
 
-			var _this = possibleConstructorReturn(this, (DynamoSelectSet.__proto__ || Object.getPrototypeOf(DynamoSelectSet)).call(this, props));
+			var _this = possibleConstructorReturn(this, (DynamoSelectSet.__proto__ || Object.getPrototypeOf(DynamoSelectSet)).call(this, props, log));
 
 			_this.retryFetch = _this.retryFetch.bind(_this);
 			_this.onPickerValueChanged = _this.onPickerValueChanged.bind(_this);
@@ -3080,7 +3088,7 @@ var dynamo_selectset = (function (Layout, Picker, ProgressBar, Container) {
 		}, {
 			key: "componentWillReceiveProps",
 			value: function componentWillReceiveProps(next) {
-				if (next.args.processor !== this.props.args.processor || next.component_uid !== this.props.component_uid && next.args.processor || typeof next.items == "undefined") this.fetchItems(next.args.processor, next.args.processorArgs, next.component_uid);
+				if ((next.args.processor !== this.props.args.processor || next.component_uid !== this.props.component_uid && next.args.processor || typeof next.items == "undefined") && !next.busy) this.fetchItems(next.args.processor, next.args.processorArgs, next.component_uid);
 
 				if (next.items && next.items.length == 1 && !next.value) {
 					this.selectFirstItem(next.items);
@@ -3089,6 +3097,7 @@ var dynamo_selectset = (function (Layout, Picker, ProgressBar, Container) {
 		}, {
 			key: "retryFetch",
 			value: function retryFetch() {
+				this.log("retrying fetch");
 				this.fetchItems(this.props.args.processor, this.props.args.processorArgs, this.props.component_uid, { retry: true });
 			}
 		}, {
@@ -3096,6 +3105,7 @@ var dynamo_selectset = (function (Layout, Picker, ProgressBar, Container) {
 			value: function fetchItems(source, args, component_uid) {
 				var _args = this._onContainerValueChanged.call(this, this.state.containerValues);
 				_args.shift();
+				this.log("fetching items");
 				this.props.getItems(source, Object.assign(JSON.parse(args || this.props.args.processorArgs || "{}"), {
 					_args: _args
 				}), component_uid || this.props.component_uid);
@@ -3151,11 +3161,22 @@ var dynamo_selectset = (function (Layout, Picker, ProgressBar, Container) {
 				this.props.valueChanged.apply(this, this._onContainerValueChanged.call(this, value, pickerValue));
 			}
 		}, {
+			key: "_shouldComponentUpdateComparer",
+			value: function _shouldComponentUpdateComparer(x, y, a, b, key) {
+				if (a == b) return true;
+				if (key == "extra") {
+					if (y.contentItems && y.contentItems.length) return _.isEqual(a[y.args.path], b[y.args.path]);
+
+					return true;
+				}
+			}
+		}, {
 			key: "shouldComponentUpdate",
 			value: function shouldComponentUpdate(nextProps, nextState) {
-				if (_.isEqual(this.props, nextProps) && _.isEqual(this.state.errors, nextState.errors)) {
+				if ((nextProps.args.path || !nextProps.args.path && !nextProps.contentItems.length) && _.isEqual(this.state.errors, nextState.errors) && _.isEqualWith(this.props, nextProps, this._shouldComponentUpdateComparer.bind(this, this.props, nextProps))) {
 					return false;
 				}
+
 				return true;
 			}
 		}, {
@@ -3176,8 +3197,8 @@ var dynamo_selectset = (function (Layout, Picker, ProgressBar, Container) {
 				}, {});
 
 				//path is not defined so unpack the properties and send.
-				var result = [pickerValue].concat(toConsumableArray(Object.keys(value && value._no_path || {}).map(function (x) {
-					return defineProperty({}, x, value._no_path[x]);
+				var result = [pickerValue].concat(toConsumableArray(Object.keys(value && value[noPath] || {}).map(function (x) {
+					return defineProperty({}, x, value[noPath][x]);
 				})));
 
 				if (superCancel) {
@@ -3187,11 +3208,11 @@ var dynamo_selectset = (function (Layout, Picker, ProgressBar, Container) {
 				setTimeout(function () {
 					if (_this3._mounted) {
 						_this3.setState({
-							containerValues: value && value._no_path || null
+							containerValues: value && value[noPath] || null
 						});
 					}
 				});
-
+				this.log("container values changed " + JSON.stringify(result));
 				return result;
 			}
 		}, {
@@ -3222,9 +3243,10 @@ var dynamo_selectset = (function (Layout, Picker, ProgressBar, Container) {
 		}, {
 			key: "render",
 			value: function render() {
-				console.log("selectset render called");
+				this.log("rendering called");
 				/*jshint ignore:start*/
 				if (this.props.busy) {
+					this.log(this.props.name + " is busy");
 					return React__default.createElement(ProgressBar, { onClick: this.props.retryFetch });
 				}
 
@@ -3243,7 +3265,7 @@ var dynamo_selectset = (function (Layout, Picker, ProgressBar, Container) {
 						currentStep: this.props.currentStep
 					}),
 					extraElements: React__default.createElement(Container, {
-						name: this.props.args.path || DynamoSelectSet.noPath(),
+						name: this.props.args.path || noPath,
 						value: this.getContainerValue(),
 						valueChanged: this.onContainerValueChanged,
 						elements: this.props.contentItems,
@@ -3255,14 +3277,9 @@ var dynamo_selectset = (function (Layout, Picker, ProgressBar, Container) {
 				});
 				/*jshint ignore:end*/
 			}
-		}], [{
-			key: "noPath",
-			value: function noPath() {
-				return "_no_path";
-			}
 		}]);
 		return DynamoSelectSet;
-	}(React.Component);
+	}(DynamoComponentBase);
 
 	DynamoSelectSet.notifyExtra = true;
 	return connect(mapStateToProps, mapDispatchToProps)(DynamoSelectSet);
@@ -3275,7 +3292,7 @@ var dynamo_list = (function (Layout, Button, List, Modal, ErrorText, ProgressBar
 	invariants.validComponent(Modal, "Modal");
 	invariants.validComponent(ErrorText, "ErrorText");
 	invariants.validComponent(Container, "Container");
-
+	var log = debug("dynamo-client-components:list");
 	var mapStateToProps = function mapStateToProps(_$$1, initialProps) {
 		return function (state, ownProps) {
 			var component_uid = getKey(state, ownProps.component_uid, ownProps);
@@ -3482,7 +3499,7 @@ var dynamo_list = (function (Layout, Button, List, Modal, ErrorText, ProgressBar
 
 						if (_this3.props.args.listItemDataTemplateProcessor) _this3.getListItemDataTemplate(items);
 					}).catch(function (er) {
-						console.log(er);
+						log(er);
 					});
 					return;
 				}
@@ -3621,7 +3638,7 @@ var DynamoHidden = function (_React$Component) {
 		key: "componentWillReceiveProps",
 		value: function componentWillReceiveProps(next) {
 			if (next.value !== this.props.value) {
-				props.valueChanged(this.getValue(next));
+				this.props.valueChanged(this.getValue(next));
 			}
 		}
 	}, {
@@ -3635,7 +3652,7 @@ var DynamoHidden = function (_React$Component) {
 
 var dynamo_nav = (function (Link, NavigationActions) {
 	if (invariants.validComponent(Link, "Link") && !NavigationActions) throw new Error("NavigationActions cannot be null (dynamo_nav)");
-
+	var log = debug("dynamo-client-components:nav");
 	var mapDispatchToState = function mapDispatchToState(dispatch) {
 		return {
 			dispatch: dispatch
@@ -3736,6 +3753,7 @@ var dynamo_nav = (function (Link, NavigationActions) {
 
 var dynamo_image = (function (Image) {
 	invariants.validComponent(Image, "Image");
+	var log = debug("dynamo-client-components:image");
 	return function (props) {
 		var value = props.value,
 		    args = props.args,
@@ -3762,7 +3780,7 @@ var ITEM_MODES = {
 
 var dynamo_grid = (function (Layout, List, ItemView, Header, ProgressBar, CommandsView, NavigationActions, CommandResultView, Container) {
 	if (invariants.validComponent(Layout, "Layout") && invariants.validComponent(Header, "Header") && invariants.validComponent(List, "List") && invariants.validComponent(ItemView, "ItemView") && invariants.validComponent(ProgressBar, "ProgressBar") && invariants.validComponent(CommandsView, "CommandsView") && invariants.validComponent(Container, "Container") && invariants.validComponent(CommandResultView, "CommandResultView") && !NavigationActions) throw new Error("NavigationActions cannot be null (dynamo_grid)");
-
+	var log = debug("dynamo-client-components:grid");
 	var mapDispatchToProps = function mapDispatchToProps(dispatch) {
 		return {
 			run: function run(id, args, key) {
@@ -3827,8 +3845,9 @@ var dynamo_grid = (function (Layout, List, ItemView, Header, ProgressBar, Comman
 
 			_this.state = {
 				validator: {},
+				_filterValidator: {},
 				showItemView: false,
-				filter: _this.props.filter,
+				//filter: this.props.filter,
 				count: _this.props.args.pageCount || 5,
 				showCommandResultView: false
 			};
@@ -3840,9 +3859,10 @@ var dynamo_grid = (function (Layout, List, ItemView, Header, ProgressBar, Comman
 			_this.valueChanged = _this.valueChanged.bind(_this);
 			_this.getItemsFromSource = _this.getItemsFromSource.bind(_this);
 			_this.done = _this.done.bind(_this);
-			_this._filterValidator = {};
+			//this._filterValidator = {};
 			_this.filter = _this.filter.bind(_this);
-			_this.filterValueChanged = _this.filterValueChanged.bind(_this);
+			_this.getFilterValue = _this.getFilterValue.bind(_this);
+			_this.getItemValue = _this.getItemValue.bind(_this);
 			_this.more = _this.more.bind(_this);
 			_this.finished = _this.finished.bind(_this);
 			_this.openCommandMenu = _this.openCommandMenu.bind(_this);
@@ -3895,7 +3915,7 @@ var dynamo_grid = (function (Layout, List, ItemView, Header, ProgressBar, Comman
 			key: "componentWillReceiveProps",
 			value: function componentWillReceiveProps(next) {
 				if (next.processed !== this.props.processed) {
-					//console.log("componentWillReceiveProps fired get items");
+					//log("componentWillReceiveProps fired get items");
 					this.getItemsFromSource(null, "filterGrid");
 				}
 
@@ -3912,40 +3932,50 @@ var dynamo_grid = (function (Layout, List, ItemView, Header, ProgressBar, Comman
 				}
 
 				if (next.itemTemplate && next.itemTemplate !== this.props.itemTemplate) {
-					this.showItemView(this.state.mode, this.state.existingValue || this.props.singleItem, true, next.itemTemplate);
+					this.showItemView(this.state.mode, this.getItemValue() || this.props.singleItem, true, next.itemTemplate);
 				}
 			}
 		}, {
 			key: "getItemsFromSource",
 			value: function getItemsFromSource() {
-				var filter = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : this.props.filter;
+				var filter = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : getFilterValue();
 				var methodName = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : "run";
 				var extra = arguments[2];
 
 				this.props[methodName](this.props.args.source, Object.assign({}, JSON.parse(this.props.args.gridArgs || "{}"), { count: this.state.count, full: true }, filter ? { query: filter } : {}, extra || {}), this.props.component_uid);
 			}
 		}, {
+			key: "getItemValue",
+			value: function getItemValue() {
+				return this.props.value && this.props.value[DynamoGrid.itemViewName()] || null;
+			}
+		}, {
+			key: "getFilterValue",
+			value: function getFilterValue() {
+				return this.props.value && this.props.value[DynamoGrid.filterViewName()] || null;
+			}
+		}, {
 			key: "filter",
 			value: function filter() {
 				var _this2 = this;
 
-				this._filterValidator.validate().then(function () {
-					_this2.getItemsFromSource(_this2.state.filter, "filterGrid");
+				this.state._filterValidator.validate().then(function () {
+					_this2.getItemsFromSource(_this2.getFilterValue(), "filterGrid");
 				}, function () {
-					console.warn("a field in filter is invalid");
+					log("a field in filter is invalid");
 				});
 			}
 		}, {
 			key: "valueChanged",
 			value: function valueChanged$$1(value) {
-				this.state.form = value ? value[DynamoGrid.itemViewName()] : null;
+				this.props.valueChanged(defineProperty({}, this.props.name, Object.assign({}, this.props.value || {}, value || {})));
 			}
 		}, {
 			key: "done",
 			value: function done(submitted) {
 				var _this3 = this;
 
-				if (!submitted) return this.setState({ showItemView: false, form: null });
+				if (!submitted) return this.setState({ showItemView: false });
 
 				this.state.validator.validate().then(function () {
 					var id = void 0;
@@ -3962,12 +3992,12 @@ var dynamo_grid = (function (Layout, List, ItemView, Header, ProgressBar, Comman
 					}
 
 					_this3.props.run(id, Object.assign(JSON.parse(_this3.props.args.gridArgs || "{}"), {
-						entity: _this3.state.form
+						entity: _this3.getItemValue()
 					}), _this3.props.component_uid + DynamoGrid.itemViewName());
-					//this.setState({ showItemView: false });
+
 					_this3.cancel();
 				}, function () {
-					console.log("some modal fields are invalid");
+					log("some modal fields are invalid");
 				});
 			}
 		}, {
@@ -3999,27 +4029,30 @@ var dynamo_grid = (function (Layout, List, ItemView, Header, ProgressBar, Comman
 				}
 
 				this.setState({
+					validator: {},
 					showItemView: true,
 					mode: mode,
 					showCommandsView: false,
-					itemViewElements: template,
-					existingValue: existingValue
+					itemViewElements: template
+					//,existingValue: existingValue
 				});
+				//update the existing value.
+				this.valueChanged(defineProperty({}, DynamoGrid.itemViewName(), existingValue));
 			}
 		}, {
 			key: "more",
 			value: function more() {
 				if (!this.finished() && !this.props.busy) {
-					//console.log("more fired getItemsFromSource");
+					//log("more fired getItemsFromSource");
 					var query = {
 						count: this.state.count
 					};
 					if (this.props.items && this.props.items[this.props.items.length - 1]) {
 						query._id = this.props.items[this.props.items.length - 1]._id;
-						console.log("most recent id:" + query._id);
+						log("most recent id:" + query._id);
 					}
 
-					this.getItemsFromSource(null, "more", query);
+					this.getItemsFromSource(this.getFilterValue(), "more", query);
 				}
 			}
 		}, {
@@ -4034,14 +4067,10 @@ var dynamo_grid = (function (Layout, List, ItemView, Header, ProgressBar, Comman
 					mode: null,
 					showItemView: false,
 					itemViewElements: null,
-					showCommandsView: false,
-					existingValue: null
+					showCommandsView: false
+					//existingValue: null
 				});
-			}
-		}, {
-			key: "filterValueChanged",
-			value: function filterValueChanged(value) {
-				this.state.filter = value ? value[DynamoGrid.filterViewName()] : null;
+				this.valueChanged(defineProperty({}, DynamoGrid.itemViewName(), null));
 			}
 		}, {
 			key: "closeCommandView",
@@ -4087,6 +4116,8 @@ var dynamo_grid = (function (Layout, List, ItemView, Header, ProgressBar, Comman
 			value: function render() {
 				var _this4 = this;
 
+				log("rendering " + this.props.name);
+
 				var args = this.props.args,
 				    header = this.props.filterTemplate ? React__default.createElement(
 					Header,
@@ -4095,10 +4126,10 @@ var dynamo_grid = (function (Layout, List, ItemView, Header, ProgressBar, Comman
 						} },
 					React__default.createElement(Container, {
 						elements: this.props.filterTemplate,
-						value: this.state.filter,
-						valueChanged: this.filterValueChanged,
+						value: this.getFilterValue(),
+						valueChanged: this.valueChanged,
 						name: DynamoGrid.filterViewName(),
-						validator: this._filterValidator,
+						validator: this.state._filterValidator,
 						navigation: this.props.navigation,
 						currentProcess: this.props.currentProcess,
 						currentStep: this.props.currentStep
@@ -4121,7 +4152,8 @@ var dynamo_grid = (function (Layout, List, ItemView, Header, ProgressBar, Comman
 						more: this.more,
 						commands: this.props.args.commands,
 						execCommand: this.execCommand,
-						openCommandMenu: this.openCommandMenu
+						openCommandMenu: this.openCommandMenu,
+						busy: !this.finished() && this.props.busy
 					}),
 					React__default.createElement(ItemView, {
 						visibility: (this.isCRUD() || this.isEDITONLY()) && this.state.showItemView,
@@ -4129,7 +4161,7 @@ var dynamo_grid = (function (Layout, List, ItemView, Header, ProgressBar, Comman
 						busy: this.props.fetchingSingleItem || this.props.fetchingItemTemplate,
 						template: React__default.createElement(Container, {
 							elements: this.state.itemViewElements,
-							value: this.state.existingValue,
+							value: this.getItemValue(),
 							name: DynamoGrid.itemViewName(),
 							validator: this.state.validator,
 							valueChanged: this.valueChanged,
@@ -4183,6 +4215,7 @@ var dynamo_grid = (function (Layout, List, ItemView, Header, ProgressBar, Comman
 });
 
 var dynamo_htmlview = (function (PlatformComponent) {
+	var log = debug("dynamo-client-components:html-view");
 	return function (_Component) {
 		inherits(DynamoHTMLViewer, _Component);
 
@@ -4209,12 +4242,14 @@ var dynamo_htmlview = (function (PlatformComponent) {
  * @param  {Array} previews Array of component definitions with an id property
  * @return {Class}          Configured component.
  */
+
 var dynamo_fileupload = (function (Uploader, ProgressBar, Text) {
 	var previews = arguments.length > 3 && arguments[3] !== undefined ? arguments[3] : [];
 
 	invariants.validComponent(Uploader, "Uploader");
 	invariants.validComponent(ProgressBar, "ProgressBar");
 	invariants.validComponent(Text, "Text");
+	var log = debug("dynamo-client-components:fileupload");
 
 	var DynamoFileUpload = function (_Component) {
 		inherits(DynamoFileUpload, _Component);
@@ -4281,10 +4316,8 @@ var dynamo_fileupload = (function (Uploader, ProgressBar, Text) {
 			key: "componentWillReceiveProps",
 			value: function componentWillReceiveProps(next) {
 				if (next.uploadedId !== this.props.uploadedId || next.component_uid !== this.props.component_uid) {
-					this._getPreview(next.uploadedId);
-					//setTimeout(() => {
+					if (next.uploadedId) this._getPreview(next.uploadedId);
 					this.props.valueChanged(defineProperty({}, this.props.name, next.uploadedId));
-					//}, 0);
 				}
 			}
 		}, {
@@ -4295,7 +4328,7 @@ var dynamo_fileupload = (function (Uploader, ProgressBar, Text) {
 		}, {
 			key: "render",
 			value: function render() {
-				console.log("fileupload render called");
+				log("render called for " + this.props.name);
 				if (this.props.busy) return React__default.createElement(ProgressBar, null);
 				if (!this._supported) return React__default.createElement(Text, { message: "unsupported file upload type" });
 				return React__default.createElement(Uploader, {
@@ -4346,7 +4379,7 @@ var dynamo_actionview = (function (Layout, ProgressBar, Filter, FilterContainer,
 	invariants.validComponent(ContentContainer, "ContentContainer");
 	invariants.validComponent(ProgressBar, "ProgressBar");
 	invariants.validComponent(Layout, "Layout");
-
+	var log = debug("dynamo-client-components:actionview");
 	var mapDispatchToProps = function mapDispatchToProps(dispatch) {
 		return {
 			run: function run(id, args, key) {
@@ -4382,17 +4415,18 @@ var dynamo_actionview = (function (Layout, ProgressBar, Filter, FilterContainer,
 	var itemViewName = "_item_view";
 	var contentViewName = "_content_view";
 
-	var DynamoActionView = function (_Component) {
-		inherits(DynamoActionView, _Component);
+	var DynamoActionView = function (_DynamoBase) {
+		inherits(DynamoActionView, _DynamoBase);
 
 		function DynamoActionView(props) {
 			classCallCheck(this, DynamoActionView);
 
-			var _this = possibleConstructorReturn(this, (DynamoActionView.__proto__ || Object.getPrototypeOf(DynamoActionView)).call(this, props));
+			var _this = possibleConstructorReturn(this, (DynamoActionView.__proto__ || Object.getPrototypeOf(DynamoActionView)).call(this, props, log));
 
 			_this.state = { _filterValidator: {}, validator: {} };
 			_this.filter = _this.filter.bind(_this);
 			_this.valueChanged = _this.valueChanged.bind(_this);
+			_this.filterValueChanged = _this.filterValueChanged.bind(_this);
 			return _this;
 		}
 
@@ -4400,7 +4434,7 @@ var dynamo_actionview = (function (Layout, ProgressBar, Filter, FilterContainer,
 			key: "componentWillReceiveProps",
 			value: function componentWillReceiveProps(next) {
 				if (!_.isEqual(next.resultData, this.props.resultData)) {
-					this.resultValueChanged(next.resultData);
+					this.valueChanged(defineProperty({}, contentViewName, next.resultData));
 				}
 			}
 		}, {
@@ -4411,25 +4445,31 @@ var dynamo_actionview = (function (Layout, ProgressBar, Filter, FilterContainer,
 				this.state._filterValidator.validate().then(function () {
 					_this2.props.run(_this2.props.args.action, _this2.props.value, _this2.props.component_uid);
 				}, function () {
-					console.warn("a field in filter is invalid");
+					_this2.log("a field in filter is invalid");
 				});
 			}
 		}, {
-			key: "resultValueChanged",
-			value: function resultValueChanged(value) {
-				this.valueChanged(this.props.value, value);
+			key: "filterValueChanged",
+			value: function filterValueChanged(value) {
+				this.valueChanged(value && value[itemViewName]);
 			}
 		}, {
 			key: "valueChanged",
 			value: function valueChanged$$1(value) {
-				var resultValue = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : this.props.resultData;
-
-				this.props.valueChanged(defineProperty({}, this.props.name, Object.assign(value || {}, resultValue || {})));
+				this.log("value changed in action view " + value);
+				this.props.valueChanged(defineProperty({}, this.props.name, Object.assign({}, this.props.value || {}, value || {})));
 			}
 		}, {
 			key: "render",
 			value: function render() {
+				this.log("rendering");
 				if (this.props.busy) return React__default.createElement(ProgressBar, null);
+
+				var _ref = this.props.value || {},
+				    _ref$contentViewName = _ref[contentViewName],
+				    contentValue = _ref$contentViewName === undefined ? {} : _ref$contentViewName,
+				    rest = objectWithoutProperties(_ref, [contentViewName]);
+
 				return React__default.createElement(
 					Layout,
 					null,
@@ -4441,10 +4481,10 @@ var dynamo_actionview = (function (Layout, ProgressBar, Filter, FilterContainer,
 						},
 						React__default.createElement(FilterContainer, {
 							elements: this.props.args.elements,
-							value: this.props.value && this.props.value[itemViewName],
+							value: rest,
 							name: itemViewName,
 							validator: this.state._filterValidator,
-							valueChanged: this.valueChanged,
+							valueChanged: this.filterValueChanged,
 							navigation: this.props.navigation,
 							currentProcess: this.props.currentProcess,
 							currentStep: this.props.currentStep
@@ -4453,9 +4493,9 @@ var dynamo_actionview = (function (Layout, ProgressBar, Filter, FilterContainer,
 					React__default.createElement(ContentContainer, {
 						name: contentViewName,
 						elements: this.props.resultUI,
-						value: this.props.value && this.props.value[contentViewName],
+						value: contentValue,
 						validator: this.state.validator,
-						valueChanged: this.resultValueChanged,
+						valueChanged: this.valueChanged,
 						navigation: this.props.navigation,
 						currentProcess: this.props.currentProcess,
 						currentStep: this.props.currentStep
@@ -4464,7 +4504,7 @@ var dynamo_actionview = (function (Layout, ProgressBar, Filter, FilterContainer,
 			}
 		}]);
 		return DynamoActionView;
-	}(React.Component);
+	}(DynamoComponentBase);
 
 	return connect(mapStateToProps, mapDispatchToProps)(DynamoActionView);
 });
@@ -4484,6 +4524,7 @@ var dynamo_label = (function (Label) {
 });
 
 var dynamo_webview = (function (WebView, Text) {
+	var log = debug("dynamo-client-components:webview");
 	return function (_Component) {
 		inherits(DynamoWebView, _Component);
 
@@ -4526,7 +4567,7 @@ var dynamo_messenger = (function (Layout, Pane, OpenChats, Editor, ContextMenu, 
 	invariants.validComponent(AddNewContact, "AddNewContact");
 	invariants.validComponent(PendingInvites, "PendingInvites");
 	invariants.validComponent(ChatLayout, "ChatLayout");
-
+	var log = debug("dynamo-client-components:messenger");
 	var mapStateToProps = function mapStateToProps(state) {
 		var _state = state.dynamo.chat;
 		return {
@@ -4645,21 +4686,19 @@ var dynamo_messenger = (function (Layout, Pane, OpenChats, Editor, ContextMenu, 
 
 				var chat = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : this.props.chat;
 
-				//	setTimeout(() => {
 				this.setState({
 					modalTemplate: function modalTemplate() {
 						return _this2.getMessageLayout(chat);
 					},
 					showModal: true
 				});
-				//}, 0);
 			}
 		}, {
 			key: "componentDidMount",
 			value: function componentDidMount() {
 				var _this3 = this;
 
-				console.log("logging in...");
+				log("logging in...");
 				this.props.login({ username: this.props.username });
 
 				if (this.props.chat) {
@@ -4827,7 +4866,6 @@ var dynamo_messenger = (function (Layout, Pane, OpenChats, Editor, ContextMenu, 
 						hideDone: true,
 						done: this.hideModal,
 						visibility: this.state.showModal
-
 					}),
 					this.state._panes[this.state.selectedPane].render()
 				);
@@ -4847,6 +4885,7 @@ var dynamo_command = (function (Link, customDownloadCommand) {
 			dispatch: dispatch
 		};
 	};
+	var log = debug("dynamo-client-components:command");
 
 	var DynamoCommand = function (_Component) {
 		inherits(DynamoCommand, _Component);

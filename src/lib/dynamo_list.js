@@ -9,7 +9,7 @@ import {
 	clearElementData
 } from "./actions";
 import { getKey } from "./utils/view";
-
+import debug from "debug";
 export default (
 	Layout,
 	Button,
@@ -25,7 +25,7 @@ export default (
 	invariants.validComponent(Modal, "Modal");
 	invariants.validComponent(ErrorText, "ErrorText");
 	invariants.validComponent(Container, "Container");
-
+	const log = debug("dynamo-client-components:list");
 	const mapStateToProps = (_, initialProps) => (state, ownProps) => {
 		let component_uid = getKey(state, ownProps.component_uid, ownProps);
 		return {
@@ -288,7 +288,7 @@ export default (
 							this.getListItemDataTemplate(items);
 					})
 					.catch(er => {
-						console.log(er);
+						log(er);
 					});
 				return;
 			}

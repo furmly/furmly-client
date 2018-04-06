@@ -16,7 +16,7 @@ export default class DynamoHidden extends React.Component {
 	}
 	componentWillReceiveProps(next) {
 		if (next.value !== this.props.value) {
-			props.valueChanged(this.getValue(next));
+			this.props.valueChanged(this.getValue(next));
 		}
 	}
 	render() {

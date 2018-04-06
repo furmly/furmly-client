@@ -100,7 +100,6 @@ export const getTemplatesAndAddComponentUid = runThroughObj.bind(null, [
 		if (key == "elementType" && !data.component_uid) {
 			data.component_uid = uuid();
 		}
-		//console.log(parent ? parent : "n/a");
 	}
 ]);
 

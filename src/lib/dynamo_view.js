@@ -2,12 +2,14 @@ import React, { Component } from "react";
 import { connect } from "react-redux";
 import invariants from "./utils/invariants";
 import { valueChanged } from "./actions";
+import debug from "debug";
 export default (Page, Container) => {
 	invariants.validComponent(Page, "Page");
 	invariants.validComponent(Container, "Container");
 	//map elements in DynamoView props to elements in store.
+	const log = debug("dynamo-client-components:view");
 	const mapStateToProps = (_, initialProps) => (state, ownProps) => {
-		//console.log("mapping state to props");
+		//log("mapping state to props");
 		let _state = state.dynamo.view[ownProps.currentProcess],
 			description = _state && _state.description,
 			map = {
@@ -36,15 +38,10 @@ export default (Page, Container) => {
 			this.submit = this.submit.bind(this);
 			//pass reference to validate func
 			this.state = {
-			//	form: this.props.value,
 				validator: {}
 			};
 		}
-		componentWillReceiveProps(next) {
-			// if (next.value !== this.props.value) {
-			// 	this.setState({ form: next.value });
-			// }
-		}
+
 		onValueChanged(form) {
 			//this.state.form = form.dynamo_view;
 			this.props.valueChanged({
@@ -58,18 +55,18 @@ export default (Page, Container) => {
 				.validate()
 				.then(
 					() => {
-						console.log(
+						log(
 							"currentStep:" + (this.props.currentStep || "0")
 						);
 						this.props.submit(this.props.value);
 					},
 					() => {
-						console.warn("the form is invalid");
+						log("the form is invalid");
 					}
 				)
 				.catch(er => {
-					console.log("an error occurred while validating form ");
-					console.error(er);
+					log("an error occurred while validating form ");
+					log(er);
 				});
 		}
 		render() {

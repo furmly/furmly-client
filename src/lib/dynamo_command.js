@@ -2,7 +2,7 @@ import React, { Component } from "react";
 import { connect } from "react-redux";
 import { runDynamoProcessor, dynamoDownloadUrl } from "./actions";
 import invariants from "./utils/invariants";
-
+import debug from "debug";
 export default (Link, customDownloadCommand) => {
 	invariants.validComponent(Link, "Link");
 
@@ -11,6 +11,7 @@ export default (Link, customDownloadCommand) => {
 			dispatch
 		};
 	};
+	const log = debug("dynamo-client-components:command");
 	class DynamoCommand extends Component {
 		constructor(props) {
 			super(props);

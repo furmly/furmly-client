@@ -3,6 +3,8 @@ import CALL_API from "call_api";
 import openSocket from "socket.io-client";
 import MemCache from "../utils/memcache";
 import { CHECK_FOR_EXISTING_SCREEN } from "../action-enhancers";
+import debug from "debug";
+const log = debug("dynamo-actions");
 
 const preDispatch = config.preDispatch,
   preRefreshToken = config.preRefreshToken,
@@ -182,7 +184,8 @@ function defaultError(dispatch, customType, meta, throttleEnabled) {
               "Sorry , an error occurred while processing your request"
           )
         );
-      console.log(action);
+      log("an error occurred");
+      log(action);
       let args = action[CALL_API];
       if (throttleEnabled) {
         let throttleKey = args.endpoint + args.body;
@@ -336,7 +339,6 @@ export function runDynamoProcessor(
     retry
   } = {}
 ) {
-  //console.log(arguments);
   if (config.cacheProcessorResponses && !disableCache) {
     let cacheKey = { id, args },
       hasKey = cache.hasKey(cacheKey);
@@ -483,7 +485,7 @@ export function runDynamoProcess(details) {
                     return { id: details.id, data: d };
                   })
                   .catch(er => {
-                    console.log(er);
+                    log(er);
                     dispatch({
                       type: "SHOW_MESSAGE",
                       message:
