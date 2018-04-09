@@ -8,7 +8,7 @@ import {
 	openConfirmation,
 	clearElementData
 } from "./actions";
-import { getKey } from "./utils/view";
+import { getKey, copy } from "./utils/view";
 import debug from "debug";
 export default (
 	Layout,
@@ -26,8 +26,11 @@ export default (
 	invariants.validComponent(ErrorText, "ErrorText");
 	invariants.validComponent(Container, "Container");
 	const log = debug("dynamo-client-components:list");
+	const EDIT = "EDIT",
+		NEW = "NEW";
 	const mapStateToProps = (_, initialProps) => (state, ownProps) => {
 		let component_uid = getKey(state, ownProps.component_uid, ownProps);
+
 		return {
 			confirmation:
 				state.app &&
@@ -36,7 +39,13 @@ export default (
 			templateCache: state.dynamo.view.templateCache,
 			dataTemplate: state.dynamo.view[component_uid],
 			component_uid,
-			busy: state.dynamo.view[`${component_uid}-busy`]
+			busy: state.dynamo.view[`${component_uid}-busy`],
+			items:
+				ownProps.value ||
+				(ownProps.args &&
+					ownProps.args.default &&
+					ownProps.args.default.slice()) ||
+				[]
 		};
 	};
 	const equivalent = function(arr, arr2) {
@@ -75,12 +84,6 @@ export default (
 			super(props);
 			this.state = {
 				validator: {},
-				items:
-					(this.props.value && this.props.value.slice()) ||
-					(this.props.args &&
-						this.props.args.default &&
-						this.props.args.default.slice()) ||
-					[],
 				modalVisible: false
 			};
 			this.showModal = this.showModal.bind(this);
@@ -105,59 +108,45 @@ export default (
 				next.confirmation &&
 				next.confirmation.params &&
 				typeof next.confirmation.params.index !== "undefined" &&
-				this.state.items.length
+				this.props.items.length
 			) {
+				let items = (this.props.items || []).slice();
 				return (
-					this.state.items.splice(next.confirmation.params.index, 1),
+					items.splice(next.confirmation.params.index, 1),
 					this.props.valueChanged({
-						[this.props.name]: this.state.items
+						[this.props.name]: items
 					})
 				);
 			}
 			if (this.props.component_uid !== next.component_uid) {
-				//setTimeout(() => {
 				if (this._mounted) {
-					let items =
-						next.dataTemplate ||
-						next.value ||
-						(next.args && next.args.default) ||
-						[];
-					items = items.slice();
-					if (
-						next.args.listItemDataTemplateProcessor &&
-						items.length
-					) {
-						this.getListItemDataTemplate(items, next);
-					}
+					this.getItemTemplate();
 					this.setState({
-						form: null,
-						itemTemplate: null,
-						items,
+						edit: null,
 						modalVisible: false
 					});
-					this.props.valueChanged({ [this.props.name]: items });
 				}
-				return;
-				//}, 0);
+			}
+			if (
+				next.args.listItemDataTemplateProcessor &&
+				next.items.length &&
+				next.items !== next.dataTemplate &&
+				next.dataTemplate == this.props.dataTemplate &&
+				!next.busy
+			) {
+				this.getListItemDataTemplate(next.items, next);
 			}
 
 			if (
 				next.dataTemplate &&
-				(!equivalent(next.dataTemplate, this.props.dataTemplate) ||
-					!equivalent(next.dataTemplate, this.state.items))
+				next.dataTemplate !== this.props.dataTemplate &&
+				!next.busy
 			) {
 				if (this._mounted) {
-					if (Array.prototype.isPrototypeOf(next.dataTemplate))
-						this.setState({
-							items: next.dataTemplate.slice()
-						});
-					else {
-						this.state.items.splice(
-							this.state.items.length - 1,
-							1,
-							next.dataTemplate
-						);
-					}
+					this.props.valueChanged({
+						[this.props.name]: next.dataTemplate
+					});
+					return;
 				}
 			}
 		}
@@ -177,23 +166,16 @@ export default (
 					? this.props.args.itemTemplate
 					: this.props.args.itemTemplate.template;
 			}
-			//if theres a default then update everyone.
-			if (this.state.items && this.state.items.length) {
-				//setTimeout(() => {
-				this.props.valueChanged({
-					[this.props.name]: this.state.items
-				});
-				//}, 0);
-			}
-			let equal = equivalent(this.props.dataTemplate, this.state.items);
+
+			let equal = equivalent(this.props.dataTemplate, this.props.items);
 			//if theres a data template processor then run it.
 			if (
 				this.props.args.listItemDataTemplateProcessor &&
-				this.state.items &&
-				this.state.items.length &&
+				this.props.items &&
+				this.props.items.length &&
 				!equal
 			) {
-				this.getListItemDataTemplate(this.state.items);
+				this.getListItemDataTemplate(this.props.items);
 			}
 
 			if (
@@ -202,11 +184,13 @@ export default (
 				equal
 			) {
 				setTimeout(() => {
-					this.setState({
-						items: this.props.dataTemplate.slice()
+					this.valueChanged({
+						[this.props.name]: this.props.dataTemplate
 					});
 				}, 0);
 			}
+
+			this.getItemTemplate();
 		}
 
 		getListItemDataTemplate(i, props = this.props) {
@@ -235,28 +219,29 @@ export default (
 			return this.props.args && this.props.args.disabled;
 		}
 		showModal() {
-			if (!this.isDisabled()) this.setState({ modalVisible: true });
+			if (!this.isDisabled())
+				this.setState({ modalVisible: true, mode: NEW });
 		}
 		hasValue() {
 			return (
-				(this.state.items && this.state.items.length) ||
+				(this.props.items && this.props.items.length) ||
 				"Requires atleast one item to have been added to the list"
 			);
 		}
 		isLessThanMaxLength(element) {
 			return (
-				(this.state.items &&
-					this.state.items.length &&
-					this.state.items.length <= element.args.max) ||
+				(this.props.items &&
+					this.props.items.length &&
+					this.props.items.length <= element.args.max) ||
 				(element.error ||
 					"The maximum number of items is " + element.args.max)
 			);
 		}
 		isGreaterThanMinLength(element) {
 			return (
-				(this.state.items &&
-					this.state.items.length &&
-					this.state.items.length >= element.args.min) ||
+				(this.props.items &&
+					this.props.items.length &&
+					this.props.items.length >= element.args.min) ||
 				(element.error ||
 					"The minimum number of items is " + element.args.min)
 			);
@@ -267,25 +252,24 @@ export default (
 				this.state.validator
 					.validate()
 					.then(() => {
-						let items = this.state.items || [];
+						let items = (this.props.items || []).slice();
 
-						if (!this.state.edit) items.push(this.state.form);
+						if (this.state.mode == NEW) items.push(this.state.edit);
 						else
 							items.splice(
-								items.indexOf(this.state.edit),
+								this.state.existing,
 								1,
-								this.state.form
+								this.state.edit
 							);
 						this.props.valueChanged({ [this.props.name]: items });
 						this.setState({
-							items: Object.assign([], items),
 							modalVisible: false,
 							edit: null,
-							form: null
+							existing: null
 						});
 
-						if (this.props.args.listItemDataTemplateProcessor)
-							this.getListItemDataTemplate(items);
+						// if (this.props.args.listItemDataTemplateProcessor)
+						// 	this.getListItemDataTemplate(items);
 					})
 					.catch(er => {
 						log(er);
@@ -294,14 +278,13 @@ export default (
 			}
 			//canceled the modal box.
 
-			this.setState({ modalVisible: false, form: null, edit: null });
+			this.setState({ modalVisible: false, edit: null });
 		}
 		valueChanged(v) {
-			this.state.form = v && v[DynamoList.modalName()];
+			//this.state.form = v && v[DynamoList.modalName()];
+			this.setState({ edit: v && v[DynamoList.modalName()] });
 		}
-		clone(item) {
-			return JSON.parse(JSON.stringify(item));
-		}
+
 		remove(index) {
 			this.props.openConfirmation(
 				this.props.component_uid,
@@ -311,8 +294,9 @@ export default (
 		}
 		edit(index) {
 			this.setState({
-				edit: this.state.items[index],
-				form: this.state.items[index],
+				edit: JSON.parse(JSON.stringify(this.props.items[index])),
+				existing: index,
+				mode: EDIT,
 				modalVisible: true
 			});
 		}
@@ -320,7 +304,7 @@ export default (
 			return "_modal_";
 		}
 		getItemTemplate() {
-			if (this.state.itemTemplate) return this.state.itemTemplate;
+			if (this.state.itemTemplate) return;
 
 			if (!this.props.args.itemTemplate) {
 				if (
@@ -337,7 +321,7 @@ export default (
 					] || [];
 			}
 
-			let itemTemplate = this.clone(
+			let itemTemplate = copy(
 				this.isTemplateRef() &&
 				!Array.prototype.isPrototypeOf(this.props.args.itemTemplate)
 					? this.props.args.itemTemplate.template
@@ -351,8 +335,9 @@ export default (
 			)
 				this.props.args.behavior.extension.forEach((element, index) => {
 					element.key = index;
-					itemTemplate.push(this.clone(element));
+					itemTemplate.push(copy(element));
 				});
+
 			//this happens asynchronously;
 			setTimeout(() => {
 				if (this._mounted)
@@ -360,24 +345,21 @@ export default (
 						itemTemplate: itemTemplate
 					});
 			}, 0);
-
-			//this.state.itemTemplate = itemTemplate;
-			return itemTemplate;
 		}
 
 		render() {
 			if (this.props.busy) {
 				return <ProgressBar />;
 			}
-			let template = this.getItemTemplate(),
-				disabled = this.isDisabled();
+			let //template = this.getItemTemplate(),
+			disabled = this.isDisabled();
 
 			return (
 				/*jshint ignore:start */
 				<Layout value={this.props.label}>
 					<Button disabled={disabled} click={this.showModal} />
 					<List
-						items={this.state.items}
+						items={this.props.items}
 						rowClicked={this.edit}
 						rowRemoved={this.remove}
 						rowTemplate={
@@ -390,7 +372,7 @@ export default (
 					<Modal
 						template={
 							<Container
-								elements={template}
+								elements={this.state.itemTemplate}
 								value={this.state.edit}
 								name={DynamoList.modalName()}
 								validator={this.state.validator}

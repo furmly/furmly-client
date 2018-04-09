@@ -189,7 +189,7 @@ export default function(state = {}, action) {
 			});
 
 		case ACTIONS.DYNAMO_PROCESS_RUNNING:
-		return Object.assign({}, state, {
+			return Object.assign({}, state, {
 				[`${action.meta.id}-busy`]: !action.error,
 				[action.meta.id]: Object.assign({}, state[action.meta.id], {
 					[state[action.meta.id].currentStep || 0]: action.meta.form
@@ -197,9 +197,14 @@ export default function(state = {}, action) {
 			});
 		case ACTIONS.VALUE_CHANGED:
 			return Object.assign({}, state, {
-				[action.payload.id]: Object.assign({}, state[action.payload.id], {
-					[state[action.payload.id].currentStep || 0]: action.payload.form
-				})
+				[action.payload.id]: Object.assign(
+					{},
+					state[action.payload.id],
+					{
+						[state[action.payload.id].currentStep || 0]: action
+							.payload.form
+					}
+				)
 			});
 		case ACTIONS.DYNAMO_PROCESSOR_RAN:
 			//configureTemplates(state, action);
@@ -228,11 +233,11 @@ export default function(state = {}, action) {
 			return Object.assign({}, state, {
 				[action.payload.id]: {
 					description: fetchedDescription,
-					0: fetchedValue,
-					templateCache: {}
+					0: fetchedValue
 				},
 				//always carry over the navigationContext.
 				navigationContext: state.navigationContext,
+				templateCache: state.templateCache || {},
 				[`${action.payload.id}-busy`]: false
 			});
 		case ACTIONS.FETCHING_PROCESS:
