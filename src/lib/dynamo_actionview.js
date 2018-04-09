@@ -56,9 +56,11 @@ export default (
 		filter() {
 			this.state._filterValidator.validate().then(
 				() => {
+					let { [contentViewName]: contentValue, ...rest } =
+						this.props.value || {};
 					this.props.run(
 						this.props.args.action,
-						this.props.value,
+						rest,
 						this.props.component_uid
 					);
 				},

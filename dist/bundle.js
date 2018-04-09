@@ -3624,7 +3624,7 @@ var DynamoHidden = function (_React$Component) {
 		value: function init() {
 			var props = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : this.props;
 
-			if (props.args && props.args.default && props.args.default !== props.value && !props.value) this.props.valueChanged(props.args.default);
+			if (props.args && props.args.default && props.args.default !== props.value && !props.value) this.props.valueChanged(defineProperty({}, props.name, props.args.default));
 		}
 	}, {
 		key: "componentWillReceiveProps",
@@ -4440,7 +4440,11 @@ var dynamo_actionview = (function (Layout, ProgressBar, Filter, FilterContainer,
 				var _this2 = this;
 
 				this.state._filterValidator.validate().then(function () {
-					_this2.props.run(_this2.props.args.action, _this2.props.value, _this2.props.component_uid);
+					var _ref = _this2.props.value || {},
+					    contentValue = _ref[contentViewName],
+					    rest = objectWithoutProperties(_ref, [contentViewName]);
+
+					_this2.props.run(_this2.props.args.action, rest, _this2.props.component_uid);
 				}, function () {
 					_this2.log("a field in filter is invalid");
 				});
@@ -4462,10 +4466,10 @@ var dynamo_actionview = (function (Layout, ProgressBar, Filter, FilterContainer,
 				this.log("rendering");
 				if (this.props.busy) return React__default.createElement(ProgressBar, null);
 
-				var _ref = this.props.value || {},
-				    _ref$contentViewName = _ref[contentViewName],
-				    contentValue = _ref$contentViewName === undefined ? {} : _ref$contentViewName,
-				    rest = objectWithoutProperties(_ref, [contentViewName]);
+				var _ref2 = this.props.value || {},
+				    _ref2$contentViewName = _ref2[contentViewName],
+				    contentValue = _ref2$contentViewName === undefined ? {} : _ref2$contentViewName,
+				    rest = objectWithoutProperties(_ref2, [contentViewName]);
 
 				return React__default.createElement(
 					Layout,
