@@ -114,6 +114,7 @@ export const toggleAllBusyIndicators = runThroughObj.bind(null, [
 	}
 ]);
 
+export const copy = value => JSON.parse(JSON.stringify(value));
 export default {
 	getCurrentStepFromState,
 	getTitleFromState,

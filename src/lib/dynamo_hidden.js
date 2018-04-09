@@ -1,23 +1,24 @@
 import React from "react";
 
-
 export default class DynamoHidden extends React.Component {
 	constructor(props) {
 		super(props);
+		this.init = this.init.bind(this);
 	}
 	componentDidMount() {
-		this.props.valueChanged(this.getValue(this.props));
+		this.init();
 	}
-
-	getValue(props = this.props) {
-		return {
-			[props.name]: props.value || (props.args && props.args.default)
-		};
+	init(props = this.props) {
+		if (
+			props.args &&
+			props.args.default &&
+			props.args.default !== props.value &&
+			!props.value
+		)
+			this.props.valueChanged(props.args.default);
 	}
 	componentWillReceiveProps(next) {
-		if (next.value !== this.props.value) {
-			this.props.valueChanged(this.getValue(next));
-		}
+		this.init(next);
 	}
 	render() {
 		return null;

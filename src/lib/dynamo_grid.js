@@ -10,7 +10,7 @@ import {
 	showMessage
 } from "./actions";
 import invariants from "./utils/invariants";
-import { getKey } from "./utils/view";
+import { getKey, copy } from "./utils/view";
 import debug from "debug";
 export const GRID_MODES = {
 	CRUD: "CRUD",
@@ -104,6 +104,7 @@ export default (
 		constructor(props) {
 			super(props);
 			this.state = {
+				form: null,
 				validator: {},
 				_filterValidator: {},
 				showItemView: false,
@@ -111,6 +112,7 @@ export default (
 				count: this.props.args.pageCount || 5,
 				showCommandResultView: false
 			};
+			this.itemValueChanged = this.itemValueChanged.bind(this);
 			this.showItemView = this.showItemView.bind(this);
 			this.cancel = this.cancel.bind(this);
 			this.showItemView = this.showItemView.bind(this);
@@ -176,7 +178,6 @@ export default (
 		}
 		componentWillReceiveProps(next) {
 			if (next.processed !== this.props.processed) {
-				//log("componentWillReceiveProps fired get items");
 				this.getItemsFromSource(null, "filterGrid");
 			}
 
@@ -240,11 +241,7 @@ export default (
 			);
 		}
 		getItemValue() {
-			return (
-				(this.props.value &&
-					this.props.value[DynamoGrid.itemViewName()]) ||
-				null
-			);
+			return this.state.form;
 		}
 		getFilterValue() {
 			return (
@@ -286,7 +283,7 @@ export default (
 			});
 		}
 		done(submitted) {
-			if (!submitted) return this.setState({ showItemView: false });
+			if (!submitted) return this.cancel();
 
 			this.state.validator.validate().then(
 				() => {
@@ -330,6 +327,7 @@ export default (
 		}
 		showItemView(mode, args, skipFetch, _itemTemplate) {
 			let template = _itemTemplate,
+				gettingItemTemplate = false,
 				existingValue;
 			if (this.props.args.extra)
 				switch (mode) {
@@ -391,25 +389,25 @@ export default (
 				this.props.args.extra.fetchTemplateProcessor &&
 				!skipFetch
 			) {
+				gettingItemTemplate = true;
 				this.props.getItemTemplate(
 					this.props.args.extra.fetchTemplateProcessor,
 					args,
 					this.props.component_uid
 				);
 			}
-
-			this.setState({
+			let update = {
 				validator: {},
 				showItemView: true,
 				mode: mode,
 				showCommandsView: false,
 				itemViewElements: template
-				//,existingValue: existingValue
-			});
-			//update the existing value.
-			this.valueChanged({
-				[DynamoGrid.itemViewName()]: existingValue
-			});
+			};
+			if (!gettingItemTemplate)
+				update.form = existingValue
+					? copy(existingValue)
+					: existingValue;
+			this.setState(update);
 		}
 
 		more() {
@@ -441,14 +439,22 @@ export default (
 				mode: null,
 				showItemView: false,
 				itemViewElements: null,
-				showCommandsView: false
-				//existingValue: null
+				showCommandsView: false,
+				form: null
 			});
-			this.valueChanged({ [DynamoGrid.itemViewName()]: null });
 		}
 
 		closeCommandView() {
 			this.setState({ showCommandsView: false });
+		}
+		itemValueChanged(value) {
+			this.setState({
+				form: Object.assign(
+					{},
+					this.state.form || {},
+					(value && value[DynamoGrid.itemViewName()]) || {}
+				)
+			});
 		}
 		openCommandMenu(item) {
 			this.setState({ item: item, showCommandsView: true });
@@ -545,7 +551,7 @@ export default (
 								value={this.getItemValue()}
 								name={DynamoGrid.itemViewName()}
 								validator={this.state.validator}
-								valueChanged={this.valueChanged}
+								valueChanged={this.itemValueChanged}
 								navigation={this.props.navigation}
 								currentProcess={this.props.currentProcess}
 								currentStep={this.props.currentStep}

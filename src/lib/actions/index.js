@@ -238,7 +238,7 @@ export function fetchDynamoProcess(id, args) {
                 return res.json().then(d => {
                   let response = { id: id, data: d };
                   if (config.cacheProcessDescription && !d.data) {
-                    cache.store({ id, args }, response);
+                    cache.store({ id, args }, copy(response));
                   }
                   return response;
                 });

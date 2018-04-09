@@ -15,16 +15,13 @@ export default (LabelWrapper, Input, DatePicker, Checkbox) => {
 	invariants.validComponent(Input, "Input");
 	invariants.validComponent(DatePicker, "DatePicker");
 	invariants.validComponent(Checkbox, "Checkbox");
-const log = debug("dynamo-client-components:input");
+	const log = debug("dynamo-client-components:input");
 	class DynamoInput extends Component {
 		constructor(props) {
 			super(props);
+			this.state = {};
+			this.setDefault = this.setDefault.bind(this);
 			this.valueChanged = this.valueChanged.bind(this);
-			this.state = {
-				value:
-					this.props.value ||
-					(this.props.args && this.props.args.default)
-			};
 			this.runValidators = this.runValidators.bind(this);
 			this.hasValue = this.hasValue.bind(this);
 			this.isLessThanMaxLength = this.isLessThanMaxLength.bind(this);
@@ -39,9 +36,7 @@ const log = debug("dynamo-client-components:input");
 		}
 		componentWillReceiveProps(next) {
 			if (next.component_uid !== this.props.component_uid) {
-				//		setTimeout(() => {
-				this.valueChanged(this.props.value);
-				//}, 0);
+				this.setDefault(next);
 			}
 		}
 		runValidators() {
@@ -55,7 +50,7 @@ const log = debug("dynamo-client-components:input");
 			);
 		}
 		hasValue() {
-			return !!this.state.value || "is required";
+			return !!this.props.value || "is required";
 		}
 		isRequired() {
 			return (
@@ -67,23 +62,23 @@ const log = debug("dynamo-client-components:input");
 		}
 		isLessThanMaxLength(element) {
 			return (
-				(this.state.value &&
-					this.state.value.length <= element.args.max) ||
+				(this.props.value &&
+					this.props.value.length <= element.args.max) ||
 				element.error ||
 				"The maximum number of letters/numbers is " + element.args.max
 			);
 		}
 		isGreaterThanMinLength(element) {
 			return (
-				(this.state.value &&
-					this.state.value.length >= element.args.min) ||
+				(this.props.value &&
+					this.props.value.length >= element.args.min) ||
 				element.error ||
 				"The minimum number of letters/numbers is" + element.args.min
 			);
 		}
 		matchesRegex(element) {
 			return (
-				new RegExp(element.args.exp).test(this.state.value) ||
+				new RegExp(element.args.exp).test(this.props.value) ||
 				element.error ||
 				"Invalid entry"
 			);
@@ -93,7 +88,7 @@ const log = debug("dynamo-client-components:input");
 			if (this.props.asyncValidators && this.props.asyncValidators.length)
 				this.runAsyncValidators(value);
 
-			this.setState({ value: value, errors: [] });
+			this.setState({ errors: [] });
 		}
 		getDateConfig(args) {
 			let result = {};
@@ -111,8 +106,11 @@ const log = debug("dynamo-client-components:input");
 
 			return result;
 		}
+		setDefault(props) {
+			if (!props.value && props.args && props.args.default)
+				this.valueChanged(props.args.default);
+		}
 		render() {
-			
 			/*jshint ignore:start */
 			let args = this.props.args,
 				Result;
@@ -141,7 +139,7 @@ const log = debug("dynamo-client-components:input");
 							type={args.type}
 							{...passThrough}
 							required={this.isRequired()}
-							value={this.state.value}
+							value={this.props.value}
 							errors={this.state.errors}
 							valueChanged={this.valueChanged}
 						/>

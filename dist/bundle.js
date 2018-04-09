@@ -1708,7 +1708,7 @@ function fetchDynamoProcess(id, args) {
           return res.json().then(function (d) {
             var response = { id: id, data: d };
             if (config.cacheProcessDescription && !d.data) {
-              cache.store({ id: id, args: args }, response);
+              cache.store({ id: id, args: args }, copy(response));
             }
             return response;
           });
@@ -2191,10 +2191,9 @@ var dynamo_input = (function (LabelWrapper, Input, DatePicker, Checkbox) {
 
 			var _this = possibleConstructorReturn(this, (DynamoInput.__proto__ || Object.getPrototypeOf(DynamoInput)).call(this, props));
 
+			_this.state = {};
+			_this.setDefault = _this.setDefault.bind(_this);
 			_this.valueChanged = _this.valueChanged.bind(_this);
-			_this.state = {
-				value: _this.props.value || _this.props.args && _this.props.args.default
-			};
 			_this.runValidators = _this.runValidators.bind(_this);
 			_this.hasValue = _this.hasValue.bind(_this);
 			_this.isLessThanMaxLength = _this.isLessThanMaxLength.bind(_this);
@@ -2211,9 +2210,7 @@ var dynamo_input = (function (LabelWrapper, Input, DatePicker, Checkbox) {
 			key: "componentWillReceiveProps",
 			value: function componentWillReceiveProps(next) {
 				if (next.component_uid !== this.props.component_uid) {
-					//		setTimeout(() => {
-					this.valueChanged(this.props.value);
-					//}, 0);
+					this.setDefault(next);
 				}
 			}
 		}, {
@@ -2229,7 +2226,7 @@ var dynamo_input = (function (LabelWrapper, Input, DatePicker, Checkbox) {
 		}, {
 			key: "hasValue",
 			value: function hasValue() {
-				return !!this.state.value || "is required";
+				return !!this.props.value || "is required";
 			}
 		}, {
 			key: "isRequired",
@@ -2241,17 +2238,17 @@ var dynamo_input = (function (LabelWrapper, Input, DatePicker, Checkbox) {
 		}, {
 			key: "isLessThanMaxLength",
 			value: function isLessThanMaxLength(element) {
-				return this.state.value && this.state.value.length <= element.args.max || element.error || "The maximum number of letters/numbers is " + element.args.max;
+				return this.props.value && this.props.value.length <= element.args.max || element.error || "The maximum number of letters/numbers is " + element.args.max;
 			}
 		}, {
 			key: "isGreaterThanMinLength",
 			value: function isGreaterThanMinLength(element) {
-				return this.state.value && this.state.value.length >= element.args.min || element.error || "The minimum number of letters/numbers is" + element.args.min;
+				return this.props.value && this.props.value.length >= element.args.min || element.error || "The minimum number of letters/numbers is" + element.args.min;
 			}
 		}, {
 			key: "matchesRegex",
 			value: function matchesRegex(element) {
-				return new RegExp(element.args.exp).test(this.state.value) || element.error || "Invalid entry";
+				return new RegExp(element.args.exp).test(this.props.value) || element.error || "Invalid entry";
 			}
 		}, {
 			key: "valueChanged",
@@ -2259,7 +2256,7 @@ var dynamo_input = (function (LabelWrapper, Input, DatePicker, Checkbox) {
 				this.props.valueChanged(defineProperty({}, this.props.name, value));
 				if (this.props.asyncValidators && this.props.asyncValidators.length) this.runAsyncValidators(value);
 
-				this.setState({ value: value, errors: [] });
+				this.setState({ errors: [] });
 			}
 		}, {
 			key: "getDateConfig",
@@ -2278,9 +2275,13 @@ var dynamo_input = (function (LabelWrapper, Input, DatePicker, Checkbox) {
 				return result;
 			}
 		}, {
+			key: "setDefault",
+			value: function setDefault(props) {
+				if (!props.value && props.args && props.args.default) this.valueChanged(props.args.default);
+			}
+		}, {
 			key: "render",
 			value: function render() {
-
 				/*jshint ignore:start */
 				var args = this.props.args,
 				    Result = void 0;
@@ -2305,7 +2306,7 @@ var dynamo_input = (function (LabelWrapper, Input, DatePicker, Checkbox) {
 						type: args.type
 					}, passThrough, {
 						required: this.isRequired(),
-						value: this.state.value,
+						value: this.props.value,
 						errors: this.state.errors,
 						valueChanged: this.valueChanged
 					}))
@@ -2801,6 +2802,9 @@ var toggleAllBusyIndicators = runThroughObj.bind(null, [function (key, data) {
 	}
 }]);
 
+var copy$1 = function copy(value) {
+	return JSON.parse(JSON.stringify(value));
+};
 var view = {
 	getCurrentStepFromState: getCurrentStepFromState,
 	getTitleFromState: getTitleFromState,
@@ -3293,15 +3297,19 @@ var dynamo_list = (function (Layout, Button, List, Modal, ErrorText, ProgressBar
 	invariants.validComponent(ErrorText, "ErrorText");
 	invariants.validComponent(Container, "Container");
 	var log = debug("dynamo-client-components:list");
+	var EDIT = "EDIT",
+	    NEW = "NEW";
 	var mapStateToProps = function mapStateToProps(_$$1, initialProps) {
 		return function (state, ownProps) {
 			var component_uid = getKey(state, ownProps.component_uid, ownProps);
+
 			return {
 				confirmation: state.app && state.app.confirmationResult && state.app.confirmationResult[component_uid],
 				templateCache: state.dynamo.view.templateCache,
 				dataTemplate: state.dynamo.view[component_uid],
 				component_uid: component_uid,
-				busy: state.dynamo.view[component_uid + "-busy"]
+				busy: state.dynamo.view[component_uid + "-busy"],
+				items: ownProps.value || ownProps.args && ownProps.args.default && ownProps.args.default.slice() || []
 			};
 		};
 	};
@@ -3345,7 +3353,6 @@ var dynamo_list = (function (Layout, Button, List, Modal, ErrorText, ProgressBar
 
 			_this.state = {
 				validator: {},
-				items: _this.props.value && _this.props.value.slice() || _this.props.args && _this.props.args.default && _this.props.args.default.slice() || [],
 				modalVisible: false
 			};
 			_this.showModal = _this.showModal.bind(_this);
@@ -3366,36 +3373,27 @@ var dynamo_list = (function (Layout, Button, List, Modal, ErrorText, ProgressBar
 		createClass(DynamoList, [{
 			key: "componentWillReceiveProps",
 			value: function componentWillReceiveProps(next) {
-				if (next.confirmation !== this.props.confirmation && next.confirmation && next.confirmation.params && typeof next.confirmation.params.index !== "undefined" && this.state.items.length) {
-					return this.state.items.splice(next.confirmation.params.index, 1), this.props.valueChanged(defineProperty({}, this.props.name, this.state.items));
+				if (next.confirmation !== this.props.confirmation && next.confirmation && next.confirmation.params && typeof next.confirmation.params.index !== "undefined" && this.props.items.length) {
+					var items = (this.props.items || []).slice();
+					return items.splice(next.confirmation.params.index, 1), this.props.valueChanged(defineProperty({}, this.props.name, items));
 				}
 				if (this.props.component_uid !== next.component_uid) {
-					//setTimeout(() => {
 					if (this._mounted) {
-						var items = next.dataTemplate || next.value || next.args && next.args.default || [];
-						items = items.slice();
-						if (next.args.listItemDataTemplateProcessor && items.length) {
-							this.getListItemDataTemplate(items, next);
-						}
+						this.getItemTemplate();
 						this.setState({
-							form: null,
-							itemTemplate: null,
-							items: items,
+							edit: null,
 							modalVisible: false
 						});
-						this.props.valueChanged(defineProperty({}, this.props.name, items));
 					}
-					return;
-					//}, 0);
+				}
+				if (next.args.listItemDataTemplateProcessor && next.items.length && next.items !== next.dataTemplate && next.dataTemplate == this.props.dataTemplate && !next.busy) {
+					this.getListItemDataTemplate(next.items, next);
 				}
 
-				if (next.dataTemplate && (!equivalent(next.dataTemplate, this.props.dataTemplate) || !equivalent(next.dataTemplate, this.state.items))) {
+				if (next.dataTemplate && next.dataTemplate !== this.props.dataTemplate && !next.busy) {
 					if (this._mounted) {
-						if (Array.prototype.isPrototypeOf(next.dataTemplate)) this.setState({
-							items: next.dataTemplate.slice()
-						});else {
-							this.state.items.splice(this.state.items.length - 1, 1, next.dataTemplate);
-						}
+						this.props.valueChanged(defineProperty({}, this.props.name, next.dataTemplate));
+						return;
 					}
 				}
 			}
@@ -3416,25 +3414,20 @@ var dynamo_list = (function (Layout, Button, List, Modal, ErrorText, ProgressBar
 				if (this.isTemplateRef()) {
 					this.props.templateCache[this.isTemplateRef()] = Array.prototype.isPrototypeOf(this.props.args.itemTemplate) ? this.props.args.itemTemplate : this.props.args.itemTemplate.template;
 				}
-				//if theres a default then update everyone.
-				if (this.state.items && this.state.items.length) {
-					//setTimeout(() => {
-					this.props.valueChanged(defineProperty({}, this.props.name, this.state.items));
-					//}, 0);
-				}
-				var equal = equivalent(this.props.dataTemplate, this.state.items);
+
+				var equal = equivalent(this.props.dataTemplate, this.props.items);
 				//if theres a data template processor then run it.
-				if (this.props.args.listItemDataTemplateProcessor && this.state.items && this.state.items.length && !equal) {
-					this.getListItemDataTemplate(this.state.items);
+				if (this.props.args.listItemDataTemplateProcessor && this.props.items && this.props.items.length && !equal) {
+					this.getListItemDataTemplate(this.props.items);
 				}
 
 				if (this.props.dataTemplate && this.props.dataTemplate.length && equal) {
 					setTimeout(function () {
-						_this2.setState({
-							items: _this2.props.dataTemplate.slice()
-						});
+						_this2.valueChanged(defineProperty({}, _this2.props.name, _this2.props.dataTemplate));
 					}, 0);
 				}
+
+				this.getItemTemplate();
 			}
 		}, {
 			key: "getListItemDataTemplate",
@@ -3461,22 +3454,22 @@ var dynamo_list = (function (Layout, Button, List, Modal, ErrorText, ProgressBar
 		}, {
 			key: "showModal",
 			value: function showModal() {
-				if (!this.isDisabled()) this.setState({ modalVisible: true });
+				if (!this.isDisabled()) this.setState({ modalVisible: true, mode: NEW });
 			}
 		}, {
 			key: "hasValue",
 			value: function hasValue() {
-				return this.state.items && this.state.items.length || "Requires atleast one item to have been added to the list";
+				return this.props.items && this.props.items.length || "Requires atleast one item to have been added to the list";
 			}
 		}, {
 			key: "isLessThanMaxLength",
 			value: function isLessThanMaxLength(element) {
-				return this.state.items && this.state.items.length && this.state.items.length <= element.args.max || element.error || "The maximum number of items is " + element.args.max;
+				return this.props.items && this.props.items.length && this.props.items.length <= element.args.max || element.error || "The maximum number of items is " + element.args.max;
 			}
 		}, {
 			key: "isGreaterThanMinLength",
 			value: function isGreaterThanMinLength(element) {
-				return this.state.items && this.state.items.length && this.state.items.length >= element.args.min || element.error || "The minimum number of items is " + element.args.min;
+				return this.props.items && this.props.items.length && this.props.items.length >= element.args.min || element.error || "The minimum number of items is " + element.args.min;
 			}
 		}, {
 			key: "closeModal",
@@ -3486,18 +3479,18 @@ var dynamo_list = (function (Layout, Button, List, Modal, ErrorText, ProgressBar
 				//he/she clicked ok
 				if (result) {
 					this.state.validator.validate().then(function () {
-						var items = _this3.state.items || [];
+						var items = (_this3.props.items || []).slice();
 
-						if (!_this3.state.edit) items.push(_this3.state.form);else items.splice(items.indexOf(_this3.state.edit), 1, _this3.state.form);
+						if (_this3.state.mode == NEW) items.push(_this3.state.edit);else items.splice(_this3.state.existing, 1, _this3.state.edit);
 						_this3.props.valueChanged(defineProperty({}, _this3.props.name, items));
 						_this3.setState({
-							items: Object.assign([], items),
 							modalVisible: false,
 							edit: null,
-							form: null
+							existing: null
 						});
 
-						if (_this3.props.args.listItemDataTemplateProcessor) _this3.getListItemDataTemplate(items);
+						// if (this.props.args.listItemDataTemplateProcessor)
+						// 	this.getListItemDataTemplate(items);
 					}).catch(function (er) {
 						log(er);
 					});
@@ -3505,17 +3498,13 @@ var dynamo_list = (function (Layout, Button, List, Modal, ErrorText, ProgressBar
 				}
 				//canceled the modal box.
 
-				this.setState({ modalVisible: false, form: null, edit: null });
+				this.setState({ modalVisible: false, edit: null });
 			}
 		}, {
 			key: "valueChanged",
 			value: function valueChanged$$1(v) {
-				this.state.form = v && v[DynamoList.modalName()];
-			}
-		}, {
-			key: "clone",
-			value: function clone(item) {
-				return JSON.parse(JSON.stringify(item));
+				//this.state.form = v && v[DynamoList.modalName()];
+				this.setState({ edit: v && v[DynamoList.modalName()] });
 			}
 		}, {
 			key: "remove",
@@ -3526,8 +3515,9 @@ var dynamo_list = (function (Layout, Button, List, Modal, ErrorText, ProgressBar
 			key: "edit",
 			value: function edit(index) {
 				this.setState({
-					edit: this.state.items[index],
-					form: this.state.items[index],
+					edit: JSON.parse(JSON.stringify(this.props.items[index])),
+					existing: index,
+					mode: EDIT,
 					modalVisible: true
 				});
 			}
@@ -3536,7 +3526,7 @@ var dynamo_list = (function (Layout, Button, List, Modal, ErrorText, ProgressBar
 			value: function getItemTemplate$$1() {
 				var _this4 = this;
 
-				if (this.state.itemTemplate) return this.state.itemTemplate;
+				if (this.state.itemTemplate) return;
 
 				if (!this.props.args.itemTemplate) {
 					if ((!this.props.args.behavior || !this.props.args.behavior.template_ref) && !this.props.args.disabled) throw new Error("Empty List view item template");
@@ -3544,21 +3534,19 @@ var dynamo_list = (function (Layout, Button, List, Modal, ErrorText, ProgressBar
 					this.props.args.itemTemplate = this.props.templateCache[this.props.args.behavior && this.props.args.behavior.template_ref] || [];
 				}
 
-				var itemTemplate = this.clone(this.isTemplateRef() && !Array.prototype.isPrototypeOf(this.props.args.itemTemplate) ? this.props.args.itemTemplate.template : this.props.args.itemTemplate);
+				var itemTemplate = copy$1(this.isTemplateRef() && !Array.prototype.isPrototypeOf(this.props.args.itemTemplate) ? this.props.args.itemTemplate.template : this.props.args.itemTemplate);
 
 				if (this.props.args.behavior && this.props.args.behavior.extension && this.props.args.behavior.extension.length) this.props.args.behavior.extension.forEach(function (element, index) {
 					element.key = index;
-					itemTemplate.push(_this4.clone(element));
+					itemTemplate.push(copy$1(element));
 				});
+
 				//this happens asynchronously;
 				setTimeout(function () {
 					if (_this4._mounted) _this4.setState({
 						itemTemplate: itemTemplate
 					});
 				}, 0);
-
-				//this.state.itemTemplate = itemTemplate;
-				return itemTemplate;
 			}
 		}, {
 			key: "render",
@@ -3566,8 +3554,8 @@ var dynamo_list = (function (Layout, Button, List, Modal, ErrorText, ProgressBar
 				if (this.props.busy) {
 					return React__default.createElement(ProgressBar, null);
 				}
-				var template = this.getItemTemplate(),
-				    disabled = this.isDisabled();
+				var //template = this.getItemTemplate(),
+				disabled = this.isDisabled();
 
 				return (
 					/*jshint ignore:start */
@@ -3576,7 +3564,7 @@ var dynamo_list = (function (Layout, Button, List, Modal, ErrorText, ProgressBar
 						{ value: this.props.label },
 						React__default.createElement(Button, { disabled: disabled, click: this.showModal }),
 						React__default.createElement(List, {
-							items: this.state.items,
+							items: this.props.items,
 							rowClicked: this.edit,
 							rowRemoved: this.remove,
 							rowTemplate: this.props.args.rowTemplate && JSON.parse(this.props.args.rowTemplate),
@@ -3585,7 +3573,7 @@ var dynamo_list = (function (Layout, Button, List, Modal, ErrorText, ProgressBar
 						React__default.createElement(ErrorText, { value: this.state.errors }),
 						React__default.createElement(Modal, {
 							template: React__default.createElement(Container, {
-								elements: template,
+								elements: this.state.itemTemplate,
 								value: this.state.edit,
 								name: DynamoList.modalName(),
 								validator: this.state.validator,
@@ -3619,27 +3607,29 @@ var DynamoHidden = function (_React$Component) {
 
 	function DynamoHidden(props) {
 		classCallCheck(this, DynamoHidden);
-		return possibleConstructorReturn(this, (DynamoHidden.__proto__ || Object.getPrototypeOf(DynamoHidden)).call(this, props));
+
+		var _this = possibleConstructorReturn(this, (DynamoHidden.__proto__ || Object.getPrototypeOf(DynamoHidden)).call(this, props));
+
+		_this.init = _this.init.bind(_this);
+		return _this;
 	}
 
 	createClass(DynamoHidden, [{
 		key: "componentDidMount",
 		value: function componentDidMount() {
-			this.props.valueChanged(this.getValue(this.props));
+			this.init();
 		}
 	}, {
-		key: "getValue",
-		value: function getValue() {
+		key: "init",
+		value: function init() {
 			var props = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : this.props;
 
-			return defineProperty({}, props.name, props.value || props.args && props.args.default);
+			if (props.args && props.args.default && props.args.default !== props.value && !props.value) this.props.valueChanged(props.args.default);
 		}
 	}, {
 		key: "componentWillReceiveProps",
 		value: function componentWillReceiveProps(next) {
-			if (next.value !== this.props.value) {
-				this.props.valueChanged(this.getValue(next));
-			}
+			this.init(next);
 		}
 	}, {
 		key: "render",
@@ -3844,6 +3834,7 @@ var dynamo_grid = (function (Layout, List, ItemView, Header, ProgressBar, Comman
 			var _this = possibleConstructorReturn(this, (DynamoGrid.__proto__ || Object.getPrototypeOf(DynamoGrid)).call(this, props));
 
 			_this.state = {
+				form: null,
 				validator: {},
 				_filterValidator: {},
 				showItemView: false,
@@ -3851,6 +3842,7 @@ var dynamo_grid = (function (Layout, List, ItemView, Header, ProgressBar, Comman
 				count: _this.props.args.pageCount || 5,
 				showCommandResultView: false
 			};
+			_this.itemValueChanged = _this.itemValueChanged.bind(_this);
 			_this.showItemView = _this.showItemView.bind(_this);
 			_this.cancel = _this.cancel.bind(_this);
 			_this.showItemView = _this.showItemView.bind(_this);
@@ -3915,7 +3907,6 @@ var dynamo_grid = (function (Layout, List, ItemView, Header, ProgressBar, Comman
 			key: "componentWillReceiveProps",
 			value: function componentWillReceiveProps(next) {
 				if (next.processed !== this.props.processed) {
-					//log("componentWillReceiveProps fired get items");
 					this.getItemsFromSource(null, "filterGrid");
 				}
 
@@ -3947,7 +3938,7 @@ var dynamo_grid = (function (Layout, List, ItemView, Header, ProgressBar, Comman
 		}, {
 			key: "getItemValue",
 			value: function getItemValue() {
-				return this.props.value && this.props.value[DynamoGrid.itemViewName()] || null;
+				return this.state.form;
 			}
 		}, {
 			key: "getFilterValue",
@@ -3975,7 +3966,7 @@ var dynamo_grid = (function (Layout, List, ItemView, Header, ProgressBar, Comman
 			value: function done(submitted) {
 				var _this3 = this;
 
-				if (!submitted) return this.setState({ showItemView: false });
+				if (!submitted) return this.cancel();
 
 				this.state.validator.validate().then(function () {
 					var id = void 0;
@@ -4004,6 +3995,7 @@ var dynamo_grid = (function (Layout, List, ItemView, Header, ProgressBar, Comman
 			key: "showItemView",
 			value: function showItemView(mode, args, skipFetch, _itemTemplate) {
 				var template = _itemTemplate,
+				    gettingItemTemplate = false,
 				    existingValue = void 0;
 				if (this.props.args.extra) switch (mode) {
 					case ITEM_MODES.NEW:
@@ -4025,19 +4017,18 @@ var dynamo_grid = (function (Layout, List, ItemView, Header, ProgressBar, Comman
 					return console.error("showItemTemplate was called on a grid view in " + this.props.args.mode + " and it does not have a template. \n" + JSON.stringify(this.props, null, " "));
 				}
 				if ((!template || !template.length) && !this.props.fetchingItemTemplate && this.props.args.extra.fetchTemplateProcessor && !skipFetch) {
+					gettingItemTemplate = true;
 					this.props.getItemTemplate(this.props.args.extra.fetchTemplateProcessor, args, this.props.component_uid);
 				}
-
-				this.setState({
+				var update = {
 					validator: {},
 					showItemView: true,
 					mode: mode,
 					showCommandsView: false,
 					itemViewElements: template
-					//,existingValue: existingValue
-				});
-				//update the existing value.
-				this.valueChanged(defineProperty({}, DynamoGrid.itemViewName(), existingValue));
+				};
+				if (!gettingItemTemplate) update.form = existingValue ? copy$1(existingValue) : existingValue;
+				this.setState(update);
 			}
 		}, {
 			key: "more",
@@ -4067,15 +4058,21 @@ var dynamo_grid = (function (Layout, List, ItemView, Header, ProgressBar, Comman
 					mode: null,
 					showItemView: false,
 					itemViewElements: null,
-					showCommandsView: false
-					//existingValue: null
+					showCommandsView: false,
+					form: null
 				});
-				this.valueChanged(defineProperty({}, DynamoGrid.itemViewName(), null));
 			}
 		}, {
 			key: "closeCommandView",
 			value: function closeCommandView() {
 				this.setState({ showCommandsView: false });
+			}
+		}, {
+			key: "itemValueChanged",
+			value: function itemValueChanged(value) {
+				this.setState({
+					form: Object.assign({}, this.state.form || {}, value && value[DynamoGrid.itemViewName()] || {})
+				});
 			}
 		}, {
 			key: "openCommandMenu",
@@ -4164,7 +4161,7 @@ var dynamo_grid = (function (Layout, List, ItemView, Header, ProgressBar, Comman
 							value: this.getItemValue(),
 							name: DynamoGrid.itemViewName(),
 							validator: this.state.validator,
-							valueChanged: this.valueChanged,
+							valueChanged: this.itemValueChanged,
 							navigation: this.props.navigation,
 							currentProcess: this.props.currentProcess,
 							currentStep: this.props.currentStep
@@ -5293,9 +5290,8 @@ function view$1 () {
 			var fetchedDescription = Object.assign({}, action.payload.data.description);
 			return Object.assign({}, state, (_Object$assign22 = {}, defineProperty(_Object$assign22, action.payload.id, {
 				description: fetchedDescription,
-				0: fetchedValue,
-				templateCache: {}
-			}), defineProperty(_Object$assign22, "navigationContext", state.navigationContext), defineProperty(_Object$assign22, action.payload.id + "-busy", false), _Object$assign22));
+				0: fetchedValue
+			}), defineProperty(_Object$assign22, "navigationContext", state.navigationContext), defineProperty(_Object$assign22, "templateCache", state.templateCache || {}), defineProperty(_Object$assign22, action.payload.id + "-busy", false), _Object$assign22));
 		case ACTIONS.FETCHING_PROCESS:
 			return Object.assign({}, state, defineProperty({}, action.meta + "-busy", !action.error));
 		case ACTIONS.FAILED_TO_FETCH_PROCESS:
