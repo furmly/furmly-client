@@ -15,7 +15,7 @@ export default class DynamoHidden extends React.Component {
 			props.args.default !== props.value &&
 			!props.value
 		)
-			this.props.valueChanged(props.args.default);
+			this.props.valueChanged({ [props.name]: props.args.default });
 	}
 	componentWillReceiveProps(next) {
 		this.init(next);
