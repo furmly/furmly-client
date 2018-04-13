@@ -1,4 +1,5 @@
-import React, { Component } from "react";
+import React from "react";
+import DynamoBase from "./dynamo_base";
 import { connect } from "react-redux";
 import {
 	runDynamoProcessor,
@@ -100,15 +101,14 @@ export default (
 				state.dynamo.view[component_uid + DynamoGrid.itemViewName()]
 		};
 	};
-	class DynamoGrid extends Component {
+	class DynamoGrid extends DynamoBase {
 		constructor(props) {
-			super(props);
+			super(props, log);
 			this.state = {
 				form: null,
 				validator: {},
 				_filterValidator: {},
 				showItemView: false,
-				//filter: this.props.filter,
 				count: this.props.args.pageCount || 5,
 				showCommandResultView: false
 			};
@@ -121,7 +121,6 @@ export default (
 			this.valueChanged = this.valueChanged.bind(this);
 			this.getItemsFromSource = this.getItemsFromSource.bind(this);
 			this.done = this.done.bind(this);
-			//this._filterValidator = {};
 			this.filter = this.filter.bind(this);
 			this.getFilterValue = this.getFilterValue.bind(this);
 			this.getItemValue = this.getItemValue.bind(this);
@@ -132,6 +131,7 @@ export default (
 			this.execCommand = this.execCommand.bind(this);
 			this.showCommandResult = this.showCommandResult.bind(this);
 			this.closeCommandResult = this.closeCommandResult.bind(this);
+			this.fetchFilterTemplate = this.fetchFilterTemplate.bind(this);
 			if (
 				(this.isCRUD() || this.isEDITONLY()) &&
 				(!this.props.args.commands ||
@@ -150,16 +150,20 @@ export default (
 			}
 		}
 		componentDidMount() {
+			this.fetchFilterTemplate();
+		}
+
+		fetchFilterTemplate(props = this.props, other) {
 			if (
-				this.props.args.filterProcessor &&
-				!this.props.fetchingFilterTemplate &&
-				(!this.props.filterTemplate ||
-					!this.props.filterTemplate.length)
+				props.args.filterProcessor &&
+				!props.fetchingFilterTemplate &&
+				!props.filterTemplate &&
+				(!other || (other && props.filterTemplate !== other))
 			) {
 				this.props.getFilterTemplate(
-					this.props.args.filterProcessor,
-					JSON.parse(this.props.args.gridArgs || "{}"),
-					this.props.component_uid
+					props.args.filterProcessor,
+					JSON.parse(props.args.gridArgs || "{}"),
+					props.component_uid
 				);
 			}
 		}
@@ -215,13 +219,15 @@ export default (
 				next.itemTemplate &&
 				next.itemTemplate !== this.props.itemTemplate
 			) {
-				this.showItemView(
+				return this.showItemView(
 					this.state.mode,
 					this.getItemValue() || this.props.singleItem,
 					true,
 					next.itemTemplate
 				);
 			}
+
+			this.fetchFilterTemplate(next, this.props.filterTemplate);
 		}
 		getItemsFromSource(
 			filter = getFilterValue(),
@@ -299,7 +305,7 @@ export default (
 							break;
 					}
 					if (!id) {
-						return console.error(
+						return this.log(
 							"done  was called on a grid view in " +
 								this.props.args.mode +
 								" and it does not have a processor for it. \n" +
@@ -321,7 +327,7 @@ export default (
 					this.cancel();
 				},
 				() => {
-					log("some modal fields are invalid");
+					this.log("some modal fields are invalid");
 				}
 			);
 		}
@@ -376,7 +382,7 @@ export default (
 				(!template || !Array.prototype.isPrototypeOf(template)) &&
 				!this.props.args.extra.fetchTemplateProcessor
 			) {
-				return console.error(
+				return this.log(
 					"showItemTemplate was called on a grid view in " +
 						this.props.args.mode +
 						" and it does not have a template. \n" +
@@ -423,7 +429,7 @@ export default (
 					query._id = this.props.items[
 						this.props.items.length - 1
 					]._id;
-					log("most recent id:" + query._id);
+					this.log("most recent id:" + query._id);
 				}
 
 				this.getItemsFromSource(this.getFilterValue(), "more", query);
@@ -490,7 +496,7 @@ export default (
 			return this.props.args.mode == GRID_MODES.EDITONLY;
 		}
 		render() {
-			log(`rendering ${this.props.name}`);
+			this.log("rendering..");
 
 			let args = this.props.args,
 				header = this.props.filterTemplate ? (
