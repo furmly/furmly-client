@@ -245,12 +245,12 @@ export default function(state = {}, action) {
 				[`${action.meta}-busy`]: !action.error
 			});
 		case ACTIONS.FAILED_TO_FETCH_PROCESS:
-			return {
+			return Object.assign({}, state, {
 				[action.meta]: null,
 				//always carry over the navigationContext.
 				navigationContext: state.navigationContext,
 				[`${action.meta}-busy`]: false
-			};
+			});
 		case ACTIONS.START_FILE_UPLOAD:
 			return Object.assign({}, state, {
 				[action.meta]: startUpload(state[action.meta], action)
@@ -398,6 +398,7 @@ function reduceGrid(state = {}, action) {
 		state.data = action.payload.data;
 		return Object.assign({}, state, { fetchingGrid: false });
 	}
+	return state;
 }
 
 function filteredGrid(state = {}, action) {

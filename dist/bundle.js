@@ -3825,20 +3825,19 @@ var dynamo_grid = (function (Layout, List, ItemView, Header, ProgressBar, Comman
 		};
 	};
 
-	var DynamoGrid = function (_Component) {
-		inherits(DynamoGrid, _Component);
+	var DynamoGrid = function (_DynamoBase) {
+		inherits(DynamoGrid, _DynamoBase);
 
 		function DynamoGrid(props) {
 			classCallCheck(this, DynamoGrid);
 
-			var _this = possibleConstructorReturn(this, (DynamoGrid.__proto__ || Object.getPrototypeOf(DynamoGrid)).call(this, props));
+			var _this = possibleConstructorReturn(this, (DynamoGrid.__proto__ || Object.getPrototypeOf(DynamoGrid)).call(this, props, log));
 
 			_this.state = {
 				form: null,
 				validator: {},
 				_filterValidator: {},
 				showItemView: false,
-				//filter: this.props.filter,
 				count: _this.props.args.pageCount || 5,
 				showCommandResultView: false
 			};
@@ -3851,7 +3850,6 @@ var dynamo_grid = (function (Layout, List, ItemView, Header, ProgressBar, Comman
 			_this.valueChanged = _this.valueChanged.bind(_this);
 			_this.getItemsFromSource = _this.getItemsFromSource.bind(_this);
 			_this.done = _this.done.bind(_this);
-			//this._filterValidator = {};
 			_this.filter = _this.filter.bind(_this);
 			_this.getFilterValue = _this.getFilterValue.bind(_this);
 			_this.getItemValue = _this.getItemValue.bind(_this);
@@ -3862,6 +3860,7 @@ var dynamo_grid = (function (Layout, List, ItemView, Header, ProgressBar, Comman
 			_this.execCommand = _this.execCommand.bind(_this);
 			_this.showCommandResult = _this.showCommandResult.bind(_this);
 			_this.closeCommandResult = _this.closeCommandResult.bind(_this);
+			_this.fetchFilterTemplate = _this.fetchFilterTemplate.bind(_this);
 			if ((_this.isCRUD() || _this.isEDITONLY()) && (!_this.props.args.commands || !_this.props.args.commands.filter(function (x) {
 				return x.commandType == "$EDIT";
 			}).length)) {
@@ -3880,8 +3879,16 @@ var dynamo_grid = (function (Layout, List, ItemView, Header, ProgressBar, Comman
 		createClass(DynamoGrid, [{
 			key: "componentDidMount",
 			value: function componentDidMount() {
-				if (this.props.args.filterProcessor && !this.props.fetchingFilterTemplate && (!this.props.filterTemplate || !this.props.filterTemplate.length)) {
-					this.props.getFilterTemplate(this.props.args.filterProcessor, JSON.parse(this.props.args.gridArgs || "{}"), this.props.component_uid);
+				this.fetchFilterTemplate();
+			}
+		}, {
+			key: "fetchFilterTemplate",
+			value: function fetchFilterTemplate() {
+				var props = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : this.props;
+				var other = arguments[1];
+
+				if (props.args.filterProcessor && !props.fetchingFilterTemplate && !props.filterTemplate && (!other || other && props.filterTemplate !== other)) {
+					this.props.getFilterTemplate(props.args.filterProcessor, JSON.parse(props.args.gridArgs || "{}"), props.component_uid);
 				}
 			}
 		}, {
@@ -3923,8 +3930,10 @@ var dynamo_grid = (function (Layout, List, ItemView, Header, ProgressBar, Comman
 				}
 
 				if (next.itemTemplate && next.itemTemplate !== this.props.itemTemplate) {
-					this.showItemView(this.state.mode, this.getItemValue() || this.props.singleItem, true, next.itemTemplate);
+					return this.showItemView(this.state.mode, this.getItemValue() || this.props.singleItem, true, next.itemTemplate);
 				}
+
+				this.fetchFilterTemplate(next, this.props.filterTemplate);
 			}
 		}, {
 			key: "getItemsFromSource",
@@ -3979,7 +3988,7 @@ var dynamo_grid = (function (Layout, List, ItemView, Header, ProgressBar, Comman
 							break;
 					}
 					if (!id) {
-						return console.error("done  was called on a grid view in " + _this3.props.args.mode + " and it does not have a processor for it. \n" + JSON.stringify(_this3.props, null, " "));
+						return _this3.log("done  was called on a grid view in " + _this3.props.args.mode + " and it does not have a processor for it. \n" + JSON.stringify(_this3.props, null, " "));
 					}
 
 					_this3.props.run(id, Object.assign(JSON.parse(_this3.props.args.gridArgs || "{}"), {
@@ -3988,7 +3997,7 @@ var dynamo_grid = (function (Layout, List, ItemView, Header, ProgressBar, Comman
 
 					_this3.cancel();
 				}, function () {
-					log("some modal fields are invalid");
+					_this3.log("some modal fields are invalid");
 				});
 			}
 		}, {
@@ -4014,7 +4023,7 @@ var dynamo_grid = (function (Layout, List, ItemView, Header, ProgressBar, Comman
 				}
 
 				if ((!template || !Array.prototype.isPrototypeOf(template)) && !this.props.args.extra.fetchTemplateProcessor) {
-					return console.error("showItemTemplate was called on a grid view in " + this.props.args.mode + " and it does not have a template. \n" + JSON.stringify(this.props, null, " "));
+					return this.log("showItemTemplate was called on a grid view in " + this.props.args.mode + " and it does not have a template. \n" + JSON.stringify(this.props, null, " "));
 				}
 				if ((!template || !template.length) && !this.props.fetchingItemTemplate && this.props.args.extra.fetchTemplateProcessor && !skipFetch) {
 					gettingItemTemplate = true;
@@ -4040,7 +4049,7 @@ var dynamo_grid = (function (Layout, List, ItemView, Header, ProgressBar, Comman
 					};
 					if (this.props.items && this.props.items[this.props.items.length - 1]) {
 						query._id = this.props.items[this.props.items.length - 1]._id;
-						log("most recent id:" + query._id);
+						this.log("most recent id:" + query._id);
 					}
 
 					this.getItemsFromSource(this.getFilterValue(), "more", query);
@@ -4113,7 +4122,7 @@ var dynamo_grid = (function (Layout, List, ItemView, Header, ProgressBar, Comman
 			value: function render() {
 				var _this4 = this;
 
-				log("rendering " + this.props.name);
+				this.log("rendering..");
 
 				var args = this.props.args,
 				    header = this.props.filterTemplate ? React__default.createElement(
@@ -4206,7 +4215,7 @@ var dynamo_grid = (function (Layout, List, ItemView, Header, ProgressBar, Comman
 			}
 		}]);
 		return DynamoGrid;
-	}(React.Component);
+	}(DynamoComponentBase);
 
 	return connect(mapStateToProps, mapDispatchToProps)(DynamoGrid);
 });
@@ -5166,7 +5175,7 @@ function chat () {
 }
 
 function view$1 () {
-	var _Object$assign7, _Object$assign16, _Object$assign19, _Object$assign21, _Object$assign22, _ref;
+	var _Object$assign7, _Object$assign16, _Object$assign19, _Object$assign21, _Object$assign22, _Object$assign24;
 
 	var state = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : {};
 	var action = arguments[1];
@@ -5299,7 +5308,7 @@ function view$1 () {
 		case ACTIONS.FETCHING_PROCESS:
 			return Object.assign({}, state, defineProperty({}, action.meta + "-busy", !action.error));
 		case ACTIONS.FAILED_TO_FETCH_PROCESS:
-			return _ref = {}, defineProperty(_ref, action.meta, null), defineProperty(_ref, "navigationContext", state.navigationContext), defineProperty(_ref, action.meta + "-busy", false), _ref;
+			return Object.assign({}, state, (_Object$assign24 = {}, defineProperty(_Object$assign24, action.meta, null), defineProperty(_Object$assign24, "navigationContext", state.navigationContext), defineProperty(_Object$assign24, action.meta + "-busy", false), _Object$assign24));
 		case ACTIONS.START_FILE_UPLOAD:
 			return Object.assign({}, state, defineProperty({}, action.meta, startUpload(state[action.meta], action)));
 		case ACTIONS.FILE_UPLOADED:
@@ -5347,12 +5356,12 @@ function getTemplate(busyIndicator) {
 	return Object.assign({}, state, defineProperty({}, busyIndicator, !action.error));
 }
 function gotTemplate(busyIndicator, propName) {
-	var _Object$assign38;
+	var _Object$assign39;
 
 	var state = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : {};
 	var action = arguments[3];
 
-	return Object.assign({}, state, (_Object$assign38 = {}, defineProperty(_Object$assign38, propName, action.payload.data), defineProperty(_Object$assign38, busyIndicator, false), _Object$assign38));
+	return Object.assign({}, state, (_Object$assign39 = {}, defineProperty(_Object$assign39, propName, action.payload.data), defineProperty(_Object$assign39, busyIndicator, false), _Object$assign39));
 }
 function failedToGetTemplate(busyIndicator) {
 	var state = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : {};
@@ -5408,6 +5417,7 @@ function reduceGrid() {
 		state.data = action.payload.data;
 		return Object.assign({}, state, { fetchingGrid: false });
 	}
+	return state;
 }
 
 function filteredGrid() {
