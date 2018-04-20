@@ -3309,7 +3309,7 @@ var dynamo_list = (function (Layout, Button, List, Modal, ErrorText, ProgressBar
 				dataTemplate: state.dynamo.view[component_uid],
 				component_uid: component_uid,
 				busy: state.dynamo.view[component_uid + "-busy"],
-				items: ownProps.value || ownProps.args && ownProps.args.default && ownProps.args.default.slice() || []
+				items: ownProps.value
 			};
 		};
 	};
@@ -3380,6 +3380,9 @@ var dynamo_list = (function (Layout, Button, List, Modal, ErrorText, ProgressBar
 				if (this.props.component_uid !== next.component_uid) {
 					if (this._mounted) {
 						this.getItemTemplate();
+						if ((!next.dataTemplate || next.dataTemplate.length) && !next.items && next.args && next.args.default && next.args.default.length) {
+							this.props.valueChanged(defineProperty({}, this.props.name, next.args.default.slice()));
+						}
 						this.setState({
 							edit: null,
 							modalVisible: false
@@ -3423,8 +3426,14 @@ var dynamo_list = (function (Layout, Button, List, Modal, ErrorText, ProgressBar
 
 				if (this.props.dataTemplate && this.props.dataTemplate.length && equal) {
 					setTimeout(function () {
-						_this2.valueChanged(defineProperty({}, _this2.props.name, _this2.props.dataTemplate));
+						_this2.props.valueChanged(defineProperty({}, _this2.props.name, _this2.props.dataTemplate));
 					}, 0);
+				}
+
+				if ((!this.props.dataTemplate || !this.props.dataTemplate.length) && !this.props.items && this.props.args && this.props.args.default && this.props.args.default.length) {
+					setTimeout(function () {
+						_this2.props.valueChanged(defineProperty({}, _this2.props.name, _this2.props.args.default.slice()));
+					});
 				}
 
 				this.getItemTemplate();
@@ -3561,7 +3570,10 @@ var dynamo_list = (function (Layout, Button, List, Modal, ErrorText, ProgressBar
 					/*jshint ignore:start */
 					React__default.createElement(
 						Layout,
-						{ value: this.props.label },
+						{
+							value: this.props.label,
+							description: this.props.description
+						},
 						React__default.createElement(Button, { disabled: disabled, click: this.showModal }),
 						React__default.createElement(List, {
 							items: this.props.items,

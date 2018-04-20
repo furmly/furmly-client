@@ -40,12 +40,7 @@ export default (
 			dataTemplate: state.dynamo.view[component_uid],
 			component_uid,
 			busy: state.dynamo.view[`${component_uid}-busy`],
-			items:
-				ownProps.value ||
-				(ownProps.args &&
-					ownProps.args.default &&
-					ownProps.args.default.slice()) ||
-				[]
+			items: ownProps.value
 		};
 	};
 	const equivalent = function(arr, arr2) {
@@ -121,6 +116,17 @@ export default (
 			if (this.props.component_uid !== next.component_uid) {
 				if (this._mounted) {
 					this.getItemTemplate();
+					if (
+						(!next.dataTemplate || next.dataTemplate.length) &&
+						!next.items &&
+						next.args &&
+						next.args.default &&
+						next.args.default.length
+					) {
+						this.props.valueChanged({
+							[this.props.name]: next.args.default.slice()
+						});
+					}
 					this.setState({
 						edit: null,
 						modalVisible: false
@@ -184,10 +190,24 @@ export default (
 				equal
 			) {
 				setTimeout(() => {
-					this.valueChanged({
+					this.props.valueChanged({
 						[this.props.name]: this.props.dataTemplate
 					});
 				}, 0);
+			}
+
+			if (
+				(!this.props.dataTemplate || !this.props.dataTemplate.length) &&
+				!this.props.items &&
+				this.props.args &&
+				this.props.args.default &&
+				this.props.args.default.length
+			) {
+				setTimeout(() => {
+					this.props.valueChanged({
+						[this.props.name]: this.props.args.default.slice()
+					});
+				});
 			}
 
 			this.getItemTemplate();
@@ -356,7 +376,10 @@ export default (
 
 			return (
 				/*jshint ignore:start */
-				<Layout value={this.props.label}>
+				<Layout
+					value={this.props.label}
+					description={this.props.description}
+				>
 					<Button disabled={disabled} click={this.showModal} />
 					<List
 						items={this.props.items}
