@@ -1432,7 +1432,7 @@ function navigation () {
 				state.stack.push(action.payload);
 			}
 			var stack = copyStack(state);
-			countRef(stack, action.payload, stack.stack.length - 1);
+			countRef(stack, stack.stack.length - 1, action.payload);
 			return Object.assign({}, state, stack);
 		case ACTIONS.REPLACE_STACK:
 			var stack = createStack();
@@ -1470,7 +1470,7 @@ function hasScreenAlready(state, current) {
 		return _.isEqual(x, current);
 	}).length;
 }
-function countRef(stack, e, index) {
+function countRef(stack, index, e) {
 	if (e.key == "Dynamo") {
 		if (stack._references[e.params.id]) {
 			stack._references[e.params.id][0] = stack._references[e.params.id][0] + 1;
