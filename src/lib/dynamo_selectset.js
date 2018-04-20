@@ -97,7 +97,7 @@ export default (Layout, Picker, ProgressBar, Container) => {
 				);
 
 			if (next.items && next.items.length == 1 && !next.value) {
-				this.selectFirstItem(next.items);
+				return this.selectFirstItem(next.items);
 			}
 		}
 
@@ -148,6 +148,13 @@ export default (Layout, Picker, ProgressBar, Container) => {
 					this.selectFirstItem();
 				}, 0);
 			}
+
+			if (this.isObjectIdMode() && this.props.value) {
+				//update the form to indicate its an objectId.
+				return setTimeout(() => {
+					this.onPickerValueChanged(this.props.value, this.props.items);
+				}, 0);
+			}
 		}
 
 		isObjectIdMode() {
@@ -180,6 +187,7 @@ export default (Layout, Picker, ProgressBar, Container) => {
 				return true;
 			}
 		}
+		//potentially expensive.
 		shouldComponentUpdate(nextProps, nextState) {
 			if (
 				(nextProps.args.path ||

@@ -147,6 +147,12 @@ export default (ProgressIndicator, Layout, Container) => {
 			if (this.props.items && this.props.items.length == 1) {
 				return this.selectFirstItem(this.props.items[0]._id);
 			}
+			if (this.isObjectIdMode() && this.props.value) {
+				//update the form to indicate its an objectId.
+				return setTimeout(() => {
+					this.onValueChanged(this.props.value);
+				}, 0);
+			}
 		}
 		isEmptyOrNull(v) {
 			return !v || !v.length;

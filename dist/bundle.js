@@ -1432,7 +1432,7 @@ function navigation () {
 				state.stack.push(action.payload);
 			}
 			var stack = copyStack(state);
-			countRef(stack, action.payload, stack.stack.length - 1);
+			countRef(stack, stack.stack.length - 1, action.payload);
 			return Object.assign({}, state, stack);
 		case ACTIONS.REPLACE_STACK:
 			var stack = createStack();
@@ -1443,7 +1443,7 @@ function navigation () {
 		case ACTIONS.REMOVE_LAST_DYNAMO_PARAMS:
 			var stack = copyStack(state),
 			    item = stack.stack.pop();
-			if (item && item.key == "Dynamo" && stack._references[item.params.id]) {
+			if (item && (item.key == "Dynamo" || item.$routeName == "Dynamo") && stack._references[item.params.id]) {
 				stack._references[0] = stack._references[item.params.id][0]--;
 				//clean up.
 				if (!stack._references[item.params.id][0]) delete stack._references[item.params.id];
@@ -1470,8 +1470,8 @@ function hasScreenAlready(state, current) {
 		return _.isEqual(x, current);
 	}).length;
 }
-function countRef(stack, e, index) {
-	if (e.key == "Dynamo") {
+function countRef(stack, index, e) {
+	if (e.key == "Dynamo" || e.$routeName == "Dynamo") {
 		if (stack._references[e.params.id]) {
 			stack._references[e.params.id][0] = stack._references[e.params.id][0] + 1;
 		} else {
@@ -1842,7 +1842,7 @@ function runDynamoProcessor(id, args, key) {
           }
         }, defaultError(dispatch, errorCustomType || ACTIONS.DYNAMO_PROCESSOR_FAILED, function () {
           return key;
-        }, true)],
+        }, !config.disableProcessorRetry)],
         method: "POST",
         headers: {
           Accept: "application/json",
@@ -2619,6 +2619,7 @@ var dynamo_process = (function (ProgressBar, TextView, DynamoView) {
 
 			var _this = possibleConstructorReturn(this, (DynamoProcess.__proto__ || Object.getPrototypeOf(DynamoProcess)).call(this, props));
 
+			_this.state = {};
 			_this.submit = _this.submit.bind(_this);
 			return _this;
 		}
@@ -2657,12 +2658,17 @@ var dynamo_process = (function (ProgressBar, TextView, DynamoView) {
 				if (!this.props.description) {
 					return React__default.createElement(TextView, { text: "Sorry we couldnt load that process...please wait a few minutes and retry." });
 				}
-				return React__default.createElement(DynamoView, {
-					currentStep: this.props.currentStep || 0,
-					currentProcess: this.props.id,
-					navigation: this.props.navigation,
-					submit: this.submit
-				});
+				try {
+					return React__default.createElement(DynamoView, {
+						currentStep: this.props.currentStep || 0,
+						currentProcess: this.props.id,
+						navigation: this.props.navigation,
+						submit: this.submit
+					});
+				} catch (e) {
+					return React__default.createElement(TextView, { text: "An error has occurred. Please retry the last actions" });
+				}
+
 				/*jshint ignore:end */
 			}
 		}]);
@@ -2725,6 +2731,8 @@ var dynamo_section = (function (Layout, Header, Container) {
 	return DynamoSection;
 });
 
+var _getCurrentStepFromSt;
+
 function getTitleFromState(state) {
 	var id = state.dynamo.navigation.stack.length && state.dynamo.navigation.stack[state.dynamo.navigation.stack.length - 1].params.id;
 
@@ -2732,6 +2740,12 @@ function getTitleFromState(state) {
 	return state.dynamo.view[id] && state.dynamo.view[id + "-busy"] && "Loading..." || state.dynamo.view[id] && state.dynamo.view[id].description && state.dynamo.view[id].description.steps[state.dynamo.view[id].currentStep || 0].description || state.dynamo.view[id] && state.dynamo.view[id].description && state.dynamo.view[id].description.title || "School Manager";
 }
 
+function getValueBasedOnMode(props, v) {
+	return props.args && props.args.mode && (typeof v === "undefined" ? "undefined" : _typeof(v)) !== "object" && props.args.mode == "ObjectId" && { $objectID: v } || v;
+}
+function isObjectIdMode(props) {
+	return props.args && props.args.mode === "ObjectId";
+}
 function getCurrentStepFromState(state) {
 	return state.dynamo.navigation.stack.length && state.dynamo.navigation.stack[state.dynamo.navigation.stack.length - 1].params.currentStep || 0;
 }
@@ -2805,14 +2819,85 @@ var toggleAllBusyIndicators = runThroughObj.bind(null, [function (key, data) {
 var copy$1 = function copy(value) {
 	return JSON.parse(JSON.stringify(value));
 };
-var view = {
+
+function safeRender(React$$1, config$$1) {
+	config$$1 = config$$1 || {};
+	config$$1.errorHandler = config$$1.errorHandler || function () {};
+
+	if (React$$1.hasOwnProperty("unsafeCreateClass")) {
+		return;
+	}
+
+	React$$1.unsafeCreateClass = React$$1.createClass;
+
+	Object.defineProperty(React$$1, "createClass", {
+		get: function get$$1() {
+			return createClass$$1;
+		}
+	});
+
+	function createClass$$1(spec) {
+		var componentClass = {};
+
+		function wrap(method, returnFn) {
+			if (!spec.hasOwnProperty(method)) {
+				return;
+			}
+
+			var unsafe = spec[method];
+
+			spec[method] = function () {
+				try {
+					return unsafe.apply(this, arguments);
+				} catch (e) {
+					var report = {
+						displayName: componentClass.displayName,
+						method: method,
+						props: this.props,
+						error: e
+					};
+					if (arguments.length > 0) {
+						report.arguments = arguments;
+					}
+					config$$1.errorHandler(report);
+					return typeof returnFn === "function" ? returnFn.apply(this, arguments) : null;
+				}
+			};
+		}
+
+		wrap("render");
+		wrap("componentWillMount");
+		wrap("componentDidMount");
+		wrap("componentWillReceiveProps");
+		wrap("shouldComponentUpdate", safeShouldComponentUpdate);
+		wrap("componentWillUpdate");
+		wrap("componentDidUpdate");
+		wrap("componentWillUnmount");
+		wrap("getInitialState", safeGetInitial);
+
+		// store ref to class in closure so error reporting can be more specific
+		componentClass = React$$1.unsafeCreateClass.apply(React$$1, arguments);
+
+		return componentClass;
+	}
+
+	return React$$1;
+}
+
+function safeShouldComponentUpdate() {
+	return true;
+}
+
+function safeGetInitial() {
+	return {};
+}
+var view = (_getCurrentStepFromSt = {
 	getCurrentStepFromState: getCurrentStepFromState,
+	safeRender: safeRender,
 	getTitleFromState: getTitleFromState,
 	getCurrentStep: getCurrentStep,
-	getCurrentProcess: getCurrentProcess,
-	isValidKey: isValidKey,
-	getKey: getKey
-};
+	getCurrentProcess: getCurrentProcess
+}, defineProperty(_getCurrentStepFromSt, "safeRender", safeRender), defineProperty(_getCurrentStepFromSt, "isValidKey", isValidKey), defineProperty(_getCurrentStepFromSt, "getKey", getKey), _getCurrentStepFromSt);
 
 var dynamo_select = (function (ProgressIndicator, Layout, Container) {
 	if (invariants.validComponent(ProgressIndicator, "ProgressIndicator") && invariants.validComponent(Layout, "Layout") && !Container) throw new Error("Container cannot be null (dynamo_select)");
@@ -2899,7 +2984,7 @@ var dynamo_select = (function (ProgressIndicator, Layout, Container) {
 			}
 		}, {
 			key: "getValueBasedOnMode",
-			value: function getValueBasedOnMode(v) {
+			value: function getValueBasedOnMode$$1(v) {
 				return this.props.args && this.props.args.mode && (typeof v === "undefined" ? "undefined" : _typeof(v)) !== "object" && this.props.args.mode == "ObjectId" && { $objectID: v } || v;
 			}
 		}, {
@@ -2933,12 +3018,14 @@ var dynamo_select = (function (ProgressIndicator, Layout, Container) {
 			}
 		}, {
 			key: "isObjectIdMode",
-			value: function isObjectIdMode() {
+			value: function isObjectIdMode$$1() {
 				return this.props.args && this.props.args.mode === "ObjectId";
 			}
 		}, {
 			key: "componentDidMount",
 			value: function componentDidMount() {
+				var _this3 = this;
+
 				this._mounted = true;
 				if (!this.props.items) {
 					log("fetching items in componentDidMount for current:" + this.props.name);
@@ -2947,6 +3034,12 @@ var dynamo_select = (function (ProgressIndicator, Layout, Container) {
 
 				if (this.props.items && this.props.items.length == 1) {
 					return this.selectFirstItem(this.props.items[0]._id);
+				}
+				if (this.isObjectIdMode() && this.props.value) {
+					//update the form to indicate its an objectId.
+					return setTimeout(function () {
+						_this3.onValueChanged(_this3.props.value);
+					}, 0);
 				}
 			}
 		}, {
@@ -3095,7 +3188,7 @@ var dynamo_selectset = (function (Layout, Picker, ProgressBar, Container) {
 				if ((next.args.processor !== this.props.args.processor || next.component_uid !== this.props.component_uid && next.args.processor || typeof next.items == "undefined") && !next.busy) this.fetchItems(next.args.processor, next.args.processorArgs, next.component_uid);
 
 				if (next.items && next.items.length == 1 && !next.value) {
-					this.selectFirstItem(next.items);
+					return this.selectFirstItem(next.items);
 				}
 			}
 		}, {
@@ -3134,10 +3227,17 @@ var dynamo_selectset = (function (Layout, Picker, ProgressBar, Container) {
 						_this2.selectFirstItem();
 					}, 0);
 				}
+
+				if (this.isObjectIdMode() && this.props.value) {
+					//update the form to indicate its an objectId.
+					return setTimeout(function () {
+						_this2.onPickerValueChanged(_this2.props.value, _this2.props.items);
+					}, 0);
+				}
 			}
 		}, {
 			key: "isObjectIdMode",
-			value: function isObjectIdMode() {
+			value: function isObjectIdMode$$1() {
 				return this.props.args && this.props.args.mode === "ObjectId";
 			}
 		}, {
@@ -3174,6 +3274,8 @@ var dynamo_selectset = (function (Layout, Picker, ProgressBar, Container) {
 					return true;
 				}
 			}
+			//potentially expensive.
+
 		}, {
 			key: "shouldComponentUpdate",
 			value: function shouldComponentUpdate(nextProps, nextState) {
@@ -3221,7 +3323,7 @@ var dynamo_selectset = (function (Layout, Picker, ProgressBar, Container) {
 			}
 		}, {
 			key: "getValueBasedOnMode",
-			value: function getValueBasedOnMode(v) {
+			value: function getValueBasedOnMode$$1(v) {
 				return this.props.args && this.props.args.mode && (typeof v === "undefined" ? "undefined" : _typeof(v)) !== "object" && this.props.args.mode == "ObjectId" && { $objectID: v } || v;
 			}
 		}, {
@@ -3309,7 +3411,7 @@ var dynamo_list = (function (Layout, Button, List, Modal, ErrorText, ProgressBar
 				dataTemplate: state.dynamo.view[component_uid],
 				component_uid: component_uid,
 				busy: state.dynamo.view[component_uid + "-busy"],
-				items: ownProps.value || ownProps.args && ownProps.args.default && ownProps.args.default.slice() || []
+				items: ownProps.value
 			};
 		};
 	};
@@ -3373,20 +3475,23 @@ var dynamo_list = (function (Layout, Button, List, Modal, ErrorText, ProgressBar
 		createClass(DynamoList, [{
 			key: "componentWillReceiveProps",
 			value: function componentWillReceiveProps(next) {
-				if (next.confirmation !== this.props.confirmation && next.confirmation && next.confirmation.params && typeof next.confirmation.params.index !== "undefined" && this.props.items.length) {
+				if (next.confirmation !== this.props.confirmation && next.confirmation && next.confirmation.params && typeof next.confirmation.params.index !== "undefined" && this.props.items && this.props.items.length) {
 					var items = (this.props.items || []).slice();
 					return items.splice(next.confirmation.params.index, 1), this.props.valueChanged(defineProperty({}, this.props.name, items));
 				}
 				if (this.props.component_uid !== next.component_uid) {
 					if (this._mounted) {
 						this.getItemTemplate();
+						if ((!next.dataTemplate || next.dataTemplate.length) && !next.items && next.args && next.args.default && next.args.default.length) {
+							this.props.valueChanged(defineProperty({}, this.props.name, next.args.default.slice()));
+						}
 						this.setState({
 							edit: null,
 							modalVisible: false
 						});
 					}
 				}
-				if (next.args.listItemDataTemplateProcessor && next.items.length && next.items !== next.dataTemplate && next.dataTemplate == this.props.dataTemplate && !next.busy) {
+				if (next.args.listItemDataTemplateProcessor && next.items && next.items.length && next.items !== next.dataTemplate && next.dataTemplate == this.props.dataTemplate && !next.busy) {
 					this.getListItemDataTemplate(next.items, next);
 				}
 
@@ -3423,8 +3528,14 @@ var dynamo_list = (function (Layout, Button, List, Modal, ErrorText, ProgressBar
 
 				if (this.props.dataTemplate && this.props.dataTemplate.length && equal) {
 					setTimeout(function () {
-						_this2.valueChanged(defineProperty({}, _this2.props.name, _this2.props.dataTemplate));
+						_this2.props.valueChanged(defineProperty({}, _this2.props.name, _this2.props.dataTemplate));
 					}, 0);
+				}
+
+				if ((!this.props.dataTemplate || !this.props.dataTemplate.length) && !this.props.items && this.props.args && this.props.args.default && this.props.args.default.length) {
+					setTimeout(function () {
+						_this2.props.valueChanged(defineProperty({}, _this2.props.name, _this2.props.args.default.slice()));
+					});
 				}
 
 				this.getItemTemplate();
@@ -3561,7 +3672,10 @@ var dynamo_list = (function (Layout, Button, List, Modal, ErrorText, ProgressBar
 					/*jshint ignore:start */
 					React__default.createElement(
 						Layout,
-						{ value: this.props.label },
+						{
+							value: this.props.label,
+							description: this.props.description
+						},
 						React__default.createElement(Button, { disabled: disabled, click: this.showModal }),
 						React__default.createElement(List, {
 							items: this.props.items,
@@ -3624,7 +3738,11 @@ var DynamoHidden = function (_React$Component) {
 		value: function init() {
 			var props = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : this.props;
 
-			if (props.args && props.args.default && props.args.default !== props.value && !props.value) this.props.valueChanged(defineProperty({}, props.name, props.args.default));
+			if (props.args && props.args.default && props.args.default !== props.value && !props.value) return this.props.valueChanged(defineProperty({}, props.name, getValueBasedOnMode(props, props.args.default)));
+
+			if (isObjectIdMode(props) && this.props.value !== props.value) {
+				this.props.valueChanged(defineProperty({}, props.name, getValueBasedOnMode(props, props.value)));
+			}
 		}
 	}, {
 		key: "componentWillReceiveProps",
@@ -4913,7 +5031,7 @@ var dynamo_command = (function (Link, customDownloadCommand) {
 		createClass(DynamoCommand, [{
 			key: "run",
 			value: function run() {
-				this.props.dispatch(runDynamoProcessor(this.props.args.commmandProcessor, JSON.parse(this.props.args.commandProcessorArgs || {}), this.props.component_uid));
+				this.props.dispatch(runDynamoProcessor(this.props.args.commandProcessor, this.props.args.commandProcessorArgs && JSON.parse(this.props.args.commandProcessorArgs) || {}, this.props.component_uid));
 			}
 		}, {
 			key: "go",
@@ -4925,7 +5043,9 @@ var dynamo_command = (function (Link, customDownloadCommand) {
 						}
 						var url = void 0;
 						try {
-							url = dynamoDownloadUrl.replace(":id", JSON.parse(this.props.args.commandProcessorArgs).id);
+							var config$$1 = JSON.parse(this.props.args.commandProcessorArgs);
+							url = dynamoDownloadUrl.replace(":id", config$$1.id);
+							if (config$$1.access_token) url += "?_t0=" + config$$1.access_token;
 						} catch (e) {
 							throw new Error("Download is not properly setup.");
 						}
@@ -5211,7 +5331,7 @@ function view$1 () {
 			//if it is check if its a process navigation or step navigation
 			//if it is a process navigation remove the data from the process.
 			//if it is a step navigation remove the step data from the process.
-			if (action.payload.item.key == "Dynamo") {
+			if (action.payload.item.key == "Dynamo" || action.payload.item.$routeName == "Dynamo") {
 				//it is a dynamo navigation
 				//confirm there are no other references down the line.
 				var _state2 = state[action.payload.item.params.id],

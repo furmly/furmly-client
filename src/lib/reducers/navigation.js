@@ -11,7 +11,7 @@ export default function(state = createStack(), action) {
 				state.stack.push(action.payload);
 			}
 			var stack = copyStack(state);
-			countRef(stack, action.payload, stack.stack.length - 1);
+			countRef(stack, stack.stack.length - 1, action.payload);
 			return Object.assign({}, state, stack);
 		case ACTIONS.REPLACE_STACK:
 			var stack = createStack();
@@ -24,7 +24,11 @@ export default function(state = createStack(), action) {
 		case ACTIONS.REMOVE_LAST_DYNAMO_PARAMS:
 			var stack = copyStack(state),
 				item = stack.stack.pop();
-			if (item && item.key == "Dynamo" && stack._references[item.params.id]) {
+			if (
+				item &&
+				(item.key == "Dynamo" || item.$routeName == "Dynamo") &&
+				stack._references[item.params.id]
+			) {
 				stack._references[0] = stack._references[item.params.id][0]--;
 				//clean up.
 				if (!stack._references[item.params.id][0])
@@ -52,8 +56,8 @@ function makeTop(state, curr) {
 export function hasScreenAlready(state, current) {
 	return state.stack.filter(x => _.isEqual(x, current)).length;
 }
-function countRef(stack, e, index) {
-	if (e.key == "Dynamo") {
+function countRef(stack, index, e) {
+	if (e.key == "Dynamo" || e.$routeName == "Dynamo") {
 		if (stack._references[e.params.id]) {
 			stack._references[e.params.id][0] =
 				stack._references[e.params.id][0] + 1;

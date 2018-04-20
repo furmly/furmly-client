@@ -41,6 +41,7 @@ export default (ProgressBar, TextView, DynamoView) => {
 	class DynamoProcess extends Component {
 		constructor(props) {
 			super(props);
+			this.state = {};
 			this.submit = this.submit.bind(this);
 		}
 		componentDidMount() {
@@ -85,14 +86,21 @@ export default (ProgressBar, TextView, DynamoView) => {
 					<TextView text="Sorry we couldnt load that process...please wait a few minutes and retry." />
 				);
 			}
-			return (
-				<DynamoView
-					currentStep={this.props.currentStep || 0}
-					currentProcess={this.props.id}
-					navigation={this.props.navigation}
-					submit={this.submit}
-				/>
-			);
+			try {
+				return (
+					<DynamoView
+						currentStep={this.props.currentStep || 0}
+						currentProcess={this.props.id}
+						navigation={this.props.navigation}
+						submit={this.submit}
+					/>
+				);
+			} catch (e) {
+				return (
+					<TextView text="An error has occurred. Please retry the last actions" />
+				);
+			}
+
 			/*jshint ignore:end */
 		}
 	}
