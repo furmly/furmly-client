@@ -39,7 +39,10 @@ export default function(state = {}, action) {
 			//if it is check if its a process navigation or step navigation
 			//if it is a process navigation remove the data from the process.
 			//if it is a step navigation remove the step data from the process.
-			if (action.payload.item.key == "Dynamo") {
+			if (
+				action.payload.item.key == "Dynamo" ||
+				action.payload.item.$routeName == "Dynamo"
+			) {
 				//it is a dynamo navigation
 				//confirm there are no other references down the line.
 				let _state = state[action.payload.item.params.id],

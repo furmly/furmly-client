@@ -1443,7 +1443,7 @@ function navigation () {
 		case ACTIONS.REMOVE_LAST_DYNAMO_PARAMS:
 			var stack = copyStack(state),
 			    item = stack.stack.pop();
-			if (item && item.key == "Dynamo" && stack._references[item.params.id]) {
+			if (item && (item.key == "Dynamo" || item.$routeName == "Dynamo") && stack._references[item.params.id]) {
 				stack._references[0] = stack._references[item.params.id][0]--;
 				//clean up.
 				if (!stack._references[item.params.id][0]) delete stack._references[item.params.id];
@@ -1471,7 +1471,7 @@ function hasScreenAlready(state, current) {
 	}).length;
 }
 function countRef(stack, index, e) {
-	if (e.key == "Dynamo") {
+	if (e.key == "Dynamo" || e.$routeName == "Dynamo") {
 		if (stack._references[e.params.id]) {
 			stack._references[e.params.id][0] = stack._references[e.params.id][0] + 1;
 		} else {
@@ -3373,7 +3373,7 @@ var dynamo_list = (function (Layout, Button, List, Modal, ErrorText, ProgressBar
 		createClass(DynamoList, [{
 			key: "componentWillReceiveProps",
 			value: function componentWillReceiveProps(next) {
-				if (next.confirmation !== this.props.confirmation && next.confirmation && next.confirmation.params && typeof next.confirmation.params.index !== "undefined" && this.props.items.length) {
+				if (next.confirmation !== this.props.confirmation && next.confirmation && next.confirmation.params && typeof next.confirmation.params.index !== "undefined" && this.props.items && this.props.items.length) {
 					var items = (this.props.items || []).slice();
 					return items.splice(next.confirmation.params.index, 1), this.props.valueChanged(defineProperty({}, this.props.name, items));
 				}
@@ -3389,7 +3389,7 @@ var dynamo_list = (function (Layout, Button, List, Modal, ErrorText, ProgressBar
 						});
 					}
 				}
-				if (next.args.listItemDataTemplateProcessor && next.items.length && next.items !== next.dataTemplate && next.dataTemplate == this.props.dataTemplate && !next.busy) {
+				if (next.args.listItemDataTemplateProcessor && next.items && next.items.length && next.items !== next.dataTemplate && next.dataTemplate == this.props.dataTemplate && !next.busy) {
 					this.getListItemDataTemplate(next.items, next);
 				}
 
@@ -5223,7 +5223,7 @@ function view$1 () {
 			//if it is check if its a process navigation or step navigation
 			//if it is a process navigation remove the data from the process.
 			//if it is a step navigation remove the step data from the process.
-			if (action.payload.item.key == "Dynamo") {
+			if (action.payload.item.key == "Dynamo" || action.payload.item.$routeName == "Dynamo") {
 				//it is a dynamo navigation
 				//confirm there are no other references down the line.
 				var _state2 = state[action.payload.item.params.id],

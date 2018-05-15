@@ -103,6 +103,7 @@ export default (
 				next.confirmation &&
 				next.confirmation.params &&
 				typeof next.confirmation.params.index !== "undefined" &&
+				this.props.items &&
 				this.props.items.length
 			) {
 				let items = (this.props.items || []).slice();
@@ -135,6 +136,7 @@ export default (
 			}
 			if (
 				next.args.listItemDataTemplateProcessor &&
+				next.items &&
 				next.items.length &&
 				next.items !== next.dataTemplate &&
 				next.dataTemplate == this.props.dataTemplate &&
