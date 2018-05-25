@@ -1842,7 +1842,7 @@ function runDynamoProcessor(id, args, key) {
           }
         }, defaultError(dispatch, errorCustomType || ACTIONS.DYNAMO_PROCESSOR_FAILED, function () {
           return key;
-        }, true)],
+        }, !config.disableProcessorRetry)],
         method: "POST",
         headers: {
           Accept: "application/json",
@@ -2619,6 +2619,7 @@ var dynamo_process = (function (ProgressBar, TextView, DynamoView) {
 
 			var _this = possibleConstructorReturn(this, (DynamoProcess.__proto__ || Object.getPrototypeOf(DynamoProcess)).call(this, props));
 
+			_this.state = {};
 			_this.submit = _this.submit.bind(_this);
 			return _this;
 		}
@@ -2657,12 +2658,17 @@ var dynamo_process = (function (ProgressBar, TextView, DynamoView) {
 				if (!this.props.description) {
 					return React__default.createElement(TextView, { text: "Sorry we couldnt load that process...please wait a few minutes and retry." });
 				}
-				return React__default.createElement(DynamoView, {
-					currentStep: this.props.currentStep || 0,
-					currentProcess: this.props.id,
-					navigation: this.props.navigation,
-					submit: this.submit
-				});
+				try {
+					return React__default.createElement(DynamoView, {
+						currentStep: this.props.currentStep || 0,
+						currentProcess: this.props.id,
+						navigation: this.props.navigation,
+						submit: this.submit
+					});
+				} catch (e) {
+					return React__default.createElement(TextView, { text: "An error has occurred. Please retry the last actions" });
+				}
+
 				/*jshint ignore:end */
 			}
 		}]);
@@ -2725,6 +2731,8 @@ var dynamo_section = (function (Layout, Header, Container) {
 	return DynamoSection;
 });
 
+var _getCurrentStepFromSt;
+
 function getTitleFromState(state) {
 	var id = state.dynamo.navigation.stack.length && state.dynamo.navigation.stack[state.dynamo.navigation.stack.length - 1].params.id;
 
@@ -2732,6 +2740,12 @@ function getTitleFromState(state) {
 	return state.dynamo.view[id] && state.dynamo.view[id + "-busy"] && "Loading..." || state.dynamo.view[id] && state.dynamo.view[id].description && state.dynamo.view[id].description.steps[state.dynamo.view[id].currentStep || 0].description || state.dynamo.view[id] && state.dynamo.view[id].description && state.dynamo.view[id].description.title || "School Manager";
 }
 
+function getValueBasedOnMode(props, v) {
+	return props.args && props.args.mode && (typeof v === "undefined" ? "undefined" : _typeof(v)) !== "object" && props.args.mode == "ObjectId" && { $objectID: v } || v;
+}
+function isObjectIdMode(props) {
+	return props.args && props.args.mode === "ObjectId";
+}
 function getCurrentStepFromState(state) {
 	return state.dynamo.navigation.stack.length && state.dynamo.navigation.stack[state.dynamo.navigation.stack.length - 1].params.currentStep || 0;
 }
@@ -2805,14 +2819,85 @@ var toggleAllBusyIndicators = runThroughObj.bind(null, [function (key, data) {
 var copy$1 = function copy(value) {
 	return JSON.parse(JSON.stringify(value));
 };
-var view = {
+
+function safeRender(React$$1, config$$1) {
+	config$$1 = config$$1 || {};
+	config$$1.errorHandler = config$$1.errorHandler || function () {};
+
+	if (React$$1.hasOwnProperty("unsafeCreateClass")) {
+		return;
+	}
+
+	React$$1.unsafeCreateClass = React$$1.createClass;
+
+	Object.defineProperty(React$$1, "createClass", {
+		get: function get$$1() {
+			return createClass$$1;
+		}
+	});
+
+	function createClass$$1(spec) {
+		var componentClass = {};
+
+		function wrap(method, returnFn) {
+			if (!spec.hasOwnProperty(method)) {
+				return;
+			}
+
+			var unsafe = spec[method];
+
+			spec[method] = function () {
+				try {
+					return unsafe.apply(this, arguments);
+				} catch (e) {
+					var report = {
+						displayName: componentClass.displayName,
+						method: method,
+						props: this.props,
+						error: e
+					};
+					if (arguments.length > 0) {
+						report.arguments = arguments;
+					}
+					config$$1.errorHandler(report);
+					return typeof returnFn === "function" ? returnFn.apply(this, arguments) : null;
+				}
+			};
+		}
+
+		wrap("render");
+		wrap("componentWillMount");
+		wrap("componentDidMount");
+		wrap("componentWillReceiveProps");
+		wrap("shouldComponentUpdate", safeShouldComponentUpdate);
+		wrap("componentWillUpdate");
+		wrap("componentDidUpdate");
+		wrap("componentWillUnmount");
+		wrap("getInitialState", safeGetInitial);
+
+		// store ref to class in closure so error reporting can be more specific
+		componentClass = React$$1.unsafeCreateClass.apply(React$$1, arguments);
+
+		return componentClass;
+	}
+
+	return React$$1;
+}
+
+function safeShouldComponentUpdate() {
+	return true;
+}
+
+function safeGetInitial() {
+	return {};
+}
+var view = (_getCurrentStepFromSt = {
 	getCurrentStepFromState: getCurrentStepFromState,
+	safeRender: safeRender,
 	getTitleFromState: getTitleFromState,
 	getCurrentStep: getCurrentStep,
-	getCurrentProcess: getCurrentProcess,
-	isValidKey: isValidKey,
-	getKey: getKey
-};
+	getCurrentProcess: getCurrentProcess
+}, defineProperty(_getCurrentStepFromSt, "safeRender", safeRender), defineProperty(_getCurrentStepFromSt, "isValidKey", isValidKey), defineProperty(_getCurrentStepFromSt, "getKey", getKey), _getCurrentStepFromSt);
 
 var dynamo_select = (function (ProgressIndicator, Layout, Container) {
 	if (invariants.validComponent(ProgressIndicator, "ProgressIndicator") && invariants.validComponent(Layout, "Layout") && !Container) throw new Error("Container cannot be null (dynamo_select)");
@@ -2899,7 +2984,7 @@ var dynamo_select = (function (ProgressIndicator, Layout, Container) {
 			}
 		}, {
 			key: "getValueBasedOnMode",
-			value: function getValueBasedOnMode(v) {
+			value: function getValueBasedOnMode$$1(v) {
 				return this.props.args && this.props.args.mode && (typeof v === "undefined" ? "undefined" : _typeof(v)) !== "object" && this.props.args.mode == "ObjectId" && { $objectID: v } || v;
 			}
 		}, {
@@ -2933,12 +3018,14 @@ var dynamo_select = (function (ProgressIndicator, Layout, Container) {
 			}
 		}, {
 			key: "isObjectIdMode",
-			value: function isObjectIdMode() {
+			value: function isObjectIdMode$$1() {
 				return this.props.args && this.props.args.mode === "ObjectId";
 			}
 		}, {
 			key: "componentDidMount",
 			value: function componentDidMount() {
+				var _this3 = this;
+
 				this._mounted = true;
 				if (!this.props.items) {
 					log("fetching items in componentDidMount for current:" + this.props.name);
@@ -2947,6 +3034,12 @@ var dynamo_select = (function (ProgressIndicator, Layout, Container) {
 
 				if (this.props.items && this.props.items.length == 1) {
 					return this.selectFirstItem(this.props.items[0]._id);
+				}
+				if (this.isObjectIdMode() && this.props.value) {
+					//update the form to indicate its an objectId.
+					return setTimeout(function () {
+						_this3.onValueChanged(_this3.props.value);
+					}, 0);
 				}
 			}
 		}, {
@@ -3095,7 +3188,7 @@ var dynamo_selectset = (function (Layout, Picker, ProgressBar, Container) {
 				if ((next.args.processor !== this.props.args.processor || next.component_uid !== this.props.component_uid && next.args.processor || typeof next.items == "undefined") && !next.busy) this.fetchItems(next.args.processor, next.args.processorArgs, next.component_uid);
 
 				if (next.items && next.items.length == 1 && !next.value) {
-					this.selectFirstItem(next.items);
+					return this.selectFirstItem(next.items);
 				}
 			}
 		}, {
@@ -3134,10 +3227,17 @@ var dynamo_selectset = (function (Layout, Picker, ProgressBar, Container) {
 						_this2.selectFirstItem();
 					}, 0);
 				}
+
+				if (this.isObjectIdMode() && this.props.value) {
+					//update the form to indicate its an objectId.
+					return setTimeout(function () {
+						_this2.onPickerValueChanged(_this2.props.value, _this2.props.items);
+					}, 0);
+				}
 			}
 		}, {
 			key: "isObjectIdMode",
-			value: function isObjectIdMode() {
+			value: function isObjectIdMode$$1() {
 				return this.props.args && this.props.args.mode === "ObjectId";
 			}
 		}, {
@@ -3174,6 +3274,8 @@ var dynamo_selectset = (function (Layout, Picker, ProgressBar, Container) {
 					return true;
 				}
 			}
+			//potentially expensive.
+
 		}, {
 			key: "shouldComponentUpdate",
 			value: function shouldComponentUpdate(nextProps, nextState) {
@@ -3221,7 +3323,7 @@ var dynamo_selectset = (function (Layout, Picker, ProgressBar, Container) {
 			}
 		}, {
 			key: "getValueBasedOnMode",
-			value: function getValueBasedOnMode(v) {
+			value: function getValueBasedOnMode$$1(v) {
 				return this.props.args && this.props.args.mode && (typeof v === "undefined" ? "undefined" : _typeof(v)) !== "object" && this.props.args.mode == "ObjectId" && { $objectID: v } || v;
 			}
 		}, {
@@ -3636,7 +3738,11 @@ var DynamoHidden = function (_React$Component) {
 		value: function init() {
 			var props = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : this.props;
 
-			if (props.args && props.args.default && props.args.default !== props.value && !props.value) this.props.valueChanged(defineProperty({}, props.name, props.args.default));
+			if (props.args && props.args.default && props.args.default !== props.value && !props.value) return this.props.valueChanged(defineProperty({}, props.name, getValueBasedOnMode(props, props.args.default)));
+
+			if (isObjectIdMode(props) && this.props.value !== props.value) {
+				this.props.valueChanged(defineProperty({}, props.name, getValueBasedOnMode(props, props.value)));
+			}
 		}
 	}, {
 		key: "componentWillReceiveProps",
@@ -4925,7 +5031,7 @@ var dynamo_command = (function (Link, customDownloadCommand) {
 		createClass(DynamoCommand, [{
 			key: "run",
 			value: function run() {
-				this.props.dispatch(runDynamoProcessor(this.props.args.commmandProcessor, JSON.parse(this.props.args.commandProcessorArgs || {}), this.props.component_uid));
+				this.props.dispatch(runDynamoProcessor(this.props.args.commandProcessor, this.props.args.commandProcessorArgs && JSON.parse(this.props.args.commandProcessorArgs) || {}, this.props.component_uid));
 			}
 		}, {
 			key: "go",
@@ -4937,7 +5043,9 @@ var dynamo_command = (function (Link, customDownloadCommand) {
 						}
 						var url = void 0;
 						try {
-							url = dynamoDownloadUrl.replace(":id", JSON.parse(this.props.args.commandProcessorArgs).id);
+							var config$$1 = JSON.parse(this.props.args.commandProcessorArgs);
+							url = dynamoDownloadUrl.replace(":id", config$$1.id);
+							if (config$$1.access_token) url += "?_t0=" + config$$1.access_token;
 						} catch (e) {
 							throw new Error("Download is not properly setup.");
 						}

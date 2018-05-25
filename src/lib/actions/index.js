@@ -404,7 +404,7 @@ export function runDynamoProcessor(
                   dispatch,
                   errorCustomType || ACTIONS.DYNAMO_PROCESSOR_FAILED,
                   () => key,
-                  true
+                  !config.disableProcessorRetry
                 )
               ],
               method: "POST",

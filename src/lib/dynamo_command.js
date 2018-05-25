@@ -21,8 +21,10 @@ export default (Link, customDownloadCommand) => {
 		run() {
 			this.props.dispatch(
 				runDynamoProcessor(
-					this.props.args.commmandProcessor,
-					JSON.parse(this.props.args.commandProcessorArgs || {}),
+					this.props.args.commandProcessor,
+					(this.props.args.commandProcessorArgs &&
+						JSON.parse(this.props.args.commandProcessorArgs)) ||
+						{},
 					this.props.component_uid
 				)
 			);
@@ -35,14 +37,18 @@ export default (Link, customDownloadCommand) => {
 					}
 					let url;
 					try {
-						url = dynamoDownloadUrl.replace(
-							":id",
-							JSON.parse(this.props.args.commandProcessorArgs).id
+						let config = JSON.parse(
+							this.props.args.commandProcessorArgs
 						);
+						url = dynamoDownloadUrl.replace(":id", config.id);
+						if (config.access_token)
+							url += `?_t0=${config.access_token}`;
 					} catch (e) {
 						throw new Error("Download is not properly setup.");
 					}
-					this.props.dispatch(customDownloadCommand(this.props.args, url));
+					this.props.dispatch(
+						customDownloadCommand(this.props.args, url)
+					);
 					break;
 				default:
 					this.run();

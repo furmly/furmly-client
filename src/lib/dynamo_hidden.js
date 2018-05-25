@@ -1,4 +1,5 @@
 import React from "react";
+import { isObjectIdMode, getValueBasedOnMode } from "./utils/view";
 
 export default class DynamoHidden extends React.Component {
 	constructor(props) {
@@ -15,11 +16,20 @@ export default class DynamoHidden extends React.Component {
 			props.args.default !== props.value &&
 			!props.value
 		)
-			this.props.valueChanged({ [props.name]: props.args.default });
+			return this.props.valueChanged({
+				[props.name]: getValueBasedOnMode(props, props.args.default)
+			});
+
+		if (isObjectIdMode(props) && this.props.value !== props.value) {
+			this.props.valueChanged({
+				[props.name]: getValueBasedOnMode(props, props.value)
+			});
+		}
 	}
 	componentWillReceiveProps(next) {
 		this.init(next);
 	}
+
 	render() {
 		return null;
 	}
