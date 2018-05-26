@@ -1,6 +1,6 @@
 import _ from "lodash";
 import uuid from "uuid/v4";
-import { ACTIONS } from "../actions";
+import { default as ACTIONS } from "../actions/constants";
 import config from "client_config";
 import { isValidKey } from "../utils/view";
 

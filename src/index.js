@@ -14,6 +14,6 @@ export {
 	replaceStack,
 	clearNavigationStack,
 	alreadyVisible,
-	getRefreshToken,
-	ACTIONS
+	getRefreshToken
 } from "./lib/actions";
+export { default as ACTIONS } from "./lib/actions/constants";

@@ -1,4 +1,4 @@
-import { ACTIONS } from "../actions";
+import { default as ACTIONS } from "../actions/constants";
 import _ from "lodash";
 
 export default function(state = createStack(), action) {

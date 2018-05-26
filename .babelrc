@@ -4,6 +4,11 @@
     "react",
   ],
   "plugins": [
+  ["@doochik/babel-plugin-transform-react-ssr-try-catch",
+                      {
+                        errorHandler:"errorhandler.js"                    
+                      }
+   ],
     "transform-object-rest-spread",
     "external-helpers"
   ]

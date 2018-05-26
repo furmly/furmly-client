@@ -1,4 +1,4 @@
-import { ACTIONS } from "../actions";
+import { default as ACTIONS } from "../actions/constants";
 import uuid from "uuid/v4";
 export default function(state = {}, action) {
 	switch (action.type) {
