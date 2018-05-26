@@ -49,12 +49,16 @@ function copyStack(state) {
 }
 function makeTop(state, curr) {
 	state.stack.push(
-		state.stack.splice(state._references[curr.params.id][1], 1)
+		state.stack.splice(state._references[curr.params.id][1], 1)[0]
 	);
 	state._references[curr.params.id][1] = state.stack.length - 1;
 }
 export function hasScreenAlready(state, current) {
 	return state.stack.filter(x => _.isEqual(x, current)).length;
+}
+
+function addToStack(item,stack){
+
 }
 function countRef(stack, index, e) {
 	if (e.key == "Dynamo" || e.$routeName == "Dynamo") {

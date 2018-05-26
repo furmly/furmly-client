@@ -1543,7 +1543,7 @@ function copyStack(state) {
 	return { stack: stack, _references: _references };
 }
 function makeTop(state, curr) {
-	state.stack.push(state.stack.splice(state._references[curr.params.id][1], 1));
+	state.stack.push(state.stack.splice(state._references[curr.params.id][1], 1)[0]);
 	state._references[curr.params.id][1] = state.stack.length - 1;
 }
 function hasScreenAlready(state, current) {
@@ -1551,6 +1551,7 @@ function hasScreenAlready(state, current) {
 		return _.isEqual(x, current);
 	}).length;
 }
+
 function countRef(stack, index, e) {
 	if (e.key == "Dynamo" || e.$routeName == "Dynamo") {
 		if (stack._references[e.params.id]) {
@@ -5552,7 +5553,7 @@ function view$1 () {
 				//it is a dynamo navigation
 				//confirm there are no other references down the line.
 				var _state2 = state[action.payload.item.params.id],
-				    currentStep = _state2.currentStep || 0;
+				    currentStep = _state2 && _state2.currentStep || 0;
 				if (action.payload.references[action.payload.item.params.id] && action.payload.references[action.payload.item.params.id][0] == 1) {
 					return Object.assign({},
 					//copy over state that does not belong to the removed object
@@ -5562,13 +5563,14 @@ function view$1 () {
 						return sum;
 					}, {}), defineProperty({}, action.payload.item.params.id, null));
 				}
-				if (action.payload.item.params.currentStep) {
+				if (_state2 && typeof action.payload.item.params.currentStep !== "undefined") {
 					//it is a step navigation.
 					//remove one from current step.
 
-					state[action.payload.item.params.id].currentStep = state[action.payload.item.params.id].currentStep - 1 || 0;
-
-					return Object.assign({}, state, defineProperty({}, action.payload.item.params.id, Object.assign({}, _state2, defineProperty({}, action.payload.item.params.currentStep, null))));
+					_state2.currentStep = _state2.currentStep - 1 || 0;
+					_state2.description.steps = _state2.description.steps.slice();
+					_state2.description.steps.pop();
+					return Object.assign({}, state, defineProperty({}, action.payload.item.params.id, Object.assign({}, _state2 || {}, defineProperty({}, action.payload.item.params.currentStep, null))));
 				}
 			}
 			return state;
