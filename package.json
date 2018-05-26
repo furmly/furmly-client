@@ -23,6 +23,7 @@
     "uuid": "^3.1.0"
   },
   "devDependencies": {
+    "@doochik/babel-plugin-transform-react-ssr-try-catch": "^2.0.1",
     "babel-cli": "^6.26.0",
     "babel-plugin-external-helpers": "^6.22.0",
     "babel-plugin-transform-object-rest-spread": "^6.26.0",
