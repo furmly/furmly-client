@@ -46,7 +46,7 @@ export default function(state = {}, action) {
 				//it is a dynamo navigation
 				//confirm there are no other references down the line.
 				let _state = state[action.payload.item.params.id],
-					currentStep = _state.currentStep || 0;
+					currentStep = (_state && _state.currentStep) || 0;
 				if (
 					action.payload.references[action.payload.item.params.id] &&
 					action.payload.references[
@@ -73,17 +73,20 @@ export default function(state = {}, action) {
 						}
 					);
 				}
-				if (action.payload.item.params.currentStep) {
+				if (
+					_state &&
+					typeof action.payload.item.params.currentStep !==
+						"undefined"
+				) {
 					//it is a step navigation.
 					//remove one from current step.
 
-					state[action.payload.item.params.id].currentStep =
-						state[action.payload.item.params.id].currentStep - 1 ||
-						0;
-
+					_state.currentStep = _state.currentStep - 1 || 0;
+					_state.description.steps = _state.description.steps.slice();
+					_state.description.steps.pop();
 					return Object.assign({}, state, {
 						[action.payload.item.params
-							.id]: Object.assign({}, _state, {
+							.id]: Object.assign({}, _state || {}, {
 							[action.payload.item.params.currentStep]: null
 						})
 					});
