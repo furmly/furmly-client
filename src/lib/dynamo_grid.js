@@ -150,7 +150,12 @@ export default (
 			}
 		}
 		componentDidMount() {
+			this._mounted = true;
 			this.fetchFilterTemplate();
+		}
+
+		componentWillUnmount() {
+			this._mounted = false;
 		}
 
 		fetchFilterTemplate(props = this.props, other) {

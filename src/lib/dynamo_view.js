@@ -3,8 +3,9 @@ import { connect } from "react-redux";
 import invariants from "./utils/invariants";
 import { valueChanged } from "./actions";
 import debug from "debug";
-export default (Page, Container) => {
+export default (Page, Warning, Container) => {
 	invariants.validComponent(Page, "Page");
+	invariants.validComponent(Warning, "Warning");
 	invariants.validComponent(Container, "Container");
 	//map elements in DynamoView props to elements in store.
 	const log = debug("dynamo-client-components:view");
@@ -55,9 +56,7 @@ export default (Page, Container) => {
 				.validate()
 				.then(
 					() => {
-						log(
-							"currentStep:" + (this.props.currentStep || "0")
-						);
+						log("currentStep:" + (this.props.currentStep || "0"));
 						this.props.submit(this.props.value);
 					},
 					() => {
@@ -70,6 +69,12 @@ export default (Page, Container) => {
 				});
 		}
 		render() {
+			if (!this.props.elements || !this.props.elements.length)
+				return (
+					<Page hideSubmit={true}>
+						<Warning message="Oops you are not supposed to be here. Something may be broken. Please navigate home/login" />
+					</Page>
+				);
 			/*jshint ignore:start*/
 			return (
 				<Page submit={this.submit} hideSubmit={this.props.hideSubmit}>

@@ -1341,7 +1341,43 @@ var possibleConstructorReturn = function (self, call) {
 
 
 
+var slicedToArray = function () {
+  function sliceIterator(arr, i) {
+    var _arr = [];
+    var _n = true;
+    var _d = false;
+    var _e = undefined;
 
+    try {
+      for (var _i = arr[Symbol.iterator](), _s; !(_n = (_s = _i.next()).done); _n = true) {
+        _arr.push(_s.value);
+
+        if (i && _arr.length === i) break;
+      }
+    } catch (err) {
+      _d = true;
+      _e = err;
+    } finally {
+      try {
+        if (!_n && _i["return"]) _i["return"]();
+      } finally {
+        if (_d) throw _e;
+      }
+    }
+
+    return _arr;
+  }
+
+  return function (arr, i) {
+    if (Array.isArray(arr)) {
+      return arr;
+    } else if (Symbol.iterator in Object(arr)) {
+      return sliceIterator(arr, i);
+    } else {
+      throw new TypeError("Invalid attempt to destructure non-iterable instance");
+    }
+  };
+}();
 
 
 
@@ -1525,7 +1561,8 @@ function navigation () {
 			var stack = copyStack(state),
 			    item = stack.stack.pop();
 			if (item && (item.key == "Dynamo" || item.$routeName == "Dynamo") && stack._references[item.params.id]) {
-				stack._references[0] = stack._references[item.params.id][0]--;
+				var refs = stack._references[item.params.id][0];
+				stack._references[item.params.id][0] = refs - 1;
 				//clean up.
 				if (!stack._references[item.params.id][0]) delete stack._references[item.params.id];
 			}
@@ -2173,7 +2210,7 @@ var invariants = {
 	}
 };
 
-var ReactSSRErrorHandler = require("errorhandler.js");
+var ReactSSRErrorHandler = require("error_handler");
 
 /**
  * Higher order function that recieves Platform specific implementation of Input
@@ -2192,15 +2229,6 @@ var dynamo_input = (function (LabelWrapper, Input, DatePicker, Checkbox) {
 		createClass(DynamoInput, [{
 			key: "render",
 			value: function render() {
-				try {
-					return this.__originalRenderMethod__();
-				} catch (e) {
-					return ReactSSRErrorHandler(e, this.constructor.name);
-				}
-			}
-		}, {
-			key: "__originalRenderMethod__",
-			value: function __originalRenderMethod__() {
 				try {
 					return this.__originalRenderMethod__();
 				} catch (e) {
@@ -2226,14 +2254,64 @@ var dynamo_input = (function (LabelWrapper, Input, DatePicker, Checkbox) {
 			_this.props.validator.validate = function () {
 				return _this.runValidators();
 			};
+			_this.toValueChanged = _this.toValueChanged.bind(_this);
+			_this.formatDateRange = _this.formatDateRange.bind(_this);
+			_this.fromValueChanged = _this.fromValueChanged.bind(_this);
+			_this.setDateFromRange = _this.setDateFromRange.bind(_this);
+			_this.isDateRange = _this.isDateRange.bind(_this);
 			return _this;
 		}
 
 		createClass(DynamoInput, [{
+			key: "componentDidMount",
+			value: function componentDidMount() {
+				var _this2 = this;
+
+				this._mounted = true;
+				setTimeout(function () {
+					if (_this2._mounted) {
+						_this2.setDefault();
+						_this2.setDateFromRange();
+					}
+				}, 0);
+			}
+		}, {
 			key: "componentWillReceiveProps",
 			value: function componentWillReceiveProps(next) {
 				if (next.component_uid !== this.props.component_uid) {
 					this.setDefault(next);
+				}
+				if (next.value && this.props.value !== next.value && this.isDateRange(next)) {
+					this.setDateFromRange(next);
+				}
+			}
+		}, {
+			key: "componentWillUnmount",
+			value: function componentWillUnmount() {
+				this._mounted = false;
+			}
+		}, {
+			key: "isDateRange",
+			value: function isDateRange() {
+				var props = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : this.props;
+
+				return props.args && props.args.config && props.args.config.isRange;
+			}
+		}, {
+			key: "setDateFromRange",
+			value: function setDateFromRange() {
+				var props = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : this.props;
+
+				if (props.value) {
+					var _props$value$split = props.value.split("-"),
+					    _props$value$split2 = slicedToArray(_props$value$split, 2),
+					    fromValue = _props$value$split2[0],
+					    toValue = _props$value$split2[1];
+
+					this.setState({
+						fromValue: new Date(fromValue),
+						toValue: new Date(toValue)
+					});
 				}
 			}
 		}, {
@@ -2282,6 +2360,37 @@ var dynamo_input = (function (LabelWrapper, Input, DatePicker, Checkbox) {
 				this.setState({ errors: [] });
 			}
 		}, {
+			key: "fromValueChanged",
+			value: function fromValueChanged(fromValue) {
+				if (this.state.toValue && fromValue < this.state.toValue) {
+					this.valueChanged(this.formatDateRange(fromValue));
+				} else {
+					this.valueChanged(null);
+				}
+				this.setState({
+					fromValue: fromValue,
+					toValue: fromValue > this.state.toValue ? null : this.state.toValue
+				});
+			}
+		}, {
+			key: "formatDateRange",
+			value: function formatDateRange() {
+				var from = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : this.state.fromValue;
+				var to = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : this.state.toValue;
+
+				return from.toLocaleDateString() + " - " + to.toLocaleDateString();
+			}
+		}, {
+			key: "toValueChanged",
+			value: function toValueChanged(toValue) {
+				if (this.state.fromValue) {
+					this.valueChanged(this.formatDateRange(this.state.fromValue, toValue));
+				}
+				this.setState({
+					toValue: toValue
+				});
+			}
+		}, {
 			key: "getDateConfig",
 			value: function getDateConfig(args) {
 				var result = {};
@@ -2293,13 +2402,22 @@ var dynamo_input = (function (LabelWrapper, Input, DatePicker, Checkbox) {
 					if (args.min) {
 						if (args.min == "TODAY") result.minDate = new Date();else result.minDate = new Date(args.minConfig.date);
 					}
+					if (args.isRange) {
+						result.toValueChanged = this.toValueChanged;
+						result.fromValueChanged = this.fromValueChanged;
+						result.toValue = this.state.toValue;
+						result.fromValue = this.state.fromValue;
+					}
+					result.isRange = args.isRange;
 				}
 
 				return result;
 			}
 		}, {
 			key: "setDefault",
-			value: function setDefault(props) {
+			value: function setDefault() {
+				var props = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : this.props;
+
 				if (!props.value && props.args && props.args.default) this.valueChanged(props.args.default);
 			}
 		}, {
@@ -2346,10 +2464,11 @@ var dynamo_input = (function (LabelWrapper, Input, DatePicker, Checkbox) {
 	return DynamoInput;
 });
 
-var ReactSSRErrorHandler$1 = require("errorhandler.js");
+var ReactSSRErrorHandler$1 = require("error_handler");
 
-var dynamo_view = (function (Page, Container) {
+var dynamo_view = (function (Page, Warning, Container) {
 	invariants.validComponent(Page, "Page");
+	invariants.validComponent(Warning, "Warning");
 	invariants.validComponent(Container, "Container");
 	//map elements in DynamoView props to elements in store.
 	var log = debug("dynamo-client-components:view");
@@ -2383,15 +2502,6 @@ var dynamo_view = (function (Page, Container) {
 		createClass(DynamoView, [{
 			key: "render",
 			value: function render() {
-				try {
-					return this.__originalRenderMethod__();
-				} catch (e) {
-					return ReactSSRErrorHandler$1(e, this.constructor.name);
-				}
-			}
-		}, {
-			key: "__originalRenderMethod__",
-			value: function __originalRenderMethod__() {
 				try {
 					return this.__originalRenderMethod__();
 				} catch (e) {
@@ -2442,6 +2552,11 @@ var dynamo_view = (function (Page, Container) {
 		}, {
 			key: "__originalRenderMethod__",
 			value: function __originalRenderMethod__() {
+				if (!this.props.elements || !this.props.elements.length) return React__default.createElement(
+					Page,
+					{ hideSubmit: true },
+					React__default.createElement(Warning, { message: "Oops you are not supposed to be here. Something may be broken. Please navigate home/login" })
+				);
 				/*jshint ignore:start*/
 				return React__default.createElement(
 					Page,
@@ -2467,7 +2582,7 @@ var dynamo_view = (function (Page, Container) {
 	return connect(mapStateToProps, mapDispatchToProps)(DynamoView);
 });
 
-var ReactSSRErrorHandler$2 = require("errorhandler.js");
+var ReactSSRErrorHandler$2 = require("error_handler");
 
 var dynamo_container = (function () {
 	for (var _len = arguments.length, args = Array(_len), _key = 0; _key < _len; _key++) {
@@ -2631,7 +2746,7 @@ var dynamo_container = (function () {
 	}(React.Component);
 });
 
-var ReactSSRErrorHandler$3 = require("errorhandler.js");
+var ReactSSRErrorHandler$3 = require("error_handler");
 
 /**
  * Higher order function that recieves Platform specific implementation of Input
@@ -2674,15 +2789,6 @@ var dynamo_process = (function (ProgressBar, TextView, DynamoView) {
 		createClass(DynamoProcess, [{
 			key: "render",
 			value: function render() {
-				try {
-					return this.__originalRenderMethod__();
-				} catch (e) {
-					return ReactSSRErrorHandler$3(e, this.constructor.name);
-				}
-			}
-		}, {
-			key: "__originalRenderMethod__",
-			value: function __originalRenderMethod__() {
 				try {
 					return this.__originalRenderMethod__();
 				} catch (e) {
@@ -2735,16 +2841,12 @@ var dynamo_process = (function (ProgressBar, TextView, DynamoView) {
 				if (!this.props.description) {
 					return React__default.createElement(TextView, { text: "Sorry we couldnt load that process...please wait a few minutes and retry." });
 				}
-				try {
-					return React__default.createElement(DynamoView, {
-						currentStep: this.props.currentStep || 0,
-						currentProcess: this.props.id,
-						navigation: this.props.navigation,
-						submit: this.submit
-					});
-				} catch (e) {
-					return React__default.createElement(TextView, { text: "An error has occurred. Please retry the last actions" });
-				}
+				return React__default.createElement(DynamoView, {
+					currentStep: this.props.currentStep || 0,
+					currentProcess: this.props.id,
+					navigation: this.props.navigation,
+					submit: this.submit
+				});
 
 				/*jshint ignore:end */
 			}
@@ -2761,7 +2863,7 @@ var dynamo_process = (function (ProgressBar, TextView, DynamoView) {
 	return connect(mapStateToProps, mapDispatchToProps)(DynamoProcess);
 });
 
-var ReactSSRErrorHandler$4 = require("errorhandler.js");
+var ReactSSRErrorHandler$4 = require("error_handler");
 
 var dynamo_section = (function (Layout, Header, Container) {
 	invariants.validComponent(Layout, "Layout");
@@ -2774,15 +2876,6 @@ var dynamo_section = (function (Layout, Header, Container) {
 		createClass(DynamoSection, [{
 			key: "render",
 			value: function render() {
-				try {
-					return this.__originalRenderMethod__();
-				} catch (e) {
-					return ReactSSRErrorHandler$4(e, this.constructor.name);
-				}
-			}
-		}, {
-			key: "__originalRenderMethod__",
-			value: function __originalRenderMethod__() {
 				try {
 					return this.__originalRenderMethod__();
 				} catch (e) {
@@ -2860,7 +2953,7 @@ function getCurrentProcess(state) {
 function getKey(state, key, ownProps) {
 	return ownProps.currentStep + "/" + ownProps.currentProcess + "/" + key;
 }
-var exp = /^(\d+)\/([a-f\d]{24})\/.+$/i;
+var exp = /^(\d+)\/([a-f\d]{1,24}|[a-zA-Z0-9_]+)\/.+$/i;
 function isValidKey(key) {
 	var result = exp.exec(key);
 	if (!result) return false;
@@ -2925,7 +3018,7 @@ var view = {
 	getKey: getKey
 };
 
-var ReactSSRErrorHandler$5 = require("errorhandler.js");
+var ReactSSRErrorHandler$5 = require("error_handler");
 
 var dynamo_select = (function (ProgressIndicator, Layout, Container) {
 	if (invariants.validComponent(ProgressIndicator, "ProgressIndicator") && invariants.validComponent(Layout, "Layout") && !Container) throw new Error("Container cannot be null (dynamo_select)");
@@ -2940,7 +3033,7 @@ var dynamo_select = (function (ProgressIndicator, Layout, Container) {
 				var st = state.dynamo.view[component_uid];
 				return {
 					items: st,
-					busy: !!state.dynamo.view[ownProps.component_uid + "-busy"],
+					busy: !!state.dynamo.view[component_uid + "-busy"],
 					component_uid: component_uid
 				};
 			}
@@ -2961,15 +3054,6 @@ var dynamo_select = (function (ProgressIndicator, Layout, Container) {
 		createClass(DynamoSelect, [{
 			key: "render",
 			value: function render() {
-				try {
-					return this.__originalRenderMethod__();
-				} catch (e) {
-					return ReactSSRErrorHandler$5(e, this.constructor.name);
-				}
-			}
-		}, {
-			key: "__originalRenderMethod__",
-			value: function __originalRenderMethod__() {
 				try {
 					return this.__originalRenderMethod__();
 				} catch (e) {
@@ -3126,22 +3210,13 @@ var dynamo_select = (function (ProgressIndicator, Layout, Container) {
 	return connect(mapStateToProps, mapDispatchToProps)(DynamoSelect);
 });
 
-var ReactSSRErrorHandler$6 = require("errorhandler.js");
+var ReactSSRErrorHandler$6 = require("error_handler");
 
 var DynamoComponentBase = function (_React$Component) {
 	inherits(DynamoComponentBase, _React$Component);
 	createClass(DynamoComponentBase, [{
 		key: "render",
 		value: function render() {
-			try {
-				return this.__originalRenderMethod__();
-			} catch (e) {
-				return ReactSSRErrorHandler$6(e, this.constructor.name);
-			}
-		}
-	}, {
-		key: "__originalRenderMethod__",
-		value: function __originalRenderMethod__() {
 			try {
 				return this.__originalRenderMethod__();
 			} catch (e) {
@@ -3177,6 +3252,7 @@ var dynamo_selectset = (function (Layout, Picker, ProgressBar, Container) {
 	invariants.validComponent(Container, "Container");
 	var log = debug("dynamo-client-components:selectset");
 	var noPath = "selectset_no_path";
+	var noItems = [];
 	var mapDispatchToProps = function mapDispatchToProps(dispatch) {
 		return {
 			getItems: function getItems(id, args, key, extra) {
@@ -3189,7 +3265,7 @@ var dynamo_selectset = (function (Layout, Picker, ProgressBar, Container) {
 			var component_uid = getKey(state, ownProps.component_uid, ownProps),
 			    items = state.dynamo.view[component_uid] || ownProps.args.items;
 			return {
-				busy: state.dynamo.view[component_uid + "-busy"],
+				busy: !!state.dynamo.view[ownProps.component_uid + "-busy"],
 				items: items,
 				contentItems: getPickerItemsById(ownProps.value, items),
 				component_uid: component_uid
@@ -3202,10 +3278,10 @@ var dynamo_selectset = (function (Layout, Picker, ProgressBar, Container) {
 			var r = items.filter(function (x) {
 				return x.id == z;
 			});
-			return r.length && r[0].elements || [];
+			return r.length && r[0].elements || noItems;
 		}
 
-		return [];
+		return noItems;
 	};
 
 	var DynamoSelectSet = function (_DynamoBase) {
@@ -3286,7 +3362,7 @@ var dynamo_selectset = (function (Layout, Picker, ProgressBar, Container) {
 				var _this2 = this;
 
 				this._mounted = true;
-				if (this.props.args.processor) {
+				if (this.props.args.processor && typeof this.props.items == "undefined") {
 					this.fetchItems(this.props.args.processor);
 				}
 
@@ -3296,10 +3372,10 @@ var dynamo_selectset = (function (Layout, Picker, ProgressBar, Container) {
 					}, 0);
 				}
 
-				if (this.isObjectIdMode() && this.props.value) {
+				if (this.isObjectIdMode() && this.props.value && _typeof(this.props.value) !== "object") {
 					//update the form to indicate its an objectId.
 					return setTimeout(function () {
-						_this2.onPickerValueChanged(_this2.props.value, _this2.props.items);
+						_this2.onPickerValueChanged(_this2.props.value);
 					}, 0);
 				}
 			}
@@ -3314,11 +3390,16 @@ var dynamo_selectset = (function (Layout, Picker, ProgressBar, Container) {
 				return this.props.items && this.props.items.length == 1;
 			}
 		}, {
+			key: "getCurrentContainerValue",
+			value: function getCurrentContainerValue() {
+				return this.props.args.path && this.props.extra[this.props.args.path] || this.state.containerValues;
+			}
+		}, {
 			key: "selectFirstItem",
 			value: function selectFirstItem() {
 				var items = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : this.props.items;
 
-				this.onPickerValueChanged(items[0].id, items);
+				this.onPickerValueChanged(items[0].id);
 			}
 		}, {
 			key: "getPickerValue",
@@ -3375,7 +3456,7 @@ var dynamo_selectset = (function (Layout, Picker, ProgressBar, Container) {
 					return defineProperty({}, x, value[noPath][x]);
 				})));
 
-				if (superCancel) {
+				if (superCancel && Object.keys(superCancel).length > 0) {
 					//insert this to remove previous values.
 					result.splice(1, 0, superCancel);
 				}
@@ -3402,7 +3483,7 @@ var dynamo_selectset = (function (Layout, Picker, ProgressBar, Container) {
 		}, {
 			key: "onPickerValueChanged",
 			value: function onPickerValueChanged(v) {
-				this.respondToPickerValueChanged(v);
+				this.onContainerValueChanged(this.getCurrentContainerValue(), this.getPickerValue(v));
 			}
 		}, {
 			key: "getContainerValue",
@@ -3434,7 +3515,7 @@ var dynamo_selectset = (function (Layout, Picker, ProgressBar, Container) {
 						displayProperty: "displayLabel",
 						keyProperty: "id",
 						value: unwrapObjectValue(this.props.value),
-						valueChanged: this.onPickerValueChanged,
+						valueChanged: this.respondToPickerValueChanged,
 						currentProcess: this.props.currentProcess,
 						currentStep: this.props.currentStep
 					}),
@@ -3459,7 +3540,7 @@ var dynamo_selectset = (function (Layout, Picker, ProgressBar, Container) {
 	return connect(mapStateToProps, mapDispatchToProps)(DynamoSelectSet);
 });
 
-var ReactSSRErrorHandler$7 = require("errorhandler.js");
+var ReactSSRErrorHandler$7 = require("error_handler");
 
 var dynamo_list = (function (Layout, Button, List, Modal, ErrorText, ProgressBar, Container) {
 	invariants.validComponent(Layout, "Layout");
@@ -3520,15 +3601,6 @@ var dynamo_list = (function (Layout, Button, List, Modal, ErrorText, ProgressBar
 		createClass(DynamoList, [{
 			key: "render",
 			value: function render() {
-				try {
-					return this.__originalRenderMethod__();
-				} catch (e) {
-					return ReactSSRErrorHandler$7(e, this.constructor.name);
-				}
-			}
-		}, {
-			key: "__originalRenderMethod__",
-			value: function __originalRenderMethod__() {
 				try {
 					return this.__originalRenderMethod__();
 				} catch (e) {
@@ -3805,22 +3877,13 @@ var dynamo_list = (function (Layout, Button, List, Modal, ErrorText, ProgressBar
 	return connect(mapStateToProps, mapDispatchToProps)(DynamoList);
 });
 
-var ReactSSRErrorHandler$8 = require("errorhandler.js");
+var ReactSSRErrorHandler$8 = require("error_handler");
 
 var DynamoHidden = function (_React$Component) {
 	inherits(DynamoHidden, _React$Component);
 	createClass(DynamoHidden, [{
 		key: "render",
 		value: function render() {
-			try {
-				return this.__originalRenderMethod__();
-			} catch (e) {
-				return ReactSSRErrorHandler$8(e, this.constructor.name);
-			}
-		}
-	}, {
-		key: "__originalRenderMethod__",
-		value: function __originalRenderMethod__() {
 			try {
 				return this.__originalRenderMethod__();
 			} catch (e) {
@@ -3868,7 +3931,7 @@ var DynamoHidden = function (_React$Component) {
 	return DynamoHidden;
 }(React__default.Component);
 
-var ReactSSRErrorHandler$9 = require("errorhandler.js");
+var ReactSSRErrorHandler$9 = require("error_handler");
 
 var dynamo_nav = (function (Link, NavigationActions) {
 	if (invariants.validComponent(Link, "Link") && !NavigationActions) throw new Error("NavigationActions cannot be null (dynamo_nav)");
@@ -3894,15 +3957,6 @@ var dynamo_nav = (function (Link, NavigationActions) {
 		createClass(DynamoNav, [{
 			key: "render",
 			value: function render() {
-				try {
-					return this.__originalRenderMethod__();
-				} catch (e) {
-					return ReactSSRErrorHandler$9(e, this.constructor.name);
-				}
-			}
-		}, {
-			key: "__originalRenderMethod__",
-			value: function __originalRenderMethod__() {
 				try {
 					return this.__originalRenderMethod__();
 				} catch (e) {
@@ -3990,21 +4044,27 @@ var dynamo_nav = (function (Link, NavigationActions) {
 	return connect(mapStateToProps, mapDispatchToState)(DynamoNav);
 });
 
+var ReactSSRErrorHandler$10 = require("error_handler");
+
 var dynamo_image = (function (Image) {
 	invariants.validComponent(Image, "Image");
 	var log = debug("dynamo-client-components:image");
 	return function (props) {
-		var value = props.value,
-		    args = props.args,
-		    rest = objectWithoutProperties(props, ["value", "args"]);
+		try {
+			var _value = props.value,
+			    _args = props.args,
+			    _rest = objectWithoutProperties(props, ["value", "args"]);
 
-		if (value && props.args.type == "URL") {
-			var data = props.args.config.data.replace(new RegExp("{" + props.name + "}", "g"), value),
-			    _args = Object.assign({}, props.args);
-			_args.config = { data: data };
-			return React__default.createElement(Image, _extends$4({ args: _args }, rest));
+			if (_value && props.args.type == "URL") {
+				var data = props.args.config.data.replace(new RegExp("{" + props.name + "}", "g"), _value),
+				    _args2 = Object.assign({}, props.args);
+				_args2.config = { data: data };
+				return React__default.createElement(Image, _extends$4({ args: _args2 }, _rest));
+			}
+			return React__default.createElement(Image, props);
+		} catch (e) {
+			return ReactSSRErrorHandler$10(e);
 		}
-		return React__default.createElement(Image, props);
 	};
 });
 
@@ -4128,7 +4188,13 @@ var dynamo_grid = (function (Layout, List, ItemView, Header, ProgressBar, Comman
 		createClass(DynamoGrid, [{
 			key: "componentDidMount",
 			value: function componentDidMount() {
+				this._mounted = true;
 				this.fetchFilterTemplate();
+			}
+		}, {
+			key: "componentWillUnmount",
+			value: function componentWillUnmount() {
+				this._mounted = false;
 			}
 		}, {
 			key: "fetchFilterTemplate",
@@ -4469,7 +4535,7 @@ var dynamo_grid = (function (Layout, List, ItemView, Header, ProgressBar, Comman
 	return connect(mapStateToProps, mapDispatchToProps)(DynamoGrid);
 });
 
-var ReactSSRErrorHandler$10 = require("errorhandler.js");
+var ReactSSRErrorHandler$11 = require("error_handler");
 
 var dynamo_htmlview = (function (PlatformComponent) {
 	var log = debug("dynamo-client-components:html-view");
@@ -4481,7 +4547,7 @@ var dynamo_htmlview = (function (PlatformComponent) {
 				try {
 					return this.__originalRenderMethod__();
 				} catch (e) {
-					return ReactSSRErrorHandler$10(e, this.constructor.name);
+					return ReactSSRErrorHandler$11(e, this.constructor.name);
 				}
 			}
 		}]);
@@ -4503,7 +4569,7 @@ var dynamo_htmlview = (function (PlatformComponent) {
 	}(React.Component);
 });
 
-var ReactSSRErrorHandler$11 = require("errorhandler.js");
+var ReactSSRErrorHandler$12 = require("error_handler");
 
 /**
  * This component should render a file uploader
@@ -4528,16 +4594,7 @@ var dynamo_fileupload = (function (Uploader, ProgressBar, Text) {
 				try {
 					return this.__originalRenderMethod__();
 				} catch (e) {
-					return ReactSSRErrorHandler$11(e, this.constructor.name);
-				}
-			}
-		}, {
-			key: "__originalRenderMethod__",
-			value: function __originalRenderMethod__() {
-				try {
-					return this.__originalRenderMethod__();
-				} catch (e) {
-					return ReactSSRErrorHandler$11(e, this.constructor.name);
+					return ReactSSRErrorHandler$12(e, this.constructor.name);
 				}
 			}
 		}]);
@@ -4801,21 +4858,27 @@ var dynamo_actionview = (function (Layout, ProgressBar, Filter, FilterContainer,
 	return connect(mapStateToProps, mapDispatchToProps)(DynamoActionView);
 });
 
+var ReactSSRErrorHandler$13 = require("error_handler");
+
 var dynamo_label = (function (Label) {
 	invariants.validComponent(Label, "Label");
 	return function (props) {
-		var value = props.value,
-		    description = props.description,
-		    rest = objectWithoutProperties(props, ["value", "description"]);
+		try {
+			var _value = props.value,
+			    _description = props.description,
+			    _rest = objectWithoutProperties(props, ["value", "description"]);
 
-		if (value) {
-			return React__default.createElement(Label, _extends$4({ description: value }, rest));
+			if (_value) {
+				return React__default.createElement(Label, _extends$4({ description: _value }, _rest));
+			}
+			return React__default.createElement(Label, props);
+		} catch (e) {
+			return ReactSSRErrorHandler$13(e);
 		}
-		return React__default.createElement(Label, props);
 	};
 });
 
-var ReactSSRErrorHandler$12 = require("errorhandler.js");
+var ReactSSRErrorHandler$14 = require("error_handler");
 
 var dynamo_webview = (function (WebView, Text) {
 	var log = debug("dynamo-client-components:webview");
@@ -4827,7 +4890,7 @@ var dynamo_webview = (function (WebView, Text) {
 				try {
 					return this.__originalRenderMethod__();
 				} catch (e) {
-					return ReactSSRErrorHandler$12(e, this.constructor.name);
+					return ReactSSRErrorHandler$14(e, this.constructor.name);
 				}
 			}
 		}]);
@@ -4855,7 +4918,7 @@ var dynamo_webview = (function (WebView, Text) {
 	}(React.Component);
 });
 
-var ReactSSRErrorHandler$13 = require("errorhandler.js");
+var ReactSSRErrorHandler$15 = require("error_handler");
 
 var dynamo_messenger = (function (Layout, Pane, OpenChats, Editor, ContextMenu, NewChatButton, OpenChatsLayout, Modal, ProgressBar, Login, ContactList, ChatHistory, AddNewContact, PendingInvites, ChatLayout) {
 	invariants.validComponent(Layout, "Layout");
@@ -4942,16 +5005,7 @@ var dynamo_messenger = (function (Layout, Pane, OpenChats, Editor, ContextMenu, 
 				try {
 					return this.__originalRenderMethod__();
 				} catch (e) {
-					return ReactSSRErrorHandler$13(e, this.constructor.name);
-				}
-			}
-		}, {
-			key: "__originalRenderMethod__",
-			value: function __originalRenderMethod__() {
-				try {
-					return this.__originalRenderMethod__();
-				} catch (e) {
-					return ReactSSRErrorHandler$13(e, this.constructor.name);
+					return ReactSSRErrorHandler$15(e, this.constructor.name);
 				}
 			}
 		}]);
@@ -5202,7 +5256,7 @@ var dynamo_messenger = (function (Layout, Pane, OpenChats, Editor, ContextMenu, 
 	return connect(mapStateToProps, mapDispatchToProps)(DynamoMessenger);
 });
 
-var ReactSSRErrorHandler$14 = require("errorhandler.js");
+var ReactSSRErrorHandler$16 = require("error_handler");
 
 var dynamo_command = (function (Link, customDownloadCommand) {
 	invariants.validComponent(Link, "Link");
@@ -5222,16 +5276,7 @@ var dynamo_command = (function (Link, customDownloadCommand) {
 				try {
 					return this.__originalRenderMethod__();
 				} catch (e) {
-					return ReactSSRErrorHandler$14(e, this.constructor.name);
-				}
-			}
-		}, {
-			key: "__originalRenderMethod__",
-			value: function __originalRenderMethod__() {
-				try {
-					return this.__originalRenderMethod__();
-				} catch (e) {
-					return ReactSSRErrorHandler$14(e, this.constructor.name);
+					return ReactSSRErrorHandler$16(e, this.constructor.name);
 				}
 			}
 		}]);
@@ -5618,7 +5663,7 @@ function view$1 () {
 		case ACTIONS.ERROR_WHILE_GETTING_SINGLE_ITEM_FOR_GRID:
 			return Object.assign({}, state, defineProperty({}, action.payload.key, errorWhileGettingSingleItemForGrid(state[action.payload.key], action)));
 		case ACTIONS.ERROR_WHILE_FETCHING_GRID:
-			return Object.assign({}, state, defineProperty({}, action.payload.key, failedToFetchGrid(state[action.payload.key])));
+			return Object.assign({}, state, defineProperty({}, action.meta, failedToFetchGrid(state[action.meta])));
 
 		case ACTIONS.DYNAMO_GET_MORE_FOR_GRID:
 			return Object.assign({}, state, defineProperty({}, action.payload.key, reduceGrid(state[action.payload.key], action)));

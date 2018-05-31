@@ -86,20 +86,14 @@ export default (ProgressBar, TextView, DynamoView) => {
 					<TextView text="Sorry we couldnt load that process...please wait a few minutes and retry." />
 				);
 			}
-			try {
-				return (
-					<DynamoView
-						currentStep={this.props.currentStep || 0}
-						currentProcess={this.props.id}
-						navigation={this.props.navigation}
-						submit={this.submit}
-					/>
-				);
-			} catch (e) {
-				return (
-					<TextView text="An error has occurred. Please retry the last actions" />
-				);
-			}
+			return (
+				<DynamoView
+					currentStep={this.props.currentStep || 0}
+					currentProcess={this.props.id}
+					navigation={this.props.navigation}
+					submit={this.submit}
+				/>
+			);
 
 			/*jshint ignore:end */
 		}
