@@ -6,7 +6,7 @@
   "plugins": [
   ["@doochik/babel-plugin-transform-react-ssr-try-catch",
    {
-    errorHandler:"errorhandler.js"                    
+    errorHandler:"error_handler"                    
    }
    ],
     "transform-object-rest-spread",

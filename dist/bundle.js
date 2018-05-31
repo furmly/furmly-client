@@ -2173,7 +2173,7 @@ var invariants = {
 	}
 };
 
-var ReactSSRErrorHandler = require("errorhandler.js");
+var ReactSSRErrorHandler = require("error_handler");
 
 /**
  * Higher order function that recieves Platform specific implementation of Input
@@ -2230,11 +2230,28 @@ var dynamo_input = (function (LabelWrapper, Input, DatePicker, Checkbox) {
 		}
 
 		createClass(DynamoInput, [{
+			key: "componentDidMount",
+			value: function componentDidMount() {
+				var _this2 = this;
+
+				this._mounted = true;
+				setTimeout(function () {
+					if (_this2._mounted) {
+						_this2.setDefault();
+					}
+				}, 0);
+			}
+		}, {
 			key: "componentWillReceiveProps",
 			value: function componentWillReceiveProps(next) {
 				if (next.component_uid !== this.props.component_uid) {
 					this.setDefault(next);
 				}
+			}
+		}, {
+			key: "componentWillUnmount",
+			value: function componentWillUnmount() {
+				this._mounted = false;
 			}
 		}, {
 			key: "runValidators",
@@ -2299,7 +2316,9 @@ var dynamo_input = (function (LabelWrapper, Input, DatePicker, Checkbox) {
 			}
 		}, {
 			key: "setDefault",
-			value: function setDefault(props) {
+			value: function setDefault() {
+				var props = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : this.props;
+
 				if (!props.value && props.args && props.args.default) this.valueChanged(props.args.default);
 			}
 		}, {
@@ -2346,7 +2365,7 @@ var dynamo_input = (function (LabelWrapper, Input, DatePicker, Checkbox) {
 	return DynamoInput;
 });
 
-var ReactSSRErrorHandler$1 = require("errorhandler.js");
+var ReactSSRErrorHandler$1 = require("error_handler");
 
 var dynamo_view = (function (Page, Container) {
 	invariants.validComponent(Page, "Page");
@@ -2467,7 +2486,7 @@ var dynamo_view = (function (Page, Container) {
 	return connect(mapStateToProps, mapDispatchToProps)(DynamoView);
 });
 
-var ReactSSRErrorHandler$2 = require("errorhandler.js");
+var ReactSSRErrorHandler$2 = require("error_handler");
 
 var dynamo_container = (function () {
 	for (var _len = arguments.length, args = Array(_len), _key = 0; _key < _len; _key++) {
@@ -2631,7 +2650,7 @@ var dynamo_container = (function () {
 	}(React.Component);
 });
 
-var ReactSSRErrorHandler$3 = require("errorhandler.js");
+var ReactSSRErrorHandler$3 = require("error_handler");
 
 /**
  * Higher order function that recieves Platform specific implementation of Input
@@ -2761,7 +2780,7 @@ var dynamo_process = (function (ProgressBar, TextView, DynamoView) {
 	return connect(mapStateToProps, mapDispatchToProps)(DynamoProcess);
 });
 
-var ReactSSRErrorHandler$4 = require("errorhandler.js");
+var ReactSSRErrorHandler$4 = require("error_handler");
 
 var dynamo_section = (function (Layout, Header, Container) {
 	invariants.validComponent(Layout, "Layout");
@@ -2925,7 +2944,7 @@ var view = {
 	getKey: getKey
 };
 
-var ReactSSRErrorHandler$5 = require("errorhandler.js");
+var ReactSSRErrorHandler$5 = require("error_handler");
 
 var dynamo_select = (function (ProgressIndicator, Layout, Container) {
 	if (invariants.validComponent(ProgressIndicator, "ProgressIndicator") && invariants.validComponent(Layout, "Layout") && !Container) throw new Error("Container cannot be null (dynamo_select)");
@@ -3126,7 +3145,7 @@ var dynamo_select = (function (ProgressIndicator, Layout, Container) {
 	return connect(mapStateToProps, mapDispatchToProps)(DynamoSelect);
 });
 
-var ReactSSRErrorHandler$6 = require("errorhandler.js");
+var ReactSSRErrorHandler$6 = require("error_handler");
 
 var DynamoComponentBase = function (_React$Component) {
 	inherits(DynamoComponentBase, _React$Component);
@@ -3296,10 +3315,10 @@ var dynamo_selectset = (function (Layout, Picker, ProgressBar, Container) {
 					}, 0);
 				}
 
-				if (this.isObjectIdMode() && this.props.value) {
+				if (this.isObjectIdMode() && this.props.value && _typeof(this.props.value) !== "object") {
 					//update the form to indicate its an objectId.
 					return setTimeout(function () {
-						_this2.onPickerValueChanged(_this2.props.value, _this2.props.items);
+						_this2.onPickerValueChanged(_this2.props.value);
 					}, 0);
 				}
 			}
@@ -3314,11 +3333,16 @@ var dynamo_selectset = (function (Layout, Picker, ProgressBar, Container) {
 				return this.props.items && this.props.items.length == 1;
 			}
 		}, {
+			key: "getCurrentContainerValue",
+			value: function getCurrentContainerValue() {
+				return this.props.args.path && this.props.extra[this.props.args.path] || this.state.containerValues;
+			}
+		}, {
 			key: "selectFirstItem",
 			value: function selectFirstItem() {
 				var items = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : this.props.items;
 
-				this.onPickerValueChanged(items[0].id, items);
+				this.onPickerValueChanged(items[0].id);
 			}
 		}, {
 			key: "getPickerValue",
@@ -3402,7 +3426,7 @@ var dynamo_selectset = (function (Layout, Picker, ProgressBar, Container) {
 		}, {
 			key: "onPickerValueChanged",
 			value: function onPickerValueChanged(v) {
-				this.respondToPickerValueChanged(v);
+				this.onContainerValueChanged(this.getCurrentContainerValue(), this.getPickerValue(v));
 			}
 		}, {
 			key: "getContainerValue",
@@ -3434,7 +3458,7 @@ var dynamo_selectset = (function (Layout, Picker, ProgressBar, Container) {
 						displayProperty: "displayLabel",
 						keyProperty: "id",
 						value: unwrapObjectValue(this.props.value),
-						valueChanged: this.onPickerValueChanged,
+						valueChanged: this.respondToPickerValueChanged,
 						currentProcess: this.props.currentProcess,
 						currentStep: this.props.currentStep
 					}),
@@ -3459,7 +3483,7 @@ var dynamo_selectset = (function (Layout, Picker, ProgressBar, Container) {
 	return connect(mapStateToProps, mapDispatchToProps)(DynamoSelectSet);
 });
 
-var ReactSSRErrorHandler$7 = require("errorhandler.js");
+var ReactSSRErrorHandler$7 = require("error_handler");
 
 var dynamo_list = (function (Layout, Button, List, Modal, ErrorText, ProgressBar, Container) {
 	invariants.validComponent(Layout, "Layout");
@@ -3805,7 +3829,7 @@ var dynamo_list = (function (Layout, Button, List, Modal, ErrorText, ProgressBar
 	return connect(mapStateToProps, mapDispatchToProps)(DynamoList);
 });
 
-var ReactSSRErrorHandler$8 = require("errorhandler.js");
+var ReactSSRErrorHandler$8 = require("error_handler");
 
 var DynamoHidden = function (_React$Component) {
 	inherits(DynamoHidden, _React$Component);
@@ -3868,7 +3892,7 @@ var DynamoHidden = function (_React$Component) {
 	return DynamoHidden;
 }(React__default.Component);
 
-var ReactSSRErrorHandler$9 = require("errorhandler.js");
+var ReactSSRErrorHandler$9 = require("error_handler");
 
 var dynamo_nav = (function (Link, NavigationActions) {
 	if (invariants.validComponent(Link, "Link") && !NavigationActions) throw new Error("NavigationActions cannot be null (dynamo_nav)");
@@ -4469,7 +4493,7 @@ var dynamo_grid = (function (Layout, List, ItemView, Header, ProgressBar, Comman
 	return connect(mapStateToProps, mapDispatchToProps)(DynamoGrid);
 });
 
-var ReactSSRErrorHandler$10 = require("errorhandler.js");
+var ReactSSRErrorHandler$10 = require("error_handler");
 
 var dynamo_htmlview = (function (PlatformComponent) {
 	var log = debug("dynamo-client-components:html-view");
@@ -4503,7 +4527,7 @@ var dynamo_htmlview = (function (PlatformComponent) {
 	}(React.Component);
 });
 
-var ReactSSRErrorHandler$11 = require("errorhandler.js");
+var ReactSSRErrorHandler$11 = require("error_handler");
 
 /**
  * This component should render a file uploader
@@ -4815,7 +4839,7 @@ var dynamo_label = (function (Label) {
 	};
 });
 
-var ReactSSRErrorHandler$12 = require("errorhandler.js");
+var ReactSSRErrorHandler$12 = require("error_handler");
 
 var dynamo_webview = (function (WebView, Text) {
 	var log = debug("dynamo-client-components:webview");
@@ -4855,7 +4879,7 @@ var dynamo_webview = (function (WebView, Text) {
 	}(React.Component);
 });
 
-var ReactSSRErrorHandler$13 = require("errorhandler.js");
+var ReactSSRErrorHandler$13 = require("error_handler");
 
 var dynamo_messenger = (function (Layout, Pane, OpenChats, Editor, ContextMenu, NewChatButton, OpenChatsLayout, Modal, ProgressBar, Login, ContactList, ChatHistory, AddNewContact, PendingInvites, ChatLayout) {
 	invariants.validComponent(Layout, "Layout");
@@ -5202,7 +5226,7 @@ var dynamo_messenger = (function (Layout, Pane, OpenChats, Editor, ContextMenu, 
 	return connect(mapStateToProps, mapDispatchToProps)(DynamoMessenger);
 });
 
-var ReactSSRErrorHandler$14 = require("errorhandler.js");
+var ReactSSRErrorHandler$14 = require("error_handler");
 
 var dynamo_command = (function (Link, customDownloadCommand) {
 	invariants.validComponent(Link, "Link");

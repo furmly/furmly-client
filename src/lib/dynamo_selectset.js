@@ -149,10 +149,14 @@ export default (Layout, Picker, ProgressBar, Container) => {
 				}, 0);
 			}
 
-			if (this.isObjectIdMode() && this.props.value) {
+			if (
+				this.isObjectIdMode() &&
+				this.props.value &&
+				typeof this.props.value !== "object"
+			) {
 				//update the form to indicate its an objectId.
 				return setTimeout(() => {
-					this.onPickerValueChanged(this.props.value, this.props.items);
+					this.onPickerValueChanged(this.props.value);
 				}, 0);
 			}
 		}
@@ -163,8 +167,15 @@ export default (Layout, Picker, ProgressBar, Container) => {
 		oneOption() {
 			return this.props.items && this.props.items.length == 1;
 		}
+		getCurrentContainerValue() {
+			return (
+				(this.props.args.path &&
+					this.props.extra[this.props.args.path]) ||
+				this.state.containerValues
+			);
+		}
 		selectFirstItem(items = this.props.items) {
-			this.onPickerValueChanged(items[0].id, items);
+			this.onPickerValueChanged(items[0].id);
 		}
 		getPickerValue(value = this.props.value) {
 			return {
@@ -260,7 +271,10 @@ export default (Layout, Picker, ProgressBar, Container) => {
 			this.onContainerValueChanged(null, this.getPickerValue(v));
 		}
 		onPickerValueChanged(v) {
-			this.respondToPickerValueChanged(v);
+			this.onContainerValueChanged(
+				this.getCurrentContainerValue(),
+				this.getPickerValue(v)
+			);
 		}
 		getContainerValue() {
 			return this.props.args.path
@@ -292,7 +306,7 @@ export default (Layout, Picker, ProgressBar, Container) => {
 							displayProperty="displayLabel"
 							keyProperty="id"
 							value={unwrapObjectValue(this.props.value)}
-							valueChanged={this.onPickerValueChanged}
+							valueChanged={this.respondToPickerValueChanged}
 							currentProcess={this.props.currentProcess}
 							currentStep={this.props.currentStep}
 						/>

@@ -34,10 +34,21 @@ export default (LabelWrapper, Input, DatePicker, Checkbox) => {
 				return this.runValidators();
 			};
 		}
+		componentDidMount() {
+			this._mounted = true;
+			setTimeout(() => {
+				if (this._mounted) {
+					this.setDefault();
+				}
+			}, 0);
+		}
 		componentWillReceiveProps(next) {
 			if (next.component_uid !== this.props.component_uid) {
 				this.setDefault(next);
 			}
+		}
+		componentWillUnmount() {
+			this._mounted = false;
 		}
 		runValidators() {
 			return new ValidationHelper(this).run();
@@ -106,7 +117,7 @@ export default (LabelWrapper, Input, DatePicker, Checkbox) => {
 
 			return result;
 		}
-		setDefault(props) {
+		setDefault(props = this.props) {
 			if (!props.value && props.args && props.args.default)
 				this.valueChanged(props.args.default);
 		}
