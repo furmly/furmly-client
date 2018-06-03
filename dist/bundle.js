@@ -1341,7 +1341,43 @@ var possibleConstructorReturn = function (self, call) {
 
 
 
+var slicedToArray = function () {
+  function sliceIterator(arr, i) {
+    var _arr = [];
+    var _n = true;
+    var _d = false;
+    var _e = undefined;
 
+    try {
+      for (var _i = arr[Symbol.iterator](), _s; !(_n = (_s = _i.next()).done); _n = true) {
+        _arr.push(_s.value);
+
+        if (i && _arr.length === i) break;
+      }
+    } catch (err) {
+      _d = true;
+      _e = err;
+    } finally {
+      try {
+        if (!_n && _i["return"]) _i["return"]();
+      } finally {
+        if (_d) throw _e;
+      }
+    }
+
+    return _arr;
+  }
+
+  return function (arr, i) {
+    if (Array.isArray(arr)) {
+      return arr;
+    } else if (Symbol.iterator in Object(arr)) {
+      return sliceIterator(arr, i);
+    } else {
+      throw new TypeError("Invalid attempt to destructure non-iterable instance");
+    }
+  };
+}();
 
 
 
@@ -2198,15 +2234,6 @@ var dynamo_input = (function (LabelWrapper, Input, DatePicker, Checkbox) {
 					return ReactSSRErrorHandler(e, this.constructor.name);
 				}
 			}
-		}, {
-			key: "__originalRenderMethod__",
-			value: function __originalRenderMethod__() {
-				try {
-					return this.__originalRenderMethod__();
-				} catch (e) {
-					return ReactSSRErrorHandler(e, this.constructor.name);
-				}
-			}
 		}]);
 
 		function DynamoInput(props) {
@@ -2226,6 +2253,11 @@ var dynamo_input = (function (LabelWrapper, Input, DatePicker, Checkbox) {
 			_this.props.validator.validate = function () {
 				return _this.runValidators();
 			};
+			_this.toValueChanged = _this.toValueChanged.bind(_this);
+			_this.formatDateRange = _this.formatDateRange.bind(_this);
+			_this.fromValueChanged = _this.fromValueChanged.bind(_this);
+			_this.setDateFromRange = _this.setDateFromRange.bind(_this);
+			_this.isDateRange = _this.isDateRange.bind(_this);
 			return _this;
 		}
 
@@ -2238,6 +2270,7 @@ var dynamo_input = (function (LabelWrapper, Input, DatePicker, Checkbox) {
 				setTimeout(function () {
 					if (_this2._mounted) {
 						_this2.setDefault();
+						_this2.setDateFromRange();
 					}
 				}, 0);
 			}
@@ -2247,11 +2280,38 @@ var dynamo_input = (function (LabelWrapper, Input, DatePicker, Checkbox) {
 				if (next.component_uid !== this.props.component_uid) {
 					this.setDefault(next);
 				}
+				if (next.value && this.props.value !== next.value && this.isDateRange(next)) {
+					this.setDateFromRange(next);
+				}
 			}
 		}, {
 			key: "componentWillUnmount",
 			value: function componentWillUnmount() {
 				this._mounted = false;
+			}
+		}, {
+			key: "isDateRange",
+			value: function isDateRange() {
+				var props = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : this.props;
+
+				return props.args && props.args.config && props.args.config.isRange;
+			}
+		}, {
+			key: "setDateFromRange",
+			value: function setDateFromRange() {
+				var props = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : this.props;
+
+				if (props.value) {
+					var _props$value$split = props.value.split("-"),
+					    _props$value$split2 = slicedToArray(_props$value$split, 2),
+					    fromValue = _props$value$split2[0],
+					    toValue = _props$value$split2[1];
+
+					this.setState({
+						fromValue: new Date(fromValue),
+						toValue: new Date(toValue)
+					});
+				}
 			}
 		}, {
 			key: "runValidators",
@@ -2299,6 +2359,37 @@ var dynamo_input = (function (LabelWrapper, Input, DatePicker, Checkbox) {
 				this.setState({ errors: [] });
 			}
 		}, {
+			key: "fromValueChanged",
+			value: function fromValueChanged(fromValue) {
+				if (this.state.toValue && fromValue < this.state.toValue) {
+					this.valueChanged(this.formatDateRange(fromValue));
+				} else {
+					this.valueChanged(null);
+				}
+				this.setState({
+					fromValue: fromValue,
+					toValue: fromValue > this.state.toValue ? null : this.state.toValue
+				});
+			}
+		}, {
+			key: "formatDateRange",
+			value: function formatDateRange() {
+				var from = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : this.state.fromValue;
+				var to = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : this.state.toValue;
+
+				return from.toLocaleDateString() + " - " + to.toLocaleDateString();
+			}
+		}, {
+			key: "toValueChanged",
+			value: function toValueChanged(toValue) {
+				if (this.state.fromValue) {
+					this.valueChanged(this.formatDateRange(this.state.fromValue, toValue));
+				}
+				this.setState({
+					toValue: toValue
+				});
+			}
+		}, {
 			key: "getDateConfig",
 			value: function getDateConfig(args) {
 				var result = {};
@@ -2310,6 +2401,13 @@ var dynamo_input = (function (LabelWrapper, Input, DatePicker, Checkbox) {
 					if (args.min) {
 						if (args.min == "TODAY") result.minDate = new Date();else result.minDate = new Date(args.minConfig.date);
 					}
+					if (args.isRange) {
+						result.toValueChanged = this.toValueChanged;
+						result.fromValueChanged = this.fromValueChanged;
+						result.toValue = this.state.toValue;
+						result.fromValue = this.state.fromValue;
+					}
+					result.isRange = args.isRange;
 				}
 
 				return result;
@@ -2402,15 +2500,6 @@ var dynamo_view = (function (Page, Container) {
 		createClass(DynamoView, [{
 			key: "render",
 			value: function render() {
-				try {
-					return this.__originalRenderMethod__();
-				} catch (e) {
-					return ReactSSRErrorHandler$1(e, this.constructor.name);
-				}
-			}
-		}, {
-			key: "__originalRenderMethod__",
-			value: function __originalRenderMethod__() {
 				try {
 					return this.__originalRenderMethod__();
 				} catch (e) {
@@ -2699,15 +2788,6 @@ var dynamo_process = (function (ProgressBar, TextView, DynamoView) {
 					return ReactSSRErrorHandler$3(e, this.constructor.name);
 				}
 			}
-		}, {
-			key: "__originalRenderMethod__",
-			value: function __originalRenderMethod__() {
-				try {
-					return this.__originalRenderMethod__();
-				} catch (e) {
-					return ReactSSRErrorHandler$3(e, this.constructor.name);
-				}
-			}
 		}]);
 
 		function DynamoProcess(props) {
@@ -2793,15 +2873,6 @@ var dynamo_section = (function (Layout, Header, Container) {
 		createClass(DynamoSection, [{
 			key: "render",
 			value: function render() {
-				try {
-					return this.__originalRenderMethod__();
-				} catch (e) {
-					return ReactSSRErrorHandler$4(e, this.constructor.name);
-				}
-			}
-		}, {
-			key: "__originalRenderMethod__",
-			value: function __originalRenderMethod__() {
 				try {
 					return this.__originalRenderMethod__();
 				} catch (e) {
@@ -2986,15 +3057,6 @@ var dynamo_select = (function (ProgressIndicator, Layout, Container) {
 					return ReactSSRErrorHandler$5(e, this.constructor.name);
 				}
 			}
-		}, {
-			key: "__originalRenderMethod__",
-			value: function __originalRenderMethod__() {
-				try {
-					return this.__originalRenderMethod__();
-				} catch (e) {
-					return ReactSSRErrorHandler$5(e, this.constructor.name);
-				}
-			}
 		}]);
 
 		function DynamoSelect(props) {
@@ -3158,15 +3220,6 @@ var DynamoComponentBase = function (_React$Component) {
 				return ReactSSRErrorHandler$6(e, this.constructor.name);
 			}
 		}
-	}, {
-		key: "__originalRenderMethod__",
-		value: function __originalRenderMethod__() {
-			try {
-				return this.__originalRenderMethod__();
-			} catch (e) {
-				return ReactSSRErrorHandler$6(e, this.constructor.name);
-			}
-		}
 	}]);
 
 	function DynamoComponentBase(props, log) {
@@ -3305,7 +3358,7 @@ var dynamo_selectset = (function (Layout, Picker, ProgressBar, Container) {
 				var _this2 = this;
 
 				this._mounted = true;
-				if (this.props.args.processor) {
+				if (this.props.args.processor && typeof this.props.items == 'undefined') {
 					this.fetchItems(this.props.args.processor);
 				}
 
@@ -3544,15 +3597,6 @@ var dynamo_list = (function (Layout, Button, List, Modal, ErrorText, ProgressBar
 		createClass(DynamoList, [{
 			key: "render",
 			value: function render() {
-				try {
-					return this.__originalRenderMethod__();
-				} catch (e) {
-					return ReactSSRErrorHandler$7(e, this.constructor.name);
-				}
-			}
-		}, {
-			key: "__originalRenderMethod__",
-			value: function __originalRenderMethod__() {
 				try {
 					return this.__originalRenderMethod__();
 				} catch (e) {
@@ -3842,15 +3886,6 @@ var DynamoHidden = function (_React$Component) {
 				return ReactSSRErrorHandler$8(e, this.constructor.name);
 			}
 		}
-	}, {
-		key: "__originalRenderMethod__",
-		value: function __originalRenderMethod__() {
-			try {
-				return this.__originalRenderMethod__();
-			} catch (e) {
-				return ReactSSRErrorHandler$8(e, this.constructor.name);
-			}
-		}
 	}]);
 
 	function DynamoHidden(props) {
@@ -3918,15 +3953,6 @@ var dynamo_nav = (function (Link, NavigationActions) {
 		createClass(DynamoNav, [{
 			key: "render",
 			value: function render() {
-				try {
-					return this.__originalRenderMethod__();
-				} catch (e) {
-					return ReactSSRErrorHandler$9(e, this.constructor.name);
-				}
-			}
-		}, {
-			key: "__originalRenderMethod__",
-			value: function __originalRenderMethod__() {
 				try {
 					return this.__originalRenderMethod__();
 				} catch (e) {
@@ -4014,21 +4040,27 @@ var dynamo_nav = (function (Link, NavigationActions) {
 	return connect(mapStateToProps, mapDispatchToState)(DynamoNav);
 });
 
+var ReactSSRErrorHandler$10 = require("error_handler");
+
 var dynamo_image = (function (Image) {
 	invariants.validComponent(Image, "Image");
 	var log = debug("dynamo-client-components:image");
 	return function (props) {
-		var value = props.value,
-		    args = props.args,
-		    rest = objectWithoutProperties(props, ["value", "args"]);
+		try {
+			var _value = props.value,
+			    _args = props.args,
+			    _rest = objectWithoutProperties(props, ["value", "args"]);
 
-		if (value && props.args.type == "URL") {
-			var data = props.args.config.data.replace(new RegExp("{" + props.name + "}", "g"), value),
-			    _args = Object.assign({}, props.args);
-			_args.config = { data: data };
-			return React__default.createElement(Image, _extends$4({ args: _args }, rest));
+			if (_value && props.args.type == "URL") {
+				var data = props.args.config.data.replace(new RegExp("{" + props.name + "}", "g"), _value),
+				    _args2 = Object.assign({}, props.args);
+				_args2.config = { data: data };
+				return React__default.createElement(Image, _extends$4({ args: _args2 }, _rest));
+			}
+			return React__default.createElement(Image, props);
+		} catch (e) {
+			return ReactSSRErrorHandler$10(e);
 		}
-		return React__default.createElement(Image, props);
 	};
 });
 
@@ -4493,7 +4525,7 @@ var dynamo_grid = (function (Layout, List, ItemView, Header, ProgressBar, Comman
 	return connect(mapStateToProps, mapDispatchToProps)(DynamoGrid);
 });
 
-var ReactSSRErrorHandler$10 = require("error_handler");
+var ReactSSRErrorHandler$11 = require("error_handler");
 
 var dynamo_htmlview = (function (PlatformComponent) {
 	var log = debug("dynamo-client-components:html-view");
@@ -4505,7 +4537,7 @@ var dynamo_htmlview = (function (PlatformComponent) {
 				try {
 					return this.__originalRenderMethod__();
 				} catch (e) {
-					return ReactSSRErrorHandler$10(e, this.constructor.name);
+					return ReactSSRErrorHandler$11(e, this.constructor.name);
 				}
 			}
 		}]);
@@ -4527,7 +4559,7 @@ var dynamo_htmlview = (function (PlatformComponent) {
 	}(React.Component);
 });
 
-var ReactSSRErrorHandler$11 = require("error_handler");
+var ReactSSRErrorHandler$12 = require("error_handler");
 
 /**
  * This component should render a file uploader
@@ -4552,16 +4584,7 @@ var dynamo_fileupload = (function (Uploader, ProgressBar, Text) {
 				try {
 					return this.__originalRenderMethod__();
 				} catch (e) {
-					return ReactSSRErrorHandler$11(e, this.constructor.name);
-				}
-			}
-		}, {
-			key: "__originalRenderMethod__",
-			value: function __originalRenderMethod__() {
-				try {
-					return this.__originalRenderMethod__();
-				} catch (e) {
-					return ReactSSRErrorHandler$11(e, this.constructor.name);
+					return ReactSSRErrorHandler$12(e, this.constructor.name);
 				}
 			}
 		}]);
@@ -4825,21 +4848,27 @@ var dynamo_actionview = (function (Layout, ProgressBar, Filter, FilterContainer,
 	return connect(mapStateToProps, mapDispatchToProps)(DynamoActionView);
 });
 
+var ReactSSRErrorHandler$13 = require("error_handler");
+
 var dynamo_label = (function (Label) {
 	invariants.validComponent(Label, "Label");
 	return function (props) {
-		var value = props.value,
-		    description = props.description,
-		    rest = objectWithoutProperties(props, ["value", "description"]);
+		try {
+			var _value = props.value,
+			    _description = props.description,
+			    _rest = objectWithoutProperties(props, ["value", "description"]);
 
-		if (value) {
-			return React__default.createElement(Label, _extends$4({ description: value }, rest));
+			if (_value) {
+				return React__default.createElement(Label, _extends$4({ description: _value }, _rest));
+			}
+			return React__default.createElement(Label, props);
+		} catch (e) {
+			return ReactSSRErrorHandler$13(e);
 		}
-		return React__default.createElement(Label, props);
 	};
 });
 
-var ReactSSRErrorHandler$12 = require("error_handler");
+var ReactSSRErrorHandler$14 = require("error_handler");
 
 var dynamo_webview = (function (WebView, Text) {
 	var log = debug("dynamo-client-components:webview");
@@ -4851,7 +4880,7 @@ var dynamo_webview = (function (WebView, Text) {
 				try {
 					return this.__originalRenderMethod__();
 				} catch (e) {
-					return ReactSSRErrorHandler$12(e, this.constructor.name);
+					return ReactSSRErrorHandler$14(e, this.constructor.name);
 				}
 			}
 		}]);
@@ -4879,7 +4908,7 @@ var dynamo_webview = (function (WebView, Text) {
 	}(React.Component);
 });
 
-var ReactSSRErrorHandler$13 = require("error_handler");
+var ReactSSRErrorHandler$15 = require("error_handler");
 
 var dynamo_messenger = (function (Layout, Pane, OpenChats, Editor, ContextMenu, NewChatButton, OpenChatsLayout, Modal, ProgressBar, Login, ContactList, ChatHistory, AddNewContact, PendingInvites, ChatLayout) {
 	invariants.validComponent(Layout, "Layout");
@@ -4966,16 +4995,7 @@ var dynamo_messenger = (function (Layout, Pane, OpenChats, Editor, ContextMenu, 
 				try {
 					return this.__originalRenderMethod__();
 				} catch (e) {
-					return ReactSSRErrorHandler$13(e, this.constructor.name);
-				}
-			}
-		}, {
-			key: "__originalRenderMethod__",
-			value: function __originalRenderMethod__() {
-				try {
-					return this.__originalRenderMethod__();
-				} catch (e) {
-					return ReactSSRErrorHandler$13(e, this.constructor.name);
+					return ReactSSRErrorHandler$15(e, this.constructor.name);
 				}
 			}
 		}]);
@@ -5226,7 +5246,7 @@ var dynamo_messenger = (function (Layout, Pane, OpenChats, Editor, ContextMenu, 
 	return connect(mapStateToProps, mapDispatchToProps)(DynamoMessenger);
 });
 
-var ReactSSRErrorHandler$14 = require("error_handler");
+var ReactSSRErrorHandler$16 = require("error_handler");
 
 var dynamo_command = (function (Link, customDownloadCommand) {
 	invariants.validComponent(Link, "Link");
@@ -5246,16 +5266,7 @@ var dynamo_command = (function (Link, customDownloadCommand) {
 				try {
 					return this.__originalRenderMethod__();
 				} catch (e) {
-					return ReactSSRErrorHandler$14(e, this.constructor.name);
-				}
-			}
-		}, {
-			key: "__originalRenderMethod__",
-			value: function __originalRenderMethod__() {
-				try {
-					return this.__originalRenderMethod__();
-				} catch (e) {
-					return ReactSSRErrorHandler$14(e, this.constructor.name);
+					return ReactSSRErrorHandler$16(e, this.constructor.name);
 				}
 			}
 		}]);

@@ -135,7 +135,7 @@ export default (Layout, Picker, ProgressBar, Container) => {
 		}
 		componentDidMount() {
 			this._mounted = true;
-			if (this.props.args.processor) {
+			if (this.props.args.processor && typeof this.props.items == 'undefined') {
 				this.fetchItems(this.props.args.processor);
 			}
 

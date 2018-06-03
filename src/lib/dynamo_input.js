@@ -33,12 +33,18 @@ export default (LabelWrapper, Input, DatePicker, Checkbox) => {
 			this.props.validator.validate = () => {
 				return this.runValidators();
 			};
+			this.toValueChanged = this.toValueChanged.bind(this);
+			this.formatDateRange = this.formatDateRange.bind(this);
+			this.fromValueChanged = this.fromValueChanged.bind(this);
+			this.setDateFromRange = this.setDateFromRange.bind(this);
+			this.isDateRange = this.isDateRange.bind(this);
 		}
 		componentDidMount() {
 			this._mounted = true;
 			setTimeout(() => {
 				if (this._mounted) {
 					this.setDefault();
+					this.setDateFromRange();
 				}
 			}, 0);
 		}
@@ -46,9 +52,30 @@ export default (LabelWrapper, Input, DatePicker, Checkbox) => {
 			if (next.component_uid !== this.props.component_uid) {
 				this.setDefault(next);
 			}
+			if (
+				next.value &&
+				this.props.value !== next.value &&
+				this.isDateRange(next)
+			) {
+				this.setDateFromRange(next);
+			}
 		}
 		componentWillUnmount() {
 			this._mounted = false;
+		}
+
+		isDateRange(props = this.props) {
+			return props.args && props.args.config && props.args.config.isRange;
+		}
+
+		setDateFromRange(props = this.props) {
+			if (props.value) {
+				let [fromValue, toValue] = props.value.split("-");
+				this.setState({
+					fromValue: new Date(fromValue),
+					toValue: new Date(toValue)
+				});
+			}
 		}
 		runValidators() {
 			return new ValidationHelper(this).run();
@@ -101,6 +128,31 @@ export default (LabelWrapper, Input, DatePicker, Checkbox) => {
 
 			this.setState({ errors: [] });
 		}
+		fromValueChanged(fromValue) {
+			if (this.state.toValue && fromValue < this.state.toValue) {
+				this.valueChanged(this.formatDateRange(fromValue));
+			} else {
+				this.valueChanged(null);
+			}
+			this.setState({
+				fromValue,
+				toValue:
+					fromValue > this.state.toValue ? null : this.state.toValue
+			});
+		}
+		formatDateRange(from = this.state.fromValue, to = this.state.toValue) {
+			return `${from.toLocaleDateString()} - ${to.toLocaleDateString()}`;
+		}
+		toValueChanged(toValue) {
+			if (this.state.fromValue) {
+				this.valueChanged(
+					this.formatDateRange(this.state.fromValue, toValue)
+				);
+			}
+			this.setState({
+				toValue
+			});
+		}
 		getDateConfig(args) {
 			let result = {};
 			if (args.config) {
@@ -113,6 +165,13 @@ export default (LabelWrapper, Input, DatePicker, Checkbox) => {
 					if (args.min == "TODAY") result.minDate = new Date();
 					else result.minDate = new Date(args.minConfig.date);
 				}
+				if (args.isRange) {
+					result.toValueChanged = this.toValueChanged;
+					result.fromValueChanged = this.fromValueChanged;
+					result.toValue = this.state.toValue;
+					result.fromValue = this.state.fromValue;
+				}
+				result.isRange = args.isRange;
 			}
 
 			return result;
