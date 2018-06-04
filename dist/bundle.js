@@ -1561,7 +1561,8 @@ function navigation () {
 			var stack = copyStack(state),
 			    item = stack.stack.pop();
 			if (item && (item.key == "Dynamo" || item.$routeName == "Dynamo") && stack._references[item.params.id]) {
-				stack._references[0] = stack._references[item.params.id][0]--;
+				var refs = stack._references[item.params.id][0];
+				stack._references[item.params.id][0] = refs - 1;
 				//clean up.
 				if (!stack._references[item.params.id][0]) delete stack._references[item.params.id];
 			}
@@ -2465,8 +2466,9 @@ var dynamo_input = (function (LabelWrapper, Input, DatePicker, Checkbox) {
 
 var ReactSSRErrorHandler$1 = require("error_handler");
 
-var dynamo_view = (function (Page, Container) {
+var dynamo_view = (function (Page, Warning, Container) {
 	invariants.validComponent(Page, "Page");
+	invariants.validComponent(Warning, "Warning");
 	invariants.validComponent(Container, "Container");
 	//map elements in DynamoView props to elements in store.
 	var log = debug("dynamo-client-components:view");
@@ -2550,6 +2552,11 @@ var dynamo_view = (function (Page, Container) {
 		}, {
 			key: "__originalRenderMethod__",
 			value: function __originalRenderMethod__() {
+				if (!this.props.elements || !this.props.elements.length) return React__default.createElement(
+					Page,
+					{ hideSubmit: true },
+					React__default.createElement(Warning, { message: "Oops you are not supposed to be here. Something may be broken. Please navigate home/login" })
+				);
 				/*jshint ignore:start*/
 				return React__default.createElement(
 					Page,
@@ -2834,16 +2841,12 @@ var dynamo_process = (function (ProgressBar, TextView, DynamoView) {
 				if (!this.props.description) {
 					return React__default.createElement(TextView, { text: "Sorry we couldnt load that process...please wait a few minutes and retry." });
 				}
-				try {
-					return React__default.createElement(DynamoView, {
-						currentStep: this.props.currentStep || 0,
-						currentProcess: this.props.id,
-						navigation: this.props.navigation,
-						submit: this.submit
-					});
-				} catch (e) {
-					return React__default.createElement(TextView, { text: "An error has occurred. Please retry the last actions" });
-				}
+				return React__default.createElement(DynamoView, {
+					currentStep: this.props.currentStep || 0,
+					currentProcess: this.props.id,
+					navigation: this.props.navigation,
+					submit: this.submit
+				});
 
 				/*jshint ignore:end */
 			}
@@ -2950,7 +2953,7 @@ function getCurrentProcess(state) {
 function getKey(state, key, ownProps) {
 	return ownProps.currentStep + "/" + ownProps.currentProcess + "/" + key;
 }
-var exp = /^(\d+)\/([a-f\d]{24})\/.+$/i;
+var exp = /^(\d+)\/([a-f\d]{1,24}|[a-zA-Z0-9_]+)\/.+$/i;
 function isValidKey(key) {
 	var result = exp.exec(key);
 	if (!result) return false;
@@ -3030,7 +3033,7 @@ var dynamo_select = (function (ProgressIndicator, Layout, Container) {
 				var st = state.dynamo.view[component_uid];
 				return {
 					items: st,
-					busy: !!state.dynamo.view[ownProps.component_uid + "-busy"],
+					busy: !!state.dynamo.view[component_uid + "-busy"],
 					component_uid: component_uid
 				};
 			}
@@ -3249,6 +3252,7 @@ var dynamo_selectset = (function (Layout, Picker, ProgressBar, Container) {
 	invariants.validComponent(Container, "Container");
 	var log = debug("dynamo-client-components:selectset");
 	var noPath = "selectset_no_path";
+	var noItems = [];
 	var mapDispatchToProps = function mapDispatchToProps(dispatch) {
 		return {
 			getItems: function getItems(id, args, key, extra) {
@@ -3261,7 +3265,7 @@ var dynamo_selectset = (function (Layout, Picker, ProgressBar, Container) {
 			var component_uid = getKey(state, ownProps.component_uid, ownProps),
 			    items = state.dynamo.view[component_uid] || ownProps.args.items;
 			return {
-				busy: state.dynamo.view[component_uid + "-busy"],
+				busy: !!state.dynamo.view[ownProps.component_uid + "-busy"],
 				items: items,
 				contentItems: getPickerItemsById(ownProps.value, items),
 				component_uid: component_uid
@@ -3274,10 +3278,10 @@ var dynamo_selectset = (function (Layout, Picker, ProgressBar, Container) {
 			var r = items.filter(function (x) {
 				return x.id == z;
 			});
-			return r.length && r[0].elements || [];
+			return r.length && r[0].elements || noItems;
 		}
 
-		return [];
+		return noItems;
 	};
 
 	var DynamoSelectSet = function (_DynamoBase) {
@@ -3358,7 +3362,7 @@ var dynamo_selectset = (function (Layout, Picker, ProgressBar, Container) {
 				var _this2 = this;
 
 				this._mounted = true;
-				if (this.props.args.processor && typeof this.props.items == 'undefined') {
+				if (this.props.args.processor && typeof this.props.items == "undefined") {
 					this.fetchItems(this.props.args.processor);
 				}
 
@@ -3452,7 +3456,7 @@ var dynamo_selectset = (function (Layout, Picker, ProgressBar, Container) {
 					return defineProperty({}, x, value[noPath][x]);
 				})));
 
-				if (superCancel) {
+				if (superCancel && Object.keys(superCancel).length > 0) {
 					//insert this to remove previous values.
 					result.splice(1, 0, superCancel);
 				}
@@ -4184,7 +4188,13 @@ var dynamo_grid = (function (Layout, List, ItemView, Header, ProgressBar, Comman
 		createClass(DynamoGrid, [{
 			key: "componentDidMount",
 			value: function componentDidMount() {
+				this._mounted = true;
 				this.fetchFilterTemplate();
+			}
+		}, {
+			key: "componentWillUnmount",
+			value: function componentWillUnmount() {
+				this._mounted = false;
 			}
 		}, {
 			key: "fetchFilterTemplate",
@@ -5653,7 +5663,7 @@ function view$1 () {
 		case ACTIONS.ERROR_WHILE_GETTING_SINGLE_ITEM_FOR_GRID:
 			return Object.assign({}, state, defineProperty({}, action.payload.key, errorWhileGettingSingleItemForGrid(state[action.payload.key], action)));
 		case ACTIONS.ERROR_WHILE_FETCHING_GRID:
-			return Object.assign({}, state, defineProperty({}, action.payload.key, failedToFetchGrid(state[action.payload.key])));
+			return Object.assign({}, state, defineProperty({}, action.meta, failedToFetchGrid(state[action.meta])));
 
 		case ACTIONS.DYNAMO_GET_MORE_FOR_GRID:
 			return Object.assign({}, state, defineProperty({}, action.payload.key, reduceGrid(state[action.payload.key], action)));

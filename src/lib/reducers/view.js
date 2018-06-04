@@ -181,8 +181,8 @@ export default function(state = {}, action) {
 			});
 		case ACTIONS.ERROR_WHILE_FETCHING_GRID:
 			return Object.assign({}, state, {
-				[action.payload.key]: failedToFetchGrid(
-					state[action.payload.key]
+				[action.meta]: failedToFetchGrid(
+					state[action.meta]
 				)
 			});
 

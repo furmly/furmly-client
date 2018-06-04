@@ -22,7 +22,7 @@ export default (ProgressIndicator, Layout, Container) => {
 			let st = state.dynamo.view[component_uid];
 			return {
 				items: st,
-				busy: !!state.dynamo.view[`${ownProps.component_uid}-busy`],
+				busy: !!state.dynamo.view[`${component_uid}-busy`],
 				component_uid
 			};
 		}

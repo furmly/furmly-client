@@ -16,6 +16,7 @@ export default (Layout, Picker, ProgressBar, Container) => {
 	invariants.validComponent(Container, "Container");
 	const log = debug("dynamo-client-components:selectset");
 	const noPath = "selectset_no_path";
+	const noItems = [];
 	const mapDispatchToProps = dispatch => {
 		return {
 			getItems: (id, args, key, extra) =>
@@ -26,7 +27,7 @@ export default (Layout, Picker, ProgressBar, Container) => {
 		let component_uid = getKey(state, ownProps.component_uid, ownProps),
 			items = state.dynamo.view[component_uid] || ownProps.args.items;
 		return {
-			busy: state.dynamo.view[`${component_uid}-busy`],
+			busy: !!state.dynamo.view[`${ownProps.component_uid}-busy`],
 			items,
 			contentItems: getPickerItemsById(ownProps.value, items),
 			component_uid
@@ -36,10 +37,10 @@ export default (Layout, Picker, ProgressBar, Container) => {
 		if (v && items && items.length) {
 			let z = unwrapObjectValue(v);
 			let r = items.filter(x => x.id == z);
-			return (r.length && r[0].elements) || [];
+			return (r.length && r[0].elements) || noItems;
 		}
 
-		return [];
+		return noItems;
 	};
 	class DynamoSelectSet extends DynamoBase {
 		constructor(props) {
@@ -135,7 +136,10 @@ export default (Layout, Picker, ProgressBar, Container) => {
 		}
 		componentDidMount() {
 			this._mounted = true;
-			if (this.props.args.processor && typeof this.props.items == 'undefined') {
+			if (
+				this.props.args.processor &&
+				typeof this.props.items == "undefined"
+			) {
 				this.fetchItems(this.props.args.processor);
 			}
 
@@ -243,7 +247,7 @@ export default (Layout, Picker, ProgressBar, Container) => {
 				})
 			];
 
-			if (superCancel) {
+			if (superCancel && Object.keys(superCancel).length > 0) {
 				//insert this to remove previous values.
 				result.splice(1, 0, superCancel);
 			}

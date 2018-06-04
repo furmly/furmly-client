@@ -29,7 +29,8 @@ export default function(state = createStack(), action) {
 				(item.key == "Dynamo" || item.$routeName == "Dynamo") &&
 				stack._references[item.params.id]
 			) {
-				stack._references[0] = stack._references[item.params.id][0]--;
+				let refs = stack._references[item.params.id][0];
+				stack._references[item.params.id][0] = refs - 1;
 				//clean up.
 				if (!stack._references[item.params.id][0])
 					delete stack._references[item.params.id];
@@ -57,9 +58,7 @@ export function hasScreenAlready(state, current) {
 	return state.stack.filter(x => _.isEqual(x, current)).length;
 }
 
-function addToStack(item,stack){
-
-}
+function addToStack(item, stack) {}
 function countRef(stack, index, e) {
 	if (e.key == "Dynamo" || e.$routeName == "Dynamo") {
 		if (stack._references[e.params.id]) {

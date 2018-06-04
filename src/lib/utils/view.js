@@ -63,7 +63,7 @@ export function getCurrentProcess(state) {
 export function getKey(state, key, ownProps) {
 	return `${ownProps.currentStep}/${ownProps.currentProcess}/${key}`;
 }
-const exp = /^(\d+)\/([a-f\d]{24})\/.+$/i;
+const exp = /^(\d+)\/([a-f\d]{1,24}|[a-zA-Z0-9_]+)\/.+$/i;
 export function isValidKey(key) {
 	let result = exp.exec(key);
 	if (!result) return false;
