@@ -2,7 +2,7 @@ import _ from "lodash";
 import uuid from "uuid/v4";
 import { default as ACTIONS } from "../actions/constants";
 import config from "client_config";
-import { isValidKey } from "../utils/view";
+import { isValidKey, getBusyKey, getErrorKey } from "../utils/view";
 
 export default function(state = {}, action) {
 	switch (action.type) {
@@ -18,7 +18,9 @@ export default function(state = {}, action) {
 		case ACTIONS.CLEAR_STACK:
 			return {};
 		case ACTIONS.DYNAMO_PROCESS_FAILED:
-			return Object.assign({}, state, { [`${action.meta}-busy`]: false });
+			return Object.assign({}, state, {
+				[getBusyKey(action.meta)]: false
+			});
 
 		case ACTIONS.REPLACE_STACK:
 			var _state = action.payload.reduce(
@@ -118,7 +120,7 @@ export default function(state = {}, action) {
 					[id]: {
 						completed: true
 					},
-					[`${id}-busy`]: false,
+					[getBusyKey(id)]: false,
 					message: (typeof data == "object" && data.message) || null
 				});
 			}
@@ -143,7 +145,7 @@ export default function(state = {}, action) {
 				data.message;
 			return Object.assign({}, state, {
 				[id]: Object.assign({}, state[id], currentState),
-				[`${id}-busy`]: busy
+				[getBusyKey(id)]: busy
 			});
 
 		case ACTIONS.FETCHING_GRID:
@@ -181,9 +183,7 @@ export default function(state = {}, action) {
 			});
 		case ACTIONS.ERROR_WHILE_FETCHING_GRID:
 			return Object.assign({}, state, {
-				[action.meta]: failedToFetchGrid(
-					state[action.meta]
-				)
+				[action.meta]: failedToFetchGrid(state[action.meta])
 			});
 
 		case ACTIONS.DYNAMO_GET_MORE_FOR_GRID:
@@ -196,7 +196,7 @@ export default function(state = {}, action) {
 
 		case ACTIONS.DYNAMO_PROCESS_RUNNING:
 			return Object.assign({}, state, {
-				[`${action.meta.id}-busy`]: !action.error,
+				[getBusyKey(action.meta.id)]: !action.error,
 				[action.meta.id]: Object.assign({}, state[action.meta.id], {
 					[state[action.meta.id].currentStep || 0]: action.meta.form
 				})
@@ -213,22 +213,22 @@ export default function(state = {}, action) {
 				)
 			});
 		case ACTIONS.DYNAMO_PROCESSOR_RAN:
-			//configureTemplates(state, action);
 			return Object.assign({}, state, {
 				[action.payload.key]: action.payload.data,
-				[`${action.payload.key}-busy`]: false
+				[getBusyKey(action.payload.key)]: false,
+				[getErrorKey(action.payload.key)]: !!action.error
 			});
-
-		//return Object.assign({ target }, state, {});
 
 		case ACTIONS.DYNAMO_PROCESSOR_RUNNING:
 			return Object.assign({}, state, {
-				[`${action.meta.key}-busy`]: !action.error
+				[getBusyKey(action.meta.key)]: !action.error,
+				[getErrorKey(action.meta)]: !!action.error
 			});
 		case ACTIONS.DYNAMO_PROCESSOR_FAILED:
 			return Object.assign({}, state, {
-				[`${action.meta}-busy`]: false,
-				[action.meta]: null
+				[getBusyKey(action.meta)]: false,
+				[action.meta]: null,
+				[getErrorKey(action.meta)]: true
 			});
 		case ACTIONS.FETCHED_PROCESS:
 			let fetchedValue = Object.assign({}, action.payload.data.data);
@@ -244,18 +244,21 @@ export default function(state = {}, action) {
 				//always carry over the navigationContext.
 				navigationContext: state.navigationContext,
 				templateCache: state.templateCache || {},
-				[`${action.payload.id}-busy`]: false
+				[getBusyKey(action.payload.id)]: false,
+				[getErrorKey(action.payload.id)]: action.error
 			});
 		case ACTIONS.FETCHING_PROCESS:
 			return Object.assign({}, state, {
-				[`${action.meta}-busy`]: !action.error
+				[getBusyKey(action.meta)]: !action.error,
+				[getErrorKey(action.error)]: !!action.error
 			});
 		case ACTIONS.FAILED_TO_FETCH_PROCESS:
 			return Object.assign({}, state, {
 				[action.meta]: null,
 				//always carry over the navigationContext.
 				navigationContext: state.navigationContext,
-				[`${action.meta}-busy`]: false
+				[getBusyKey(action.meta)]: false,
+				[getErrorKey(action.meta)]: true
 			});
 		case ACTIONS.START_FILE_UPLOAD:
 			return Object.assign({}, state, {
@@ -296,7 +299,6 @@ export default function(state = {}, action) {
 				)
 			});
 		case ACTIONS.GOT_ITEM_TEMPLATE:
-			configureTemplates(state, action);
 			return Object.assign({}, state, {
 				[action.payload.key]: gotTemplate(
 					"gettingTemplate",
@@ -331,7 +333,6 @@ export default function(state = {}, action) {
 					)
 				});
 			}
-			configureTemplates(state, action);
 			return Object.assign({}, state, {
 				[action.payload.key]: gotTemplate(
 					"gettingFilterTemplate",
@@ -353,19 +354,17 @@ export default function(state = {}, action) {
 	}
 }
 
-function configureTemplates(state, action) {
-	if (action.payload.returnsUI) {
-		//state.templateCache = Object.assign({}, state.templateCache, getTemplatesAndAddComponentUid(action.payload.data));
-	}
-}
-
 function getTemplate(busyIndicator, state = {}, action) {
-	return Object.assign({}, state, { [busyIndicator]: !action.error });
+	return Object.assign({}, state, {
+		[busyIndicator]: !action.error,
+		[getErrorKey(busyIndicator)]: action.error
+	});
 }
 function gotTemplate(busyIndicator, propName, state = {}, action) {
 	return Object.assign({}, state, {
 		[propName]: action.payload.data,
-		[busyIndicator]: false
+		[busyIndicator]: false,
+		[getErrorKey(busyIndicator)]: action.error
 	});
 }
 function failedToGetTemplate(busyIndicator, state = {}, action) {
@@ -402,7 +401,10 @@ function reduceGrid(state = {}, action) {
 		let current = state.data ? state.data.items : [];
 		action.payload.data.items = current.concat(action.payload.data.items);
 		state.data = action.payload.data;
-		return Object.assign({}, state, { fetchingGrid: false });
+		return Object.assign({}, state, {
+			fetchingGrid: false,
+			failedToFetchGrid: !!action.error
+		});
 	}
 	return state;
 }
@@ -410,36 +412,46 @@ function reduceGrid(state = {}, action) {
 function filteredGrid(state = {}, action) {
 	let current = state.data ? state.data.items : [];
 	state.data = action.payload.data;
-	return Object.assign({}, state, { fetchingGrid: false });
+	return Object.assign({}, state, {
+		fetchingGrid: false,
+		failedToFetchGrid: !!action.error
+	});
 }
 
 function fetchingGrid(state = {}, action) {
 	return Object.assign({}, state, {
 		fetchingGrid: !action.error,
+		failedToFetchGrid: !!action.error,
 		filter: action.meta && action.meta.args ? action.meta.args.query : null
 	});
 }
 
 function failedToFetchGrid(state = {}) {
 	return Object.assign({}, state, {
-		fetchingGrid: false
+		fetchingGrid: false,
+		failedToFetchGrid: true
 	});
 }
 
 function getSingleItemForGrid(state = {}, action) {
-	return Object.assign({}, state, { fetchingSingleItem: !action.error });
+	return Object.assign({}, state, {
+		fetchingSingleItem: !action.error,
+		[getErrorKey("fetchingSingleItem")]: !!action.error
+	});
 }
 
 function gotSingleItemForGrid(state = {}, action) {
 	return Object.assign({}, state, {
 		singleItem: action.payload.data,
-		fetchingSingleItem: false
+		fetchingSingleItem: false,
+		[getErrorKey("fetchingSingleItem")]: !!action.error
 	});
 }
 
 function errorWhileGettingSingleItemForGrid(state = {}, action) {
 	return Object.assign({}, state, {
 		fetchingSingleItem: false,
-		singleItem: undefined
+		singleItem: undefined,
+		[getErrorKey("fetchingSingleItem")]: !!action.error
 	});
 }

@@ -4,7 +4,7 @@ import { unwrapObjectValue } from "./utils/view";
 import { connect } from "react-redux";
 import { runDynamoProcessor } from "./actions";
 import ValidationHelper, { VALIDATOR_TYPES } from "./utils/validator";
-import { getKey } from "./utils/view";
+import { getKey, getErrorKey, getBusyKey } from "./utils/view";
 import debug from "debug";
 import _ from "lodash";
 import DynamoBase from "./dynamo_base";
@@ -27,7 +27,8 @@ export default (Layout, Picker, ProgressBar, Container) => {
 		let component_uid = getKey(state, ownProps.component_uid, ownProps),
 			items = state.dynamo.view[component_uid] || ownProps.args.items;
 		return {
-			busy: !!state.dynamo.view[`${ownProps.component_uid}-busy`],
+			busy: !!state.dynamo.view[getBusyKey(component_uid)],
+			error: !!state.dynamo.view[getErrorKey(component_uid)],
 			items,
 			contentItems: getPickerItemsById(ownProps.value, items),
 			component_uid
@@ -85,6 +86,7 @@ export default (Layout, Picker, ProgressBar, Container) => {
 
 		componentWillReceiveProps(next) {
 			if (
+				!next.error &&
 				(next.args.processor !== this.props.args.processor ||
 					(next.component_uid !== this.props.component_uid &&
 						next.args.processor) ||

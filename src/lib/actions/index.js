@@ -187,7 +187,8 @@ export function getMoreForGrid(id, args, key) {
     requestCustomType: ACTIONS.FETCHING_GRID,
     resultCustomType: ACTIONS.DYNAMO_GET_MORE_FOR_GRID,
     errorCustomType: ACTIONS.ERROR_WHILE_FETCHING_GRID,
-    disableCache: true
+    disableCache: true,
+    disableRetry: true
   });
 }
 export function filterGrid(id, args, key) {
@@ -195,7 +196,8 @@ export function filterGrid(id, args, key) {
     requestCustomType: ACTIONS.FETCHING_GRID,
     resultCustomType: ACTIONS.FILTERED_GRID,
     errorCustomType: ACTIONS.ERROR_WHILE_FETCHING_GRID,
-    disableCache: true
+    disableCache: true,
+    disableRetry: true
   });
 }
 
@@ -283,9 +285,8 @@ export function runDynamoProcessor(
     if (retry) throttled[throttleKey] = [config.processorRetryOffset || 500, 0];
     if (
       throttled[throttleKey] &&
-      ((config.maxProcessorRetries &&
-        throttled[throttleKey][1] >= config.maxProcessorRetries) ||
-        disableRetry)
+      (config.maxProcessorRetries &&
+        throttled[throttleKey][1] >= config.maxProcessorRetries)
     )
       return dispatch(
         showMessage(
@@ -324,7 +325,7 @@ export function runDynamoProcessor(
                   dispatch,
                   errorCustomType || ACTIONS.DYNAMO_PROCESSOR_FAILED,
                   () => key,
-                  !config.disableProcessorRetry
+                  !config.disableProcessorRetry && !disableRetry
                 )
               ],
               method: "POST",

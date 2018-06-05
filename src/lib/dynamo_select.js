@@ -3,7 +3,12 @@ import { connect } from "react-redux";
 import { runDynamoProcessor } from "./actions";
 import ValidationHelper, { VALIDATOR_TYPES } from "./utils/validator";
 import invariants from "./utils/invariants";
-import { getKey, unwrapObjectValue } from "./utils/view";
+import {
+	getKey,
+	unwrapObjectValue,
+	getBusyKey,
+	getErrorKey
+} from "./utils/view";
 import debug from "debug";
 export default (ProgressIndicator, Layout, Container) => {
 	if (
@@ -22,7 +27,8 @@ export default (ProgressIndicator, Layout, Container) => {
 			let st = state.dynamo.view[component_uid];
 			return {
 				items: st,
-				busy: !!state.dynamo.view[`${component_uid}-busy`],
+				busy: !!state.dynamo.view[getBusyKey(component_uid)],
+				error: !!state.dynamo.view[getErrorKey(component_uid)],
 				component_uid
 			};
 		}
@@ -93,14 +99,15 @@ export default (ProgressIndicator, Layout, Container) => {
 		}
 		componentWillReceiveProps(next) {
 			if (
-				next.args.config.value !== this.props.args.config.value ||
-				(next.args.config.customArgs !==
-					this.props.args.config.customArgs &&
-					!this.props.busy) ||
-				next.component_uid !== this.props.component_uid ||
-				(next.args.config.value &&
-					typeof next.items == "undefined" &&
-					!next.busy)
+				!next.error &&
+				(next.args.config.value !== this.props.args.config.value ||
+					(next.args.config.customArgs !==
+						this.props.args.config.customArgs &&
+						!next.busy) ||
+					next.component_uid !== this.props.component_uid ||
+					(next.args.config.value &&
+						typeof next.items == "undefined" &&
+						!next.busy))
 			) {
 				return this.fetchItems(
 					next.args.config.value,
