@@ -2304,7 +2304,7 @@ var dynamo_input = (function (LabelWrapper, Input, DatePicker, Checkbox) {
 			value: function setDateFromRange() {
 				var props = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : this.props;
 
-				if (props.value && props.args && props.args.isRange) {
+				if (props.value && this.isDateRange()) {
 					var _props$value$split = props.value.split("-"),
 					    _props$value$split2 = slicedToArray(_props$value$split, 2),
 					    fromValue = _props$value$split2[0],
