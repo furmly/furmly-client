@@ -69,7 +69,7 @@ export default (LabelWrapper, Input, DatePicker, Checkbox) => {
 		}
 
 		setDateFromRange(props = this.props) {
-			if (props.value) {
+			if (props.value && this.isDateRange()) {
 				let [fromValue, toValue] = props.value.split("-");
 				this.setState({
 					fromValue: new Date(fromValue),

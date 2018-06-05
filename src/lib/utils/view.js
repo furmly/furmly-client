@@ -126,8 +126,9 @@ export const toggleAllBusyIndicators = runThroughObj.bind(null, [
 	}
 ]);
 
+export const getBusyKey = key => `${key}-busy`;
+export const getErrorKey = key => `${key}-error`;
 export const copy = value => JSON.parse(JSON.stringify(value));
-
 
 export default {
 	getCurrentStepFromState,

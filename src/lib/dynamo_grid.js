@@ -11,7 +11,7 @@ import {
 	showMessage
 } from "./actions";
 import invariants from "./utils/invariants";
-import { getKey, copy } from "./utils/view";
+import { getKey, copy, getErrorKey } from "./utils/view";
 import debug from "debug";
 export const GRID_MODES = {
 	CRUD: "CRUD",
@@ -50,7 +50,10 @@ export default (
 		return {
 			run: (id, args, key) =>
 				dispatch(
-					runDynamoProcessor(id, args, key, { disableCache: true })
+					runDynamoProcessor(id, args, key, {
+						disableCache: true,
+						disableRetry: true
+					})
 				),
 			more: (id, args, key) => dispatch(getMoreForGrid(id, args, key)),
 			go: value =>
@@ -75,20 +78,26 @@ export default (
 		var result = state.dynamo.view[component_uid];
 		return {
 			component_uid,
+
 			items: result && result.data ? result.data.items : null,
 			total: result && result.data ? result.data.total : 0,
 			busy: result && !!result.fetchingGrid,
+			error: result && !!result.failedToFetchGrid,
 			filterTemplate:
-				result &&
-				(result.filterTemplate ||
-					(ownProps.args && ownProps.args.filter) ||
-					null),
+				(result && result.filterTemplate) ||
+				(ownProps.args && ownProps.args.filter) ||
+				null,
 			filter: result && result.filter,
 			singleItem: result && result.singleItem,
 			itemTemplate: result && result.itemTemplate,
 			fetchingSingleItem: result && result.fetchingSingleItem,
 			fetchingFilterTemplate: result && result.gettingFilterTemplate,
 			fetchingItemTemplate: result && result.gettingTemplate,
+			itemTemplateError: result && result[getErrorKey("gettingTemplate")],
+			filterTemplateError:
+				result && result[getErrorKey("gettingFilterTemplate")],
+			singleItemError:
+				result && result[getErrorKey("fetchingSingleItem")],
 			commandProcessed:
 				state.dynamo.view[
 					component_uid + DynamoGrid.commandResultViewName()
@@ -160,6 +169,7 @@ export default (
 
 		fetchFilterTemplate(props = this.props, other) {
 			if (
+				!props.filterTemplateError &&
 				props.args.filterProcessor &&
 				!props.fetchingFilterTemplate &&
 				!props.filterTemplate &&
@@ -369,6 +379,7 @@ export default (
 						if (
 							this.props.args.extra.fetchSingleItemProcessor &&
 							!this.props.fetchingSingleItem &&
+							!this.props.singleItemError &&
 							!skipFetch
 						) {
 							template = [];
@@ -397,6 +408,7 @@ export default (
 			if (
 				(!template || !template.length) &&
 				!this.props.fetchingItemTemplate &&
+				!this.props.itemTemplateError &&
 				this.props.args.extra.fetchTemplateProcessor &&
 				!skipFetch
 			) {
@@ -422,7 +434,7 @@ export default (
 		}
 
 		more() {
-			if (!this.finished() && !this.props.busy) {
+			if (!this.finished() && !this.props.busy && !this.props.error) {
 				//log("more fired getItemsFromSource");
 				let query = {
 					count: this.state.count
@@ -541,6 +553,7 @@ export default (
 							) : null
 						}
 						more={this.more}
+						autoFetch={!this.props.args.dontAutoFetchFromSource}
 						commands={this.props.args.commands}
 						execCommand={this.execCommand}
 						openCommandMenu={this.openCommandMenu}
