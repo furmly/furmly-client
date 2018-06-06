@@ -50,9 +50,22 @@ export default (Uploader, ProgressBar, Text, previews = []) => {
 			return Uploader.supports(this.props.args.fileType);
 		}
 		componentDidMount() {
-			if (this.props.uploadedId) {
+			this._mounted = true;
+			if (this.props.uploadedId && !this.props.preview) {
 				this._getPreview(this.props.uploadedId);
 			}
+			if (this.props.uploadedId !== this.props.value) {
+				//update the form incase the preview came with the fileupload
+				setTimeout(() => {
+					if (this._mounted)
+						this.props.valueChanged({
+							[this.props.name]: this.props.uploadedId
+						});
+				}, 0);
+			}
+		}
+		componentWillUnmount() {
+			this._mounted = false;
 		}
 		_getPreview(id) {
 			this.props.getPreview(
@@ -66,9 +79,11 @@ export default (Uploader, ProgressBar, Text, previews = []) => {
 		componentWillReceiveProps(next) {
 			if (
 				next.uploadedId !== this.props.uploadedId ||
-				next.component_uid !== this.props.component_uid
+				next.component_uid !== this.props.component_uid ||
+				next.uploadedId !== next.value
 			) {
-				if (next.uploadedId) this._getPreview(next.uploadedId);
+				if (next.uploadedId && !next.preview)
+					this._getPreview(next.uploadedId);
 				this.props.valueChanged({
 					[this.props.name]: next.uploadedId
 				});

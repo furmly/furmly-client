@@ -4667,9 +4667,23 @@ var dynamo_fileupload = (function (Uploader, ProgressBar, Text) {
 		}, {
 			key: "componentDidMount",
 			value: function componentDidMount() {
-				if (this.props.uploadedId) {
+				var _this2 = this;
+
+				this._mounted = true;
+				if (this.props.uploadedId && !this.props.preview) {
 					this._getPreview(this.props.uploadedId);
 				}
+				if (this.props.uploadedId !== this.props.value) {
+					//update the form incase the preview came with the fileupload
+					setTimeout(function () {
+						if (_this2._mounted) _this2.valueChanged(defineProperty({}, _this2.props.name, _this2.props.uploadedId));
+					}, 0);
+				}
+			}
+		}, {
+			key: "componentWillUnmount",
+			value: function componentWillUnmount() {
+				this._mounted = false;
 			}
 		}, {
 			key: "_getPreview",
@@ -4679,8 +4693,8 @@ var dynamo_fileupload = (function (Uploader, ProgressBar, Text) {
 		}, {
 			key: "componentWillReceiveProps",
 			value: function componentWillReceiveProps(next) {
-				if (next.uploadedId !== this.props.uploadedId || next.component_uid !== this.props.component_uid) {
-					if (next.uploadedId) this._getPreview(next.uploadedId);
+				if (next.uploadedId !== this.props.uploadedId || next.component_uid !== this.props.component_uid || next.uploadedId !== next.value) {
+					if (next.uploadedId && !next.preview) this._getPreview(next.uploadedId);
 					this.props.valueChanged(defineProperty({}, this.props.name, next.uploadedId));
 				}
 			}
