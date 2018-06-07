@@ -124,7 +124,7 @@ export default (ProgressIndicator, Layout, Container) => {
 				(next.items &&
 					next.value &&
 					!this.isValidValue(next.items, next.value)) ||
-				!next.items
+				(!next.items && !next.busy && !next.error)
 			) {
 				return this.onValueChanged(null);
 			}

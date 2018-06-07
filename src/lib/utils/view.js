@@ -125,9 +125,17 @@ export const toggleAllBusyIndicators = runThroughObj.bind(null, [
 		}
 	}
 ]);
-
-export const getBusyKey = key => `${key}-busy`;
-export const getErrorKey = key => `${key}-error`;
+const keyInvariants = function(fn) {
+	return function(key) {
+		if (typeof key === "undefined")
+			throw new Error("Key cannot be undefined");
+		if (typeof key === "object") throw new Error("Key cannot be an object");
+		if (typeof key !== "string") throw new Error("Key must be a string");
+		fn.call(this, key);
+	};
+};
+export const getBusyKey = keyInvariants(key => `${key}-busy`);
+export const getErrorKey = keyInvariants(key => `${key}-error`);
 export const copy = value => JSON.parse(JSON.stringify(value));
 
 export default {
