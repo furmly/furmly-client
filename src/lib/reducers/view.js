@@ -222,7 +222,7 @@ export default function(state = {}, action) {
 		case ACTIONS.DYNAMO_PROCESSOR_RUNNING:
 			return Object.assign({}, state, {
 				[getBusyKey(action.meta.key)]: !action.error,
-				[getErrorKey(action.meta)]: !!action.error
+				[getErrorKey(action.meta.key)]: !!action.error
 			});
 		case ACTIONS.DYNAMO_PROCESSOR_FAILED:
 			return Object.assign({}, state, {
@@ -250,7 +250,7 @@ export default function(state = {}, action) {
 		case ACTIONS.FETCHING_PROCESS:
 			return Object.assign({}, state, {
 				[getBusyKey(action.meta)]: !action.error,
-				[getErrorKey(action.error)]: !!action.error
+				[getErrorKey(action.meta)]: !!action.error
 			});
 		case ACTIONS.FAILED_TO_FETCH_PROCESS:
 			return Object.assign({}, state, {

@@ -3006,13 +3006,20 @@ var toggleAllBusyIndicators = runThroughObj.bind(null, [function (key, data) {
 		data[key] = false;
 	}
 }]);
-
-var getBusyKey = function getBusyKey(key) {
+var keyInvariants = function keyInvariants(fn) {
+	return function (key) {
+		if (typeof key === "undefined") throw new Error("Key cannot be undefined");
+		if ((typeof key === "undefined" ? "undefined" : _typeof(key)) === "object") throw new Error("Key cannot be an object");
+		if (typeof key !== "string") throw new Error("Key must be a string");
+		fn.call(this, key);
+	};
+};
+var getBusyKey = keyInvariants(function (key) {
 	return key + "-busy";
-};
-var getErrorKey = function getErrorKey(key) {
+});
+var getErrorKey = keyInvariants(function (key) {
 	return key + "-error";
-};
+});
 var copy$1 = function copy(value) {
 	return JSON.parse(JSON.stringify(value));
 };
@@ -3138,7 +3145,7 @@ var dynamo_select = (function (ProgressIndicator, Layout, Container) {
 					return this.selectFirstItem(next.items[0]._id);
 				}
 
-				if (next.items && next.value && !this.isValidValue(next.items, next.value) || !next.items) {
+				if (next.items && next.value && !this.isValidValue(next.items, next.value) || !next.items && !next.busy && !next.error) {
 					return this.onValueChanged(null);
 				}
 			}
@@ -4676,7 +4683,7 @@ var dynamo_fileupload = (function (Uploader, ProgressBar, Text) {
 				if (this.props.uploadedId !== this.props.value) {
 					//update the form incase the preview came with the fileupload
 					setTimeout(function () {
-						if (_this2._mounted) _this2.valueChanged(defineProperty({}, _this2.props.name, _this2.props.uploadedId));
+						if (_this2._mounted) _this2.props.valueChanged(defineProperty({}, _this2.props.name, _this2.props.uploadedId));
 					}, 0);
 				}
 			}
@@ -5709,7 +5716,7 @@ function view$1 () {
 			return Object.assign({}, state, (_Object$assign19 = {}, defineProperty(_Object$assign19, action.payload.key, action.payload.data), defineProperty(_Object$assign19, getBusyKey(action.payload.key), false), defineProperty(_Object$assign19, getErrorKey(action.payload.key), !!action.error), _Object$assign19));
 
 		case ACTIONS.DYNAMO_PROCESSOR_RUNNING:
-			return Object.assign({}, state, (_Object$assign20 = {}, defineProperty(_Object$assign20, getBusyKey(action.meta.key), !action.error), defineProperty(_Object$assign20, getErrorKey(action.meta), !!action.error), _Object$assign20));
+			return Object.assign({}, state, (_Object$assign20 = {}, defineProperty(_Object$assign20, getBusyKey(action.meta.key), !action.error), defineProperty(_Object$assign20, getErrorKey(action.meta.key), !!action.error), _Object$assign20));
 		case ACTIONS.DYNAMO_PROCESSOR_FAILED:
 			return Object.assign({}, state, (_Object$assign21 = {}, defineProperty(_Object$assign21, getBusyKey(action.meta), false), defineProperty(_Object$assign21, action.meta, null), defineProperty(_Object$assign21, getErrorKey(action.meta), true), _Object$assign21));
 		case ACTIONS.FETCHED_PROCESS:
@@ -5720,7 +5727,7 @@ function view$1 () {
 				0: fetchedValue
 			}), defineProperty(_Object$assign22, "navigationContext", state.navigationContext), defineProperty(_Object$assign22, "templateCache", state.templateCache || {}), defineProperty(_Object$assign22, getBusyKey(action.payload.id), false), defineProperty(_Object$assign22, getErrorKey(action.payload.id), action.error), _Object$assign22));
 		case ACTIONS.FETCHING_PROCESS:
-			return Object.assign({}, state, (_Object$assign23 = {}, defineProperty(_Object$assign23, getBusyKey(action.meta), !action.error), defineProperty(_Object$assign23, getErrorKey(action.error), !!action.error), _Object$assign23));
+			return Object.assign({}, state, (_Object$assign23 = {}, defineProperty(_Object$assign23, getBusyKey(action.meta), !action.error), defineProperty(_Object$assign23, getErrorKey(action.meta), !!action.error), _Object$assign23));
 		case ACTIONS.FAILED_TO_FETCH_PROCESS:
 			return Object.assign({}, state, (_Object$assign24 = {}, defineProperty(_Object$assign24, action.meta, null), defineProperty(_Object$assign24, "navigationContext", state.navigationContext), defineProperty(_Object$assign24, getBusyKey(action.meta), false), defineProperty(_Object$assign24, getErrorKey(action.meta), true), _Object$assign24));
 		case ACTIONS.START_FILE_UPLOAD:
