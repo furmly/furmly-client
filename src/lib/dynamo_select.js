@@ -71,14 +71,17 @@ export default (ProgressIndicator, Layout, Container) => {
 			}
 		}
 		fetchItems(source, args, component_uid) {
-			if (this._mounted)
+			if (this._mounted) {
+				if (!source || !component_uid)
+					throw new Error(
+						"Something is wrong with our configuration"
+					);
 				this.props.fetch(
 					source,
-					JSON.parse(
-						args || this.props.args.config.customArgs || "{}"
-					),
-					component_uid || this.props.component_uid || ""
+					JSON.parse(args || "{}"),
+					component_uid
 				);
+			}
 		}
 		isValidValue(items = this.props.items, value = this.props.value) {
 			value = unwrapObjectValue(value);
@@ -148,7 +151,11 @@ export default (ProgressIndicator, Layout, Container) => {
 					"fetching items in componentDidMount for current:" +
 						this.props.name
 				);
-				this.fetchItems(this.props.args.config.value);
+				this.fetchItems(
+					this.props.args.config.value,
+					this.props.args.config.customArgs,
+					this.props.component_uid
+				);
 			}
 
 			if (this.props.items && this.props.items.length == 1) {

@@ -23,6 +23,7 @@ export default (Page, Warning, Container) => {
 			if (description.steps[ownProps.currentStep].mode == "VIEW")
 				map.hideSubmit = true;
 			map.title = description.title;
+			map.processDescription = description.description;
 		}
 		return map;
 	};
@@ -77,7 +78,11 @@ export default (Page, Warning, Container) => {
 				);
 			/*jshint ignore:start*/
 			return (
-				<Page submit={this.submit} hideSubmit={this.props.hideSubmit}>
+				<Page
+					submit={this.submit}
+					hideSubmit={this.props.hideSubmit}
+					processDescription={this.props.processDescription}
+				>
 					<Container
 						label={this.props.title}
 						elements={this.props.elements}

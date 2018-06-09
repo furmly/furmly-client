@@ -2180,7 +2180,7 @@ var Validator = function () {
 						return current;
 					}, { errors: [], valid: true });
 					if (!result.valid) {
-						_this.setState(Object.assign(_this.state, { errors: result.errors }));
+						_this.setState({ errors: result.errors });
 						return reject();
 					}
 				}
@@ -2189,7 +2189,7 @@ var Validator = function () {
 					return reject();
 				}
 
-				_this.setState(Object.assign(_this.state, { errors: null }));
+				_this.setState({ errors: null });
 				resolve();
 			});
 		}
@@ -2487,6 +2487,7 @@ var dynamo_view = (function (Page, Warning, Container) {
 				map.elements = description.steps[ownProps.currentStep].form.elements;
 				if (description.steps[ownProps.currentStep].mode == "VIEW") map.hideSubmit = true;
 				map.title = description.title;
+				map.processDescription = description.description;
 			}
 			return map;
 		};
@@ -2562,7 +2563,11 @@ var dynamo_view = (function (Page, Warning, Container) {
 				/*jshint ignore:start*/
 				return React__default.createElement(
 					Page,
-					{ submit: this.submit, hideSubmit: this.props.hideSubmit },
+					{
+						submit: this.submit,
+						hideSubmit: this.props.hideSubmit,
+						processDescription: this.props.processDescription
+					},
 					React__default.createElement(Container, {
 						label: this.props.title,
 						elements: this.props.elements,
@@ -2901,7 +2906,7 @@ var dynamo_section = (function (Layout, Header, Container) {
 					null,
 					React__default.createElement(
 						Header,
-						null,
+						{ description: this.props.description },
 						this.props.label
 					),
 					React__default.createElement(Container, {
@@ -3011,7 +3016,7 @@ var keyInvariants = function keyInvariants(fn) {
 		if (typeof key === "undefined") throw new Error("Key cannot be undefined");
 		if ((typeof key === "undefined" ? "undefined" : _typeof(key)) === "object") throw new Error("Key cannot be an object");
 		if (typeof key !== "string") throw new Error("Key must be a string");
-		fn.call(this, key);
+		return fn.call(this, key);
 	};
 };
 var getBusyKey = keyInvariants(function (key) {
@@ -3116,7 +3121,10 @@ var dynamo_select = (function (ProgressIndicator, Layout, Container) {
 		}, {
 			key: "fetchItems",
 			value: function fetchItems(source, args, component_uid) {
-				if (this._mounted) this.props.fetch(source, JSON.parse(args || this.props.args.config.customArgs || "{}"), component_uid || this.props.component_uid || "");
+				if (this._mounted) {
+					if (!source || !component_uid) throw new Error("Something is wrong with our configuration");
+					this.props.fetch(source, JSON.parse(args || "{}"), component_uid);
+				}
 			}
 		}, {
 			key: "isValidValue",
@@ -3176,7 +3184,7 @@ var dynamo_select = (function (ProgressIndicator, Layout, Container) {
 				this._mounted = true;
 				if (!this.props.items) {
 					log("fetching items in componentDidMount for current:" + this.props.name);
-					this.fetchItems(this.props.args.config.value);
+					this.fetchItems(this.props.args.config.value, this.props.args.config.customArgs, this.props.component_uid);
 				}
 
 				if (this.props.items && this.props.items.length == 1) {
@@ -4701,7 +4709,7 @@ var dynamo_fileupload = (function (Uploader, ProgressBar, Text) {
 			key: "componentWillReceiveProps",
 			value: function componentWillReceiveProps(next) {
 				if (next.uploadedId !== this.props.uploadedId || next.component_uid !== this.props.component_uid || next.uploadedId !== next.value) {
-					if (next.uploadedId && !next.preview) this._getPreview(next.uploadedId);
+					if (next.uploadedId && (!next.preview || next.uploadedId !== this.props.uploadedId)) this._getPreview(next.uploadedId);
 					this.props.valueChanged(defineProperty({}, this.props.name, next.uploadedId));
 				}
 			}
@@ -5349,6 +5357,7 @@ var dynamo_command = (function (Link, customDownloadCommand) {
 							var config$$1 = JSON.parse(this.props.args.commandProcessorArgs);
 							url = dynamoDownloadUrl.replace(":id", config$$1.id);
 							if (config$$1.access_token) url += "?_t0=" + config$$1.access_token;
+							if (config$$1.isProcessor) url += (url.indexOf("?") == -1 ? "?" : "&") + "_t1=true";
 						} catch (e) {
 							throw new Error("Download is not properly setup.");
 						}
