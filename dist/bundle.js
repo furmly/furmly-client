@@ -2180,7 +2180,7 @@ var Validator = function () {
 						return current;
 					}, { errors: [], valid: true });
 					if (!result.valid) {
-						_this.setState(Object.assign(_this.state, { errors: result.errors }));
+						_this.setState({ errors: result.errors });
 						return reject();
 					}
 				}
@@ -2189,7 +2189,7 @@ var Validator = function () {
 					return reject();
 				}
 
-				_this.setState(Object.assign(_this.state, { errors: null }));
+				_this.setState({ errors: null });
 				resolve();
 			});
 		}
@@ -3011,7 +3011,7 @@ var keyInvariants = function keyInvariants(fn) {
 		if (typeof key === "undefined") throw new Error("Key cannot be undefined");
 		if ((typeof key === "undefined" ? "undefined" : _typeof(key)) === "object") throw new Error("Key cannot be an object");
 		if (typeof key !== "string") throw new Error("Key must be a string");
-		fn.call(this, key);
+		return fn.call(this, key);
 	};
 };
 var getBusyKey = keyInvariants(function (key) {
@@ -3116,7 +3116,10 @@ var dynamo_select = (function (ProgressIndicator, Layout, Container) {
 		}, {
 			key: "fetchItems",
 			value: function fetchItems(source, args, component_uid) {
-				if (this._mounted) this.props.fetch(source, JSON.parse(args || this.props.args.config.customArgs || "{}"), component_uid || this.props.component_uid || "");
+				if (this._mounted) {
+					if (!source || !component_uid) throw new Error("Something is wrong with our configuration");
+					this.props.fetch(source, JSON.parse(args || "{}"), component_uid);
+				}
 			}
 		}, {
 			key: "isValidValue",
@@ -3176,7 +3179,7 @@ var dynamo_select = (function (ProgressIndicator, Layout, Container) {
 				this._mounted = true;
 				if (!this.props.items) {
 					log("fetching items in componentDidMount for current:" + this.props.name);
-					this.fetchItems(this.props.args.config.value);
+					this.fetchItems(this.props.args.config.value, this.props.args.config.customArgs, this.props.component_uid);
 				}
 
 				if (this.props.items && this.props.items.length == 1) {

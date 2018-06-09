@@ -131,7 +131,7 @@ const keyInvariants = function(fn) {
 			throw new Error("Key cannot be undefined");
 		if (typeof key === "object") throw new Error("Key cannot be an object");
 		if (typeof key !== "string") throw new Error("Key must be a string");
-		fn.call(this, key);
+		return fn.call(this, key);
 	};
 };
 export const getBusyKey = keyInvariants(key => `${key}-busy`);

@@ -44,9 +44,7 @@ export default class Validator {
 					{ errors: [], valid: true }
 				);
 				if (!result.valid) {
-					this.setState(
-						Object.assign(this.state, { errors: result.errors })
-					);
+					this.setState({ errors: result.errors });
 					return reject();
 				}
 			}
@@ -59,7 +57,7 @@ export default class Validator {
 				return reject();
 			}
 
-			this.setState(Object.assign(this.state, { errors: null }));
+			this.setState({ errors: null });
 			resolve();
 		});
 	}
