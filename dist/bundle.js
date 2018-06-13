@@ -2487,6 +2487,7 @@ var dynamo_view = (function (Page, Warning, Container) {
 				map.elements = description.steps[ownProps.currentStep].form.elements;
 				if (description.steps[ownProps.currentStep].mode == "VIEW") map.hideSubmit = true;
 				map.title = description.title;
+				map.processDescription = description.description;
 			}
 			return map;
 		};
@@ -2562,7 +2563,11 @@ var dynamo_view = (function (Page, Warning, Container) {
 				/*jshint ignore:start*/
 				return React__default.createElement(
 					Page,
-					{ submit: this.submit, hideSubmit: this.props.hideSubmit },
+					{
+						submit: this.submit,
+						hideSubmit: this.props.hideSubmit,
+						processDescription: this.props.processDescription
+					},
 					React__default.createElement(Container, {
 						label: this.props.title,
 						elements: this.props.elements,
@@ -4704,7 +4709,7 @@ var dynamo_fileupload = (function (Uploader, ProgressBar, Text) {
 			key: "componentWillReceiveProps",
 			value: function componentWillReceiveProps(next) {
 				if (next.uploadedId !== this.props.uploadedId || next.component_uid !== this.props.component_uid || next.uploadedId !== next.value) {
-					if (next.uploadedId && !next.preview) this._getPreview(next.uploadedId);
+					if (next.uploadedId && (!next.preview || next.uploadedId !== this.props.uploadedId)) this._getPreview(next.uploadedId);
 					this.props.valueChanged(defineProperty({}, this.props.name, next.uploadedId));
 				}
 			}
@@ -5352,6 +5357,7 @@ var dynamo_command = (function (Link, customDownloadCommand) {
 							var config$$1 = JSON.parse(this.props.args.commandProcessorArgs);
 							url = dynamoDownloadUrl.replace(":id", config$$1.id);
 							if (config$$1.access_token) url += "?_t0=" + config$$1.access_token;
+							if (config$$1.isProcessor) url += (url.indexOf("?") == -1 ? "?" : "&") + "_t1=true";
 						} catch (e) {
 							throw new Error("Download is not properly setup.");
 						}

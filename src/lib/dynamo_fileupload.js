@@ -82,7 +82,10 @@ export default (Uploader, ProgressBar, Text, previews = []) => {
 				next.component_uid !== this.props.component_uid ||
 				next.uploadedId !== next.value
 			) {
-				if (next.uploadedId && !next.preview)
+				if (
+					next.uploadedId &&
+					(!next.preview || next.uploadedId !== this.props.uploadedId)
+				)
 					this._getPreview(next.uploadedId);
 				this.props.valueChanged({
 					[this.props.name]: next.uploadedId

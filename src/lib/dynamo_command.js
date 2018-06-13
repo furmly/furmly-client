@@ -43,6 +43,10 @@ export default (Link, customDownloadCommand) => {
 						url = dynamoDownloadUrl.replace(":id", config.id);
 						if (config.access_token)
 							url += `?_t0=${config.access_token}`;
+						if (config.isProcessor)
+							url += `${url.indexOf("?") == -1
+								? "?"
+								: "&"}_t1=true`;
 					} catch (e) {
 						throw new Error("Download is not properly setup.");
 					}
