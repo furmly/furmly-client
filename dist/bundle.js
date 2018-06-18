@@ -2906,7 +2906,7 @@ var dynamo_section = (function (Layout, Header, Container) {
 					null,
 					React__default.createElement(
 						Header,
-						null,
+						{ description: this.props.description },
 						this.props.label
 					),
 					React__default.createElement(Container, {

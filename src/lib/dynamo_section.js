@@ -15,7 +15,9 @@ export default (Layout, Header, Container) => {
 			//get the container for retrieving
 			return (
 				<Layout>
-					<Header>{this.props.label}</Header>
+					<Header description={this.props.description}>
+						{this.props.label}
+					</Header>
 					<Container
 						elements={this.props.args.elements}
 						name={this.props.name}
