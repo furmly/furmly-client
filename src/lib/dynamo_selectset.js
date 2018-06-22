@@ -175,8 +175,11 @@ export default (Layout, Picker, ProgressBar, Container) => {
 		}
 		getCurrentContainerValue() {
 			return (
-				(this.props.args.path &&
-					this.props.extra[this.props.args.path]) ||
+				(this.props.args.path && {
+					[this.props.args.path]: this.props.extra[
+						this.props.args.path
+					]
+				}) ||
 				this.state.containerValues
 			);
 		}
@@ -190,10 +193,21 @@ export default (Layout, Picker, ProgressBar, Container) => {
 		}
 
 		onContainerValueChanged(value, pickerValue) {
-			this.props.valueChanged.apply(
+			// this.log(
+			// 	`value changed ${JSON.stringify(
+			// 		value,
+			// 		null,
+			// 		" "
+			// 	)} pickerValue:${JSON.stringify(pickerValue, null, " ")}`
+			// );
+			let eve = this._onContainerValueChanged.call(
 				this,
-				this._onContainerValueChanged.call(this, value, pickerValue)
+				value,
+				pickerValue
 			);
+			// this.log(`eventual params:${JSON.stringify(eve, null, " ")}`);
+
+			this.props.valueChanged.apply(this, eve);
 		}
 		_shouldComponentUpdateComparer(x, y, a, b, key) {
 			if (a == b) return true;

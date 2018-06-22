@@ -111,6 +111,7 @@ export default (Uploader, ProgressBar, Text, previews = []) => {
 					previewType={this._previewType}
 					preview={this.props.preview}
 					errors={this.state.errors}
+					disabled={this.props.disabled}
 				/>
 			);
 		}
@@ -123,6 +124,7 @@ export default (Uploader, ProgressBar, Text, previews = []) => {
 			component_uid,
 			preview: st.preview,
 			busy: st.busy,
+			disabled: ownProps.args && ownProps.args.disabled,
 			uploadedId: st.uploadedId || ownProps.value
 		};
 	};
