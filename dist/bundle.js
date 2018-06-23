@@ -4733,7 +4733,8 @@ var dynamo_fileupload = (function (Uploader, ProgressBar, Text) {
 					allowed: this.props.args.fileType,
 					previewType: this._previewType,
 					preview: this.props.preview,
-					errors: this.state.errors
+					errors: this.state.errors,
+					disabled: this.props.disabled
 				});
 			}
 		}]);
@@ -4748,6 +4749,7 @@ var dynamo_fileupload = (function (Uploader, ProgressBar, Text) {
 				component_uid: component_uid,
 				preview: st.preview,
 				busy: st.busy,
+				disabled: ownProps.args && ownProps.args.disabled,
 				uploadedId: st.uploadedId || ownProps.value
 			};
 		};
