@@ -208,6 +208,7 @@ export default (LabelWrapper, Input, DatePicker, Checkbox) => {
 						<Result
 							type={args.type}
 							{...passThrough}
+							disabled={args&& args.disabled}
 							required={this.isRequired()}
 							value={this.props.value}
 							errors={this.state.errors}

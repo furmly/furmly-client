@@ -2448,6 +2448,7 @@ var dynamo_input = (function (LabelWrapper, Input, DatePicker, Checkbox) {
 					inner: React__default.createElement(Result, _extends$4({
 						type: args.type
 					}, passThrough, {
+						disabled: args && args.disabled,
 						required: this.isRequired(),
 						value: this.props.value,
 						errors: this.state.errors,
@@ -3187,10 +3188,10 @@ var dynamo_select = (function (ProgressIndicator, Layout, Container) {
 					this.fetchItems(this.props.args.config.value, this.props.args.config.customArgs, this.props.component_uid);
 				}
 
-				if (this.props.items && this.props.items.length == 1) {
+				if (this.props.items && this.props.items.length == 1 && !this.props.value) {
 					return this.selectFirstItem(this.props.items[0]._id);
 				}
-				if (this.isObjectIdMode() && this.props.value) {
+				if (this.isObjectIdMode() && this.props.value && _typeof(this.props.value) !== 'object') {
 					//update the form to indicate its an objectId.
 					return setTimeout(function () {
 						_this3.onValueChanged(_this3.props.value);
@@ -3417,7 +3418,7 @@ var dynamo_selectset = (function (Layout, Picker, ProgressBar, Container) {
 		}, {
 			key: "getCurrentContainerValue",
 			value: function getCurrentContainerValue() {
-				return this.props.args.path && this.props.extra[this.props.args.path] || this.state.containerValues;
+				return this.props.args.path && defineProperty({}, this.props.args.path, this.props.extra[this.props.args.path]) || this.state.containerValues;
 			}
 		}, {
 			key: "selectFirstItem",
@@ -3436,7 +3437,17 @@ var dynamo_selectset = (function (Layout, Picker, ProgressBar, Container) {
 		}, {
 			key: "onContainerValueChanged",
 			value: function onContainerValueChanged(value, pickerValue) {
-				this.props.valueChanged.apply(this, this._onContainerValueChanged.call(this, value, pickerValue));
+				// this.log(
+				// 	`value changed ${JSON.stringify(
+				// 		value,
+				// 		null,
+				// 		" "
+				// 	)} pickerValue:${JSON.stringify(pickerValue, null, " ")}`
+				// );
+				var eve = this._onContainerValueChanged.call(this, value, pickerValue);
+				// this.log(`eventual params:${JSON.stringify(eve, null, " ")}`);
+
+				this.props.valueChanged.apply(this, eve);
 			}
 		}, {
 			key: "_shouldComponentUpdateComparer",
