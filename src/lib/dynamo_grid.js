@@ -1,8 +1,8 @@
 import React from "react";
-import DynamoBase from "./dynamo_base";
+import FurmlyBase from "./furmly_base";
 import { connect } from "react-redux";
 import {
-	runDynamoProcessor,
+	runFurmlyProcessor,
 	getMoreForGrid,
 	filterGrid,
 	getSingleItemForGrid,
@@ -44,13 +44,13 @@ export default (
 		invariants.validComponent(CommandResultView, "CommandResultView") &&
 		!NavigationActions
 	)
-		throw new Error("NavigationActions cannot be null (dynamo_grid)");
-	const log = debug("dynamo-client-components:grid");
+		throw new Error("NavigationActions cannot be null (furmly_grid)");
+	const log = debug("furmly-client-components:grid");
 	const mapDispatchToProps = dispatch => {
 		return {
 			run: (id, args, key) =>
 				dispatch(
-					runDynamoProcessor(id, args, key, {
+					runFurmlyProcessor(id, args, key, {
 						disableCache: true,
 						disableRetry: true
 					})
@@ -60,7 +60,7 @@ export default (
 				dispatch(
 					NavigationActions.setParams({
 						params: { id: value },
-						key: "Dynamo"
+						key: "Furmly"
 					})
 				),
 			getSingleItem: (id, args, key) =>
@@ -75,7 +75,7 @@ export default (
 	};
 	const mapStateToProps = (_, initialProps) => (state, ownProps) => {
 		let component_uid = getKey(state, ownProps.component_uid, ownProps);
-		var result = state.dynamo.view[component_uid];
+		var result = state.furmly.view[component_uid];
 		return {
 			component_uid,
 
@@ -99,18 +99,18 @@ export default (
 			singleItemError:
 				result && result[getErrorKey("fetchingSingleItem")],
 			commandProcessed:
-				state.dynamo.view[
-					component_uid + DynamoGrid.commandResultViewName()
+				state.furmly.view[
+					component_uid + FurmlyGrid.commandResultViewName()
 				],
 			commandProcessing:
-				state.dynamo.view[
-					component_uid + DynamoGrid.commandResultViewName() + "-busy"
+				state.furmly.view[
+					component_uid + FurmlyGrid.commandResultViewName() + "-busy"
 				],
 			processed:
-				state.dynamo.view[component_uid + DynamoGrid.itemViewName()]
+				state.furmly.view[component_uid + FurmlyGrid.itemViewName()]
 		};
 	};
-	class DynamoGrid extends DynamoBase {
+	class FurmlyGrid extends FurmlyBase {
 		constructor(props) {
 			super(props, log);
 			this.state = {
@@ -267,7 +267,7 @@ export default (
 		getFilterValue() {
 			return (
 				(this.props.value &&
-					this.props.value[DynamoGrid.filterViewName()]) ||
+					this.props.value[FurmlyGrid.filterViewName()]) ||
 				null
 			);
 		}
@@ -336,7 +336,7 @@ export default (
 								entity: this.getItemValue()
 							}
 						),
-						this.props.component_uid + DynamoGrid.itemViewName()
+						this.props.component_uid + FurmlyGrid.itemViewName()
 					);
 
 					this.cancel();
@@ -475,7 +475,7 @@ export default (
 				form: Object.assign(
 					{},
 					this.state.form || {},
-					(value && value[DynamoGrid.itemViewName()]) || {}
+					(value && value[FurmlyGrid.itemViewName()]) || {}
 				)
 			});
 		}
@@ -501,7 +501,7 @@ export default (
 							item
 						),
 						this.props.component_uid +
-							DynamoGrid.commandResultViewName()
+							FurmlyGrid.commandResultViewName()
 					);
 					break;
 			}
@@ -522,7 +522,7 @@ export default (
 							elements={this.props.filterTemplate}
 							value={this.getFilterValue()}
 							valueChanged={this.valueChanged}
-							name={DynamoGrid.filterViewName()}
+							name={FurmlyGrid.filterViewName()}
 							validator={this.state._filterValidator}
 							navigation={this.props.navigation}
 							currentProcess={this.props.currentProcess}
@@ -573,7 +573,7 @@ export default (
 							<Container
 								elements={this.state.itemViewElements}
 								value={this.getItemValue()}
-								name={DynamoGrid.itemViewName()}
+								name={FurmlyGrid.itemViewName()}
 								validator={this.state.validator}
 								valueChanged={this.itemValueChanged}
 								navigation={this.props.navigation}
@@ -594,7 +594,7 @@ export default (
 						template={
 							<Container
 								elements={this.state.commandResult}
-								name={DynamoGrid.commandResultViewName()}
+								name={FurmlyGrid.commandResultViewName()}
 								validator={{}}
 								navigation={this.props.navigation}
 								currentProcess={this.props.currentProcess}
@@ -609,5 +609,5 @@ export default (
 		}
 	}
 
-	return connect(mapStateToProps, mapDispatchToProps)(DynamoGrid);
+	return connect(mapStateToProps, mapDispatchToProps)(FurmlyGrid);
 };

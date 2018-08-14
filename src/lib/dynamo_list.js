@@ -4,7 +4,7 @@ import ValidatorHelper from "./utils/validator";
 import invariants from "./utils/invariants";
 import _ from "lodash";
 import {
-	runDynamoProcessor,
+	runFurmlyProcessor,
 	openConfirmation,
 	clearElementData
 } from "./actions";
@@ -25,7 +25,7 @@ export default (
 	invariants.validComponent(Modal, "Modal");
 	invariants.validComponent(ErrorText, "ErrorText");
 	invariants.validComponent(Container, "Container");
-	const log = debug("dynamo-client-components:list");
+	const log = debug("furmly-client-components:list");
 	const EDIT = "EDIT",
 		NEW = "NEW";
 	const mapStateToProps = (_, initialProps) => (state, ownProps) => {
@@ -36,10 +36,10 @@ export default (
 				state.app &&
 				state.app.confirmationResult &&
 				state.app.confirmationResult[component_uid],
-			templateCache: state.dynamo.view.templateCache,
-			dataTemplate: state.dynamo.view[component_uid],
+			templateCache: state.furmly.view.templateCache,
+			dataTemplate: state.furmly.view[component_uid],
 			component_uid,
-			busy: state.dynamo.view[`${component_uid}-busy`],
+			busy: state.furmly.view[`${component_uid}-busy`],
 			items: ownProps.value
 		};
 	};
@@ -67,14 +67,14 @@ export default (
 	const mapDispatchToProps = dispatch => {
 		return {
 			getListItemDataTemplate: (id, args, key) =>
-				dispatch(runDynamoProcessor(id, args, key)),
+				dispatch(runFurmlyProcessor(id, args, key)),
 			openConfirmation: (id, message, params) =>
 				dispatch(openConfirmation(id, message, params)),
 			clearElementData: key => dispatch(clearElementData(key))
 		};
 	};
 
-	class DynamoList extends Component {
+	class FurmlyList extends Component {
 		constructor(props) {
 			super(props);
 			this.state = {
@@ -228,9 +228,9 @@ export default (
 					!Array.prototype.isPrototypeOf(
 						this.props.args.itemTemplate
 					) &&
-					this.props.args.itemTemplate.dynamo_ref) ||
+					this.props.args.itemTemplate.furmly_ref) ||
 				(this.props.args.behavior &&
-					this.props.args.behavior.dynamo_ref &&
+					this.props.args.behavior.furmly_ref &&
 					this.props.args.itemTemplate)
 			);
 		}
@@ -303,8 +303,8 @@ export default (
 			this.setState({ modalVisible: false, edit: null });
 		}
 		valueChanged(v) {
-			//this.state.form = v && v[DynamoList.modalName()];
-			this.setState({ edit: v && v[DynamoList.modalName()] });
+			//this.state.form = v && v[FurmlyList.modalName()];
+			this.setState({ edit: v && v[FurmlyList.modalName()] });
 		}
 
 		remove(index) {
@@ -399,7 +399,7 @@ export default (
 							<Container
 								elements={this.state.itemTemplate}
 								value={this.state.edit}
-								name={DynamoList.modalName()}
+								name={FurmlyList.modalName()}
 								validator={this.state.validator}
 								valueChanged={this.valueChanged}
 								navigation={this.props.navigation}
@@ -416,5 +416,5 @@ export default (
 		}
 	}
 
-	return connect(mapStateToProps, mapDispatchToProps)(DynamoList);
+	return connect(mapStateToProps, mapDispatchToProps)(FurmlyList);
 };

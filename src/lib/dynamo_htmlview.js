@@ -1,8 +1,8 @@
 import React, { Component } from "react";
 import debug from "debug";
 export default PlatformComponent => {
-	const log = debug("dynamo-client-components:html-view");
-	return class DynamoHTMLViewer extends Component {
+	const log = debug("furmly-client-components:html-view");
+	return class FurmlyHTMLViewer extends Component {
 		constructor(props) {
 			super(props);
 		}

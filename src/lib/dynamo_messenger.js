@@ -49,9 +49,9 @@ export default (
 	invariants.validComponent(AddNewContact, "AddNewContact");
 	invariants.validComponent(PendingInvites, "PendingInvites");
 	invariants.validComponent(ChatLayout, "ChatLayout");
-	const log = debug("dynamo-client-components:messenger");
+	const log = debug("furmly-client-components:messenger");
 	const mapStateToProps = state => {
-		let _state = state.dynamo.chat;
+		let _state = state.furmly.chat;
 		return {
 			chat: _state.chat,
 			contacts: _state.contacts,
@@ -85,7 +85,7 @@ export default (
 			closeChat: () => dispatch(closeChat())
 		};
 	};
-	class DynamoMessenger extends Component {
+	class FurmlyMessenger extends Component {
 		constructor(props) {
 			super(props);
 			this.renderChat = this.renderChat.bind(this);
@@ -303,5 +303,5 @@ export default (
 			);
 		}
 	}
-	return connect(mapStateToProps, mapDispatchToProps)(DynamoMessenger);
+	return connect(mapStateToProps, mapDispatchToProps)(FurmlyMessenger);
 };

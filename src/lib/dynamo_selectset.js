@@ -2,33 +2,33 @@ import React from "react";
 import invariants from "./utils/invariants";
 import { unwrapObjectValue } from "./utils/view";
 import { connect } from "react-redux";
-import { runDynamoProcessor } from "./actions";
+import { runFurmlyProcessor } from "./actions";
 import ValidationHelper, { VALIDATOR_TYPES } from "./utils/validator";
 import { getKey, getErrorKey, getBusyKey } from "./utils/view";
 import debug from "debug";
 import _ from "lodash";
-import DynamoBase from "./dynamo_base";
+import FurmlyBase from "./furmly_base";
 
 export default (Layout, Picker, ProgressBar, Container) => {
-	//map elements in DynamoView props to elements in store.
+	//map elements in FurmlyView props to elements in store.
 	invariants.validComponent(Layout, "Layout");
 	invariants.validComponent(Picker, "Picker");
 	invariants.validComponent(Container, "Container");
-	const log = debug("dynamo-client-components:selectset");
+	const log = debug("furmly-client-components:selectset");
 	const noPath = "selectset_no_path";
 	const noItems = [];
 	const mapDispatchToProps = dispatch => {
 		return {
 			getItems: (id, args, key, extra) =>
-				dispatch(runDynamoProcessor(id, args, key, extra))
+				dispatch(runFurmlyProcessor(id, args, key, extra))
 		};
 	};
 	const mapStateToProps = (_, initialProps) => (state, ownProps) => {
 		let component_uid = getKey(state, ownProps.component_uid, ownProps),
-			items = state.dynamo.view[component_uid] || ownProps.args.items;
+			items = state.furmly.view[component_uid] || ownProps.args.items;
 		return {
-			busy: !!state.dynamo.view[getBusyKey(component_uid)],
-			error: !!state.dynamo.view[getErrorKey(component_uid)],
+			busy: !!state.furmly.view[getBusyKey(component_uid)],
+			error: !!state.furmly.view[getErrorKey(component_uid)],
 			items,
 			contentItems: getPickerItemsById(ownProps.value, items),
 			component_uid
@@ -43,7 +43,7 @@ export default (Layout, Picker, ProgressBar, Container) => {
 
 		return noItems;
 	};
-	class DynamoSelectSet extends DynamoBase {
+	class FurmlySelectSet extends FurmlyBase {
 		constructor(props) {
 			super(props, log);
 			this.retryFetch = this.retryFetch.bind(this);
@@ -349,6 +349,6 @@ export default (Layout, Picker, ProgressBar, Container) => {
 		}
 	}
 
-	DynamoSelectSet.notifyExtra = true;
-	return connect(mapStateToProps, mapDispatchToProps)(DynamoSelectSet);
+	FurmlySelectSet.notifyExtra = true;
+	return connect(mapStateToProps, mapDispatchToProps)(FurmlySelectSet);
 };

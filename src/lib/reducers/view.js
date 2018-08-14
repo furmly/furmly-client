@@ -17,7 +17,7 @@ export default function(state = {}, action) {
 			return Object.assign({}, state);
 		case ACTIONS.CLEAR_STACK:
 			return {};
-		case ACTIONS.DYNAMO_PROCESS_FAILED:
+		case ACTIONS.FURMLY_PROCESS_FAILED:
 			return Object.assign({}, state, {
 				[getBusyKey(action.meta)]: false
 			});
@@ -36,16 +36,16 @@ export default function(state = {}, action) {
 				}
 			);
 			return _state;
-		case ACTIONS.REMOVE_LAST_DYNAMO_PARAMS:
-			//check if value is a dynamo screen
+		case ACTIONS.REMOVE_LAST_FURMLY_PARAMS:
+			//check if value is a furmly screen
 			//if it is check if its a process navigation or step navigation
 			//if it is a process navigation remove the data from the process.
 			//if it is a step navigation remove the step data from the process.
 			if (
-				action.payload.item.key == "Dynamo" ||
-				action.payload.item.$routeName == "Dynamo"
+				action.payload.item.key == "Furmly" ||
+				action.payload.item.$routeName == "Furmly"
 			) {
-				//it is a dynamo navigation
+				//it is a furmly navigation
 				//confirm there are no other references down the line.
 				let _state = state[action.payload.item.params.id],
 					currentStep = (_state && _state.currentStep) || 0;
@@ -95,7 +95,7 @@ export default function(state = {}, action) {
 				}
 			}
 			return state;
-		case ACTIONS.DYNAMO_PROCESS_RAN:
+		case ACTIONS.FURMLY_PROCESS_RAN:
 			if (action.error || !action.payload) {
 				return state;
 			}
@@ -186,7 +186,7 @@ export default function(state = {}, action) {
 				[action.meta]: failedToFetchGrid(state[action.meta])
 			});
 
-		case ACTIONS.DYNAMO_GET_MORE_FOR_GRID:
+		case ACTIONS.FURMLY_GET_MORE_FOR_GRID:
 			return Object.assign({}, state, {
 				[action.payload.key]: reduceGrid(
 					state[action.payload.key],
@@ -194,7 +194,7 @@ export default function(state = {}, action) {
 				)
 			});
 
-		case ACTIONS.DYNAMO_PROCESS_RUNNING:
+		case ACTIONS.FURMLY_PROCESS_RUNNING:
 			return Object.assign({}, state, {
 				[getBusyKey(action.meta.id)]: !action.error,
 				[action.meta.id]: Object.assign({}, state[action.meta.id], {
@@ -212,19 +212,19 @@ export default function(state = {}, action) {
 					}
 				)
 			});
-		case ACTIONS.DYNAMO_PROCESSOR_RAN:
+		case ACTIONS.FURMLY_PROCESSOR_RAN:
 			return Object.assign({}, state, {
 				[action.payload.key]: action.payload.data,
 				[getBusyKey(action.payload.key)]: false,
 				[getErrorKey(action.payload.key)]: !!action.error
 			});
 
-		case ACTIONS.DYNAMO_PROCESSOR_RUNNING:
+		case ACTIONS.FURMLY_PROCESSOR_RUNNING:
 			return Object.assign({}, state, {
 				[getBusyKey(action.meta.key)]: !action.error,
 				[getErrorKey(action.meta.key)]: !!action.error
 			});
-		case ACTIONS.DYNAMO_PROCESSOR_FAILED:
+		case ACTIONS.FURMLY_PROCESSOR_FAILED:
 			return Object.assign({}, state, {
 				[getBusyKey(action.meta)]: false,
 				[action.meta]: null,

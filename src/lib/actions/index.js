@@ -5,7 +5,7 @@ import MemCache from "../utils/memcache";
 import { CHECK_FOR_EXISTING_SCREEN } from "../action-enhancers";
 import debug from "debug";
 import { default as ACTIONS } from "./constants";
-const log = debug("dynamo-actions");
+const log = debug("furmly-actions");
 
 const preDispatch = config.preDispatch,
   preRefreshToken = config.preRefreshToken,
@@ -40,7 +40,7 @@ function getQueryParams(args) {
 }
 export function setParams(args) {
   return {
-    type: ACTIONS.SET_DYNAMO_PARAMS,
+    type: ACTIONS.SET_FURMLY_PARAMS,
     [CHECK_FOR_EXISTING_SCREEN]: true,
     payload: args
   };
@@ -53,7 +53,7 @@ export function replaceStack(args) {
   };
 }
 export function goBack(args) {
-  return { type: ACTIONS.REMOVE_LAST_DYNAMO_PARAMS, payload: args };
+  return { type: ACTIONS.REMOVE_LAST_FURMLY_PARAMS, payload: args };
 }
 export function clearNavigationStack() {
   return { type: ACTIONS.CLEAR_STACK };
@@ -125,8 +125,8 @@ function defaultError(dispatch, customType, meta, throttleEnabled) {
     }
   };
 }
-export const dynamoDownloadUrl = `${BASE_URL}/api/download/:id`;
-export function fetchDynamoProcess(id, args) {
+export const furmlyDownloadUrl = `${BASE_URL}/api/download/:id`;
+export function fetchFurmlyProcess(id, args) {
   if (config.cacheProcessDescription) {
     let cacheKey = { id, args },
       hasKey = cache.hasKey(cacheKey);
@@ -183,16 +183,16 @@ export function clearElementData(key) {
   };
 }
 export function getMoreForGrid(id, args, key) {
-  return runDynamoProcessor(id, args, key, {
+  return runFurmlyProcessor(id, args, key, {
     requestCustomType: ACTIONS.FETCHING_GRID,
-    resultCustomType: ACTIONS.DYNAMO_GET_MORE_FOR_GRID,
+    resultCustomType: ACTIONS.FURMLY_GET_MORE_FOR_GRID,
     errorCustomType: ACTIONS.ERROR_WHILE_FETCHING_GRID,
     disableCache: true,
     disableRetry: true
   });
 }
 export function filterGrid(id, args, key) {
-  return runDynamoProcessor(id, args, key, {
+  return runFurmlyProcessor(id, args, key, {
     requestCustomType: ACTIONS.FETCHING_GRID,
     resultCustomType: ACTIONS.FILTERED_GRID,
     errorCustomType: ACTIONS.ERROR_WHILE_FETCHING_GRID,
@@ -202,7 +202,7 @@ export function filterGrid(id, args, key) {
 }
 
 export function getItemTemplate(id, args, key) {
-  return runDynamoProcessor(id, args, key, {
+  return runFurmlyProcessor(id, args, key, {
     requestCustomType: ACTIONS.GET_ITEM_TEMPLATE,
     resultCustomType: ACTIONS.GOT_ITEM_TEMPLATE,
     errorCustomType: ACTIONS.FAILED_TO_GET_ITEM_TEMPLATE,
@@ -211,7 +211,7 @@ export function getItemTemplate(id, args, key) {
 }
 
 export function getFilterTemplate(id, args, key) {
-  return runDynamoProcessor(id, args, key, {
+  return runFurmlyProcessor(id, args, key, {
     requestCustomType: ACTIONS.GET_FILTER_TEMPLATE,
     resultCustomType: ACTIONS.GOT_FILTER_TEMPLATE,
     errorCustomType: ACTIONS.FAILED_TO_GET_FILTER_TEMPLATE,
@@ -220,7 +220,7 @@ export function getFilterTemplate(id, args, key) {
 }
 
 export function getSingleItemForGrid(id, args, key) {
-  return runDynamoProcessor(id, args, key, {
+  return runFurmlyProcessor(id, args, key, {
     requestCustomType: ACTIONS.GET_SINGLE_ITEM_FOR_GRID,
     resultCustomType: ACTIONS.GOT_SINGLE_ITEM_FOR_GRID,
     errorCustomType: ACTIONS.ERROR_WHILE_GETTING_SINGLE_ITEM_FOR_GRID,
@@ -247,7 +247,7 @@ export function getRefreshToken() {
   };
 }
 
-export function runDynamoProcessor(
+export function runFurmlyProcessor(
   id,
   args,
   key,
@@ -270,7 +270,7 @@ export function runDynamoProcessor(
 
       return dispatch => {
         dispatch({
-          type: resultCustomType || ACTIONS.DYNAMO_PROCESSOR_RAN,
+          type: resultCustomType || ACTIONS.FURMLY_PROCESSOR_RAN,
           payload
         });
       };
@@ -302,11 +302,11 @@ export function runDynamoProcessor(
               endpoint,
               types: [
                 {
-                  type: requestCustomType || ACTIONS.DYNAMO_PROCESSOR_RUNNING,
+                  type: requestCustomType || ACTIONS.FURMLY_PROCESSOR_RUNNING,
                   meta: { id, key, args }
                 },
                 {
-                  type: resultCustomType || ACTIONS.DYNAMO_PROCESSOR_RAN,
+                  type: resultCustomType || ACTIONS.FURMLY_PROCESSOR_RAN,
                   payload: (action, state, res) => {
                     return res.json().then(data => {
                       delete throttled[throttleKey];
@@ -323,7 +323,7 @@ export function runDynamoProcessor(
                 },
                 defaultError(
                   dispatch,
-                  errorCustomType || ACTIONS.DYNAMO_PROCESSOR_FAILED,
+                  errorCustomType || ACTIONS.FURMLY_PROCESSOR_FAILED,
                   () => key,
                   !config.disableProcessorRetry && !disableRetry
                 )
@@ -351,7 +351,7 @@ export function showMessage(message) {
   };
 }
 
-export function runDynamoProcess(details) {
+export function runFurmlyProcess(details) {
   return (dispatch, getState) =>
     dispatch({
       [CALL_API]: preDispatch(
@@ -359,7 +359,7 @@ export function runDynamoProcess(details) {
           endpoint: `${BASE_URL}/api/process/run/${details.id}`,
           types: [
             {
-              type: ACTIONS.DYNAMO_PROCESS_RUNNING,
+              type: ACTIONS.FURMLY_PROCESS_RUNNING,
               meta: {
                 id: details.id,
                 form: details.form,
@@ -367,7 +367,7 @@ export function runDynamoProcess(details) {
               }
             },
             {
-              type: ACTIONS.DYNAMO_PROCESS_RAN,
+              type: ACTIONS.FURMLY_PROCESS_RAN,
               payload: (action, state, res) => {
                 return res
                   .json()
@@ -380,21 +380,21 @@ export function runDynamoProcess(details) {
                       !(config.uiOnDemand && d.status == "COMPLETED") &&
                       !(
                         !config.uiOnDemand &&
-                        (state.dynamo.view[id].description.steps.length == 1 ||
-                          (state.dynamo.navigation.stack.length &&
-                            state.dynamo.navigation.stack[
-                              state.dynamo.navigation.stack.length - 1
+                        (state.furmly.view[id].description.steps.length == 1 ||
+                          (state.furmly.navigation.stack.length &&
+                            state.furmly.navigation.stack[
+                              state.furmly.navigation.stack.length - 1
                             ].params.currentStep +
                               1 >
-                              state.dynamo.view[id].description.steps.length -
+                              state.furmly.view[id].description.steps.length -
                                 1))
                       ) &&
-                      !state.dynamo.view[id].description
+                      !state.furmly.view[id].description
                         .disableBackwardNavigation
                     ) {
                       let _p = copy(
-                        state.dynamo.navigation.stack[
-                          state.dynamo.navigation.stack.length - 1
+                        state.furmly.navigation.stack[
+                          state.furmly.navigation.stack.length - 1
                         ]
                       );
                       _p.params.currentStep = (_p.params.currentStep || 0) + 1;
@@ -417,7 +417,7 @@ export function runDynamoProcess(details) {
             },
             defaultError(
               dispatch,
-              ACTIONS.DYNAMO_PROCESS_FAILED,
+              ACTIONS.FURMLY_PROCESS_FAILED,
               () => details.id
             )
           ],
@@ -438,7 +438,7 @@ export function runDynamoProcess(details) {
       )
     });
 }
-export function getDynamoFilePreview(id, key, fileType, query) {
+export function getFurmlyFilePreview(id, key, fileType, query) {
   return (dispatch, getState) => {
     dispatch({
       [CALL_API]: preDispatch(
@@ -468,7 +468,7 @@ export function getDynamoFilePreview(id, key, fileType, query) {
   };
 }
 
-export function uploadDynamoFile(file, key) {
+export function uploadFurmlyFile(file, key) {
   let formData = new FormData();
 
   formData.append("file", file);

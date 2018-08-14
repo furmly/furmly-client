@@ -1,6 +1,6 @@
 import React, { Component } from "react";
 import { connect } from "react-redux";
-import { runDynamoProcessor, dynamoDownloadUrl } from "./actions";
+import { runFurmlyProcessor, furmlyDownloadUrl } from "./actions";
 import invariants from "./utils/invariants";
 import debug from "debug";
 export default (Link, customDownloadCommand) => {
@@ -11,8 +11,8 @@ export default (Link, customDownloadCommand) => {
 			dispatch
 		};
 	};
-	const log = debug("dynamo-client-components:command");
-	class DynamoCommand extends Component {
+	const log = debug("furmly-client-components:command");
+	class FurmlyCommand extends Component {
 		constructor(props) {
 			super(props);
 			this.go = this.go.bind(this);
@@ -20,7 +20,7 @@ export default (Link, customDownloadCommand) => {
 		}
 		run() {
 			this.props.dispatch(
-				runDynamoProcessor(
+				runFurmlyProcessor(
 					this.props.args.commandProcessor,
 					(this.props.args.commandProcessorArgs &&
 						JSON.parse(this.props.args.commandProcessorArgs)) ||
@@ -31,7 +31,7 @@ export default (Link, customDownloadCommand) => {
 		}
 		go() {
 			switch (this.props.args.commandType) {
-				case DynamoCommand.COMMAND_TYPE.DOWNLOAD:
+				case FurmlyCommand.COMMAND_TYPE.DOWNLOAD:
 					if (!this.props.args.commandProcessorArgs) {
 						throw new Error("Download is not properly setup.");
 					}
@@ -40,7 +40,7 @@ export default (Link, customDownloadCommand) => {
 						let config = JSON.parse(
 							this.props.args.commandProcessorArgs
 						);
-						url = dynamoDownloadUrl.replace(":id", config.id);
+						url = furmlyDownloadUrl.replace(":id", config.id);
 						if (config.access_token)
 							url += `?_t0=${config.access_token}`;
 						if (config.isProcessor)
@@ -71,6 +71,6 @@ export default (Link, customDownloadCommand) => {
 			);
 		}
 	}
-	DynamoCommand.COMMAND_TYPE = { DEFAULT: "DEFAULT", DOWNLOAD: "DOWNLOAD" };
-	return connect(null, mapDispatchToState)(DynamoCommand);
+	FurmlyCommand.COMMAND_TYPE = { DEFAULT: "DEFAULT", DOWNLOAD: "DOWNLOAD" };
+	return connect(null, mapDispatchToState)(FurmlyCommand);
 };

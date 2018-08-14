@@ -9,7 +9,7 @@ const reducers = [
 ];
 export default function(state = {}, action) {
 	if (action.type == "persist/REHYDRATE") {
-		var incoming = action.payload.dynamo;
+		var incoming = action.payload.furmly;
 		if (incoming) {
 			toggleAllBusyIndicators(incoming);
 			state = {

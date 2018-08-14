@@ -1,12 +1,12 @@
 import React, { Component } from "react";
 import { connect } from "react-redux";
-import { fetchDynamoProcess } from "./actions";
+import { fetchFurmlyProcess } from "./actions";
 import invariants from "./utils/invariants";
 import debug from "debug";
 export default (Link, NavigationActions) => {
 	if (invariants.validComponent(Link, "Link") && !NavigationActions)
-		throw new Error("NavigationActions cannot be null (dynamo_nav)");
-	const log = debug("dynamo-client-components:nav");
+		throw new Error("NavigationActions cannot be null (furmly_nav)");
+	const log = debug("furmly-client-components:nav");
 	const mapDispatchToState = dispatch => {
 		return {
 			dispatch
@@ -17,13 +17,13 @@ export default (Link, NavigationActions) => {
 		return {
 			context:
 				state &&
-				state.dynamo.view &&
-				state.dynamo.view.navigationContext
+				state.furmly.view &&
+				state.furmly.view.navigationContext
 		};
 	};
 
-	//{text:"link text",type:"DYNAMO or CLIENT",config:{value:""}}
-	class DynamoNav extends Component {
+	//{text:"link text",type:"FURMLY or CLIENT",config:{value:""}}
+	class FurmlyNav extends Component {
 		constructor(props) {
 			super(props);
 			this.go = this.go.bind(this);
@@ -46,9 +46,9 @@ export default (Link, NavigationActions) => {
 				this.state.link ||
 				(this.props.args.config && this.props.args.config.value);
 			if (link) {
-				let linkAndParams = DynamoNav.getParams(true, link);
+				let linkAndParams = FurmlyNav.getParams(true, link);
 				if (this.props.args.params) {
-					let paramsOnly = DynamoNav.getParams(
+					let paramsOnly = FurmlyNav.getParams(
 						false,
 						this.props.args.params
 					);
@@ -58,7 +58,7 @@ export default (Link, NavigationActions) => {
 				link = linkAndParams.link;
 				params = linkAndParams.params;
 				switch (this.props.args.type) {
-					case DynamoNav.NAV_TYPE.CLIENT:
+					case FurmlyNav.NAV_TYPE.CLIENT:
 						//this.props.dispatch(
 						NavigationActions.navigate(
 							{
@@ -71,12 +71,12 @@ export default (Link, NavigationActions) => {
 						//);
 						break;
 
-					case DynamoNav.NAV_TYPE.DYNAMO:
+					case FurmlyNav.NAV_TYPE.FURMLY:
 						//const setParamsAction =
 						NavigationActions.setParams(
 							{
 								params: { id: link, fetchParams: params },
-								key: "Dynamo"
+								key: "Furmly"
 							},
 							this.props.context,
 							this.props.navigation
@@ -97,6 +97,6 @@ export default (Link, NavigationActions) => {
 			);
 		}
 	}
-	DynamoNav.NAV_TYPE = { CLIENT: "CLIENT", DYNAMO: "DYNAMO" };
-	return connect(mapStateToProps, mapDispatchToState)(DynamoNav);
+	FurmlyNav.NAV_TYPE = { CLIENT: "CLIENT", FURMLY: "FURMLY" };
+	return connect(mapStateToProps, mapDispatchToState)(FurmlyNav);
 };

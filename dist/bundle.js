@@ -1462,8 +1462,8 @@ var ACTIONS = {
 	FAILED_TO_GET_REFRESH_TOKEN: "FAILED_TO_GET_REFRESH_TOKEN",
 	CLEAR_STACK: "CLEAR_STACK",
 	REPLACE_STACK: "REPLACE_STACK",
-	SET_DYNAMO_PARAMS: "SET_DYNAMO_PARAMS",
-	REMOVE_LAST_DYNAMO_PARAMS: "REMOVE_LAST_DYNAMO_PARAMS",
+	SET_FURMLY_PARAMS: "SET_FURMLY_PARAMS",
+	REMOVE_LAST_FURMLY_PARAMS: "REMOVE_LAST_FURMLY_PARAMS",
 	ALREADY_VISIBLE: "ALREADY_VISIBLE",
 	CLEAR_DATA: "CLEAR_DATA",
 	ADD_NAVIGATION_CONTEXT: "ADD_NAVIGATION_CONTEXT",
@@ -1509,15 +1509,15 @@ var ACTIONS = {
 	GET_SINGLE_ITEM_FOR_GRID: "GET_SINGLE_ITEM_FOR_GRID",
 	GOT_SINGLE_ITEM_FOR_GRID: "GOT_SINGLE_ITEM_FOR_GRID",
 	ERROR_WHILE_GETTING_SINGLE_ITEM_FOR_GRID: "ERROR_WHILE_GETTING_SINGLE_ITEM_FOR_GRID",
-	DYNAMO_GET_MORE_FOR_GRID: "DYNAMO_GET_MORE_FOR_GRID",
+	FURMLY_GET_MORE_FOR_GRID: "FURMLY_GET_MORE_FOR_GRID",
 	ERROR_WHILE_FETCHING_GRID: "ERROR_WHILE_FETCHING_GRID",
 	FILTERED_GRID: "FILTERED_GRID",
-	DYNAMO_PROCESSOR_RUNNING: "DYNAMO_PROCESSOR_RUNNING",
-	DYNAMO_PROCESSOR_RAN: "DYNAMO_PROCESSOR_RAN",
-	DYNAMO_PROCESSOR_FAILED: "DYNAMO_PROCESSOR_FAILED",
-	DYNAMO_PROCESS_RUNNING: "DYNAMO_PROCESS_RUNNING",
-	DYNAMO_PROCESS_RAN: "DYNAMO_PROCESS_RAN",
-	DYNAMO_PROCESS_FAILED: "DYNAMO_PROCESS_FAILED",
+	FURMLY_PROCESSOR_RUNNING: "FURMLY_PROCESSOR_RUNNING",
+	FURMLY_PROCESSOR_RAN: "FURMLY_PROCESSOR_RAN",
+	FURMLY_PROCESSOR_FAILED: "FURMLY_PROCESSOR_FAILED",
+	FURMLY_PROCESS_RUNNING: "FURMLY_PROCESS_RUNNING",
+	FURMLY_PROCESS_RAN: "FURMLY_PROCESS_RAN",
+	FURMLY_PROCESS_FAILED: "FURMLY_PROCESS_FAILED",
 	API_ERROR: "API_ERROR",
 	START_FILE_UPLOAD: "START_FILE_UPLOAD",
 	FILE_UPLOADED: "FILE_UPLOADED",
@@ -1541,7 +1541,7 @@ function navigation () {
 	var action = arguments[1];
 
 	switch (action.type) {
-		case ACTIONS.SET_DYNAMO_PARAMS:
+		case ACTIONS.SET_FURMLY_PARAMS:
 		case ACTIONS.ALREADY_VISIBLE:
 			if (hasScreenAlready(state, action.payload)) {
 				makeTop(state, action.payload);
@@ -1557,10 +1557,10 @@ function navigation () {
 			stack.stack.forEach(countRef.bind(null, stack, stack.stack.length - 1));
 			return Object.assign({}, state, stack);
 
-		case ACTIONS.REMOVE_LAST_DYNAMO_PARAMS:
+		case ACTIONS.REMOVE_LAST_FURMLY_PARAMS:
 			var stack = copyStack(state),
 			    item = stack.stack.pop();
-			if (item && (item.key == "Dynamo" || item.$routeName == "Dynamo") && stack._references[item.params.id]) {
+			if (item && (item.key == "Furmly" || item.$routeName == "Furmly") && stack._references[item.params.id]) {
 				var refs = stack._references[item.params.id][0];
 				stack._references[item.params.id][0] = refs - 1;
 				//clean up.
@@ -1590,7 +1590,7 @@ function hasScreenAlready(state, current) {
 }
 
 function countRef(stack, index, e) {
-	if (e.key == "Dynamo" || e.$routeName == "Dynamo") {
+	if (e.key == "Furmly" || e.$routeName == "Furmly") {
 		if (stack._references[e.params.id]) {
 			stack._references[e.params.id][0] = stack._references[e.params.id][0] + 1;
 		} else {
@@ -1609,14 +1609,14 @@ var CHECK_FOR_EXISTING_SCREEN = Symbol("CHECK FOR EXISTING SCREEN");
 var enhancers = [{
 	id: CHECK_FOR_EXISTING_SCREEN,
 	mapState: function mapState(state, action) {
-		if (hasScreenAlready(state.dynamo.navigation, action.payload)) return _extends$4({ hasScreenAlready: true }, action.payload);
+		if (hasScreenAlready(state.furmly.navigation, action.payload)) return _extends$4({ hasScreenAlready: true }, action.payload);
 	}
 }];
 var index = (function () {
 	return enhancers;
 });
 
-var log = debug("dynamo-actions");
+var log = debug("furmly-actions");
 
 var preDispatch = config.preDispatch;
 var preRefreshToken = config.preRefreshToken;
@@ -1647,7 +1647,7 @@ function setParams(args) {
   var _ref;
 
   return _ref = {
-    type: ACTIONS.SET_DYNAMO_PARAMS
+    type: ACTIONS.SET_FURMLY_PARAMS
   }, defineProperty(_ref, CHECK_FOR_EXISTING_SCREEN, true), defineProperty(_ref, "payload", args), _ref;
 }
 
@@ -1658,7 +1658,7 @@ function replaceStack(args) {
   };
 }
 function goBack(args) {
-  return { type: ACTIONS.REMOVE_LAST_DYNAMO_PARAMS, payload: args };
+  return { type: ACTIONS.REMOVE_LAST_FURMLY_PARAMS, payload: args };
 }
 function clearNavigationStack() {
   return { type: ACTIONS.CLEAR_STACK };
@@ -1718,8 +1718,8 @@ function defaultError(dispatch, customType, _meta, throttleEnabled) {
     }
   };
 }
-var dynamoDownloadUrl = BASE_URL + "/api/download/:id";
-function fetchDynamoProcess(id, args) {
+var furmlyDownloadUrl = BASE_URL + "/api/download/:id";
+function fetchFurmlyProcess(id, args) {
   if (config.cacheProcessDescription) {
     var cacheKey = { id: id, args: args },
         hasKey = cache.hasKey(cacheKey);
@@ -1770,16 +1770,16 @@ function clearElementData(key) {
   };
 }
 function getMoreForGrid(id, args, key) {
-  return runDynamoProcessor(id, args, key, {
+  return runFurmlyProcessor(id, args, key, {
     requestCustomType: ACTIONS.FETCHING_GRID,
-    resultCustomType: ACTIONS.DYNAMO_GET_MORE_FOR_GRID,
+    resultCustomType: ACTIONS.FURMLY_GET_MORE_FOR_GRID,
     errorCustomType: ACTIONS.ERROR_WHILE_FETCHING_GRID,
     disableCache: true,
     disableRetry: true
   });
 }
 function filterGrid(id, args, key) {
-  return runDynamoProcessor(id, args, key, {
+  return runFurmlyProcessor(id, args, key, {
     requestCustomType: ACTIONS.FETCHING_GRID,
     resultCustomType: ACTIONS.FILTERED_GRID,
     errorCustomType: ACTIONS.ERROR_WHILE_FETCHING_GRID,
@@ -1789,7 +1789,7 @@ function filterGrid(id, args, key) {
 }
 
 function getItemTemplate(id, args, key) {
-  return runDynamoProcessor(id, args, key, {
+  return runFurmlyProcessor(id, args, key, {
     requestCustomType: ACTIONS.GET_ITEM_TEMPLATE,
     resultCustomType: ACTIONS.GOT_ITEM_TEMPLATE,
     errorCustomType: ACTIONS.FAILED_TO_GET_ITEM_TEMPLATE,
@@ -1798,7 +1798,7 @@ function getItemTemplate(id, args, key) {
 }
 
 function getFilterTemplate(id, args, key) {
-  return runDynamoProcessor(id, args, key, {
+  return runFurmlyProcessor(id, args, key, {
     requestCustomType: ACTIONS.GET_FILTER_TEMPLATE,
     resultCustomType: ACTIONS.GOT_FILTER_TEMPLATE,
     errorCustomType: ACTIONS.FAILED_TO_GET_FILTER_TEMPLATE,
@@ -1807,7 +1807,7 @@ function getFilterTemplate(id, args, key) {
 }
 
 function getSingleItemForGrid(id, args, key) {
-  return runDynamoProcessor(id, args, key, {
+  return runFurmlyProcessor(id, args, key, {
     requestCustomType: ACTIONS.GET_SINGLE_ITEM_FOR_GRID,
     resultCustomType: ACTIONS.GOT_SINGLE_ITEM_FOR_GRID,
     errorCustomType: ACTIONS.ERROR_WHILE_GETTING_SINGLE_ITEM_FOR_GRID,
@@ -1825,7 +1825,7 @@ function getRefreshToken() {
   };
 }
 
-function runDynamoProcessor(id, args, key) {
+function runFurmlyProcessor(id, args, key) {
   var _ref2 = arguments.length > 3 && arguments[3] !== undefined ? arguments[3] : {},
       requestCustomType = _ref2.requestCustomType,
       resultCustomType = _ref2.resultCustomType,
@@ -1844,7 +1844,7 @@ function runDynamoProcessor(id, args, key) {
 
       return function (dispatch) {
         dispatch({
-          type: resultCustomType || ACTIONS.DYNAMO_PROCESSOR_RAN,
+          type: resultCustomType || ACTIONS.FURMLY_PROCESSOR_RAN,
           payload: payload
         });
       };
@@ -1864,10 +1864,10 @@ function runDynamoProcessor(id, args, key) {
       dispatch(defineProperty({}, CALL_API, preDispatch({
         endpoint: endpoint,
         types: [{
-          type: requestCustomType || ACTIONS.DYNAMO_PROCESSOR_RUNNING,
+          type: requestCustomType || ACTIONS.FURMLY_PROCESSOR_RUNNING,
           meta: { id: id, key: key, args: args }
         }, {
-          type: resultCustomType || ACTIONS.DYNAMO_PROCESSOR_RAN,
+          type: resultCustomType || ACTIONS.FURMLY_PROCESSOR_RAN,
           payload: function payload(action, state, res) {
             return res.json().then(function (data) {
               delete throttled[throttleKey];
@@ -1881,7 +1881,7 @@ function runDynamoProcessor(id, args, key) {
               return response;
             });
           }
-        }, defaultError(dispatch, errorCustomType || ACTIONS.DYNAMO_PROCESSOR_FAILED, function () {
+        }, defaultError(dispatch, errorCustomType || ACTIONS.FURMLY_PROCESSOR_FAILED, function () {
           return key;
         }, !config.disableProcessorRetry && !disableRetry)],
         method: "POST",
@@ -1904,27 +1904,27 @@ function showMessage$1(message) {
   };
 }
 
-function runDynamoProcess(details) {
+function runFurmlyProcess(details) {
   return function (dispatch, getState) {
     return dispatch(defineProperty({}, CALL_API, preDispatch({
       endpoint: BASE_URL + "/api/process/run/" + details.id,
       types: [{
-        type: ACTIONS.DYNAMO_PROCESS_RUNNING,
+        type: ACTIONS.FURMLY_PROCESS_RUNNING,
         meta: {
           id: details.id,
           form: details.form,
           currentStep: details.currentStep
         }
       }, {
-        type: ACTIONS.DYNAMO_PROCESS_RAN,
+        type: ACTIONS.FURMLY_PROCESS_RAN,
         payload: function payload(action, state, res) {
           return res.json().then(function (d) {
             if (d && typeof d.message == "string") {
               dispatch(showMessage$1(d.message));
             }
             var id = details.id;
-            if (!(config.uiOnDemand && d.status == "COMPLETED") && !(!config.uiOnDemand && (state.dynamo.view[id].description.steps.length == 1 || state.dynamo.navigation.stack.length && state.dynamo.navigation.stack[state.dynamo.navigation.stack.length - 1].params.currentStep + 1 > state.dynamo.view[id].description.steps.length - 1)) && !state.dynamo.view[id].description.disableBackwardNavigation) {
-              var _p = copy(state.dynamo.navigation.stack[state.dynamo.navigation.stack.length - 1]);
+            if (!(config.uiOnDemand && d.status == "COMPLETED") && !(!config.uiOnDemand && (state.furmly.view[id].description.steps.length == 1 || state.furmly.navigation.stack.length && state.furmly.navigation.stack[state.furmly.navigation.stack.length - 1].params.currentStep + 1 > state.furmly.view[id].description.steps.length - 1)) && !state.furmly.view[id].description.disableBackwardNavigation) {
+              var _p = copy(state.furmly.navigation.stack[state.furmly.navigation.stack.length - 1]);
               _p.params.currentStep = (_p.params.currentStep || 0) + 1;
               dispatch(setParams(_p));
               if (config.notifyStepAdvance) {
@@ -1940,7 +1940,7 @@ function runDynamoProcess(details) {
             });
           });
         }
-      }, defaultError(dispatch, ACTIONS.DYNAMO_PROCESS_FAILED, function () {
+      }, defaultError(dispatch, ACTIONS.FURMLY_PROCESS_FAILED, function () {
         return details.id;
       })],
       method: "POST",
@@ -1956,7 +1956,7 @@ function runDynamoProcess(details) {
     }, getState())));
   };
 }
-function getDynamoFilePreview(id, key, fileType, query) {
+function getFurmlyFilePreview(id, key, fileType, query) {
   return function (dispatch, getState) {
     dispatch(defineProperty({}, CALL_API, preDispatch({
       endpoint: BASE_URL + "/api/upload/preview/" + (id + (query || "")),
@@ -1979,7 +1979,7 @@ function getDynamoFilePreview(id, key, fileType, query) {
   };
 }
 
-function uploadDynamoFile(file, key) {
+function uploadFurmlyFile(file, key) {
   var formData = new FormData();
 
   formData.append("file", file);
@@ -2219,16 +2219,16 @@ var ReactSSRErrorHandler = require("error_handler");
  * @param  {Function} Input Input class
  * @return {Function}       Wrapped class
  */
-var dynamo_input = (function (LabelWrapper, Input, DatePicker, Checkbox) {
+var furmly_input = (function (LabelWrapper, Input, DatePicker, Checkbox) {
 	invariants.validComponent(LabelWrapper, "LabelWrapper");
 	invariants.validComponent(Input, "Input");
 	invariants.validComponent(DatePicker, "DatePicker");
 	invariants.validComponent(Checkbox, "Checkbox");
-	var log = debug("dynamo-client-components:input");
+	var log = debug("furmly-client-components:input");
 
-	var DynamoInput = function (_Component) {
-		inherits(DynamoInput, _Component);
-		createClass(DynamoInput, [{
+	var FurmlyInput = function (_Component) {
+		inherits(FurmlyInput, _Component);
+		createClass(FurmlyInput, [{
 			key: "render",
 			value: function render() {
 				try {
@@ -2239,10 +2239,10 @@ var dynamo_input = (function (LabelWrapper, Input, DatePicker, Checkbox) {
 			}
 		}]);
 
-		function DynamoInput(props) {
-			classCallCheck(this, DynamoInput);
+		function FurmlyInput(props) {
+			classCallCheck(this, FurmlyInput);
 
-			var _this = possibleConstructorReturn(this, (DynamoInput.__proto__ || Object.getPrototypeOf(DynamoInput)).call(this, props));
+			var _this = possibleConstructorReturn(this, (FurmlyInput.__proto__ || Object.getPrototypeOf(FurmlyInput)).call(this, props));
 
 			_this.state = {};
 			_this.setDefault = _this.setDefault.bind(_this);
@@ -2264,7 +2264,7 @@ var dynamo_input = (function (LabelWrapper, Input, DatePicker, Checkbox) {
 			return _this;
 		}
 
-		createClass(DynamoInput, [{
+		createClass(FurmlyInput, [{
 			key: "componentDidMount",
 			value: function componentDidMount() {
 				var _this2 = this;
@@ -2458,27 +2458,27 @@ var dynamo_input = (function (LabelWrapper, Input, DatePicker, Checkbox) {
 				/*jshint ignore:end */
 			}
 		}]);
-		return DynamoInput;
+		return FurmlyInput;
 	}(React.Component);
 
-	DynamoInput.propTypes = {
+	FurmlyInput.propTypes = {
 		valueChanged: PropTypes.func
 	};
-	return DynamoInput;
+	return FurmlyInput;
 });
 
 var ReactSSRErrorHandler$1 = require("error_handler");
 
-var dynamo_view = (function (Page, Warning, Container) {
+var furmly_view = (function (Page, Warning, Container) {
 	invariants.validComponent(Page, "Page");
 	invariants.validComponent(Warning, "Warning");
 	invariants.validComponent(Container, "Container");
-	//map elements in DynamoView props to elements in store.
-	var log = debug("dynamo-client-components:view");
+	//map elements in FurmlyView props to elements in store.
+	var log = debug("furmly-client-components:view");
 	var mapStateToProps = function mapStateToProps(_$$1, initialProps) {
 		return function (state, ownProps) {
 			//log("mapping state to props");
-			var _state = state.dynamo.view[ownProps.currentProcess],
+			var _state = state.furmly.view[ownProps.currentProcess],
 			    description = _state && _state.description,
 			    map = {
 				value: _state && _state[ownProps.currentStep] || null
@@ -2501,9 +2501,9 @@ var dynamo_view = (function (Page, Warning, Container) {
 		};
 	};
 
-	var DynamoView = function (_Component) {
-		inherits(DynamoView, _Component);
-		createClass(DynamoView, [{
+	var FurmlyView = function (_Component) {
+		inherits(FurmlyView, _Component);
+		createClass(FurmlyView, [{
 			key: "render",
 			value: function render() {
 				try {
@@ -2514,10 +2514,10 @@ var dynamo_view = (function (Page, Warning, Container) {
 			}
 		}]);
 
-		function DynamoView(props) {
-			classCallCheck(this, DynamoView);
+		function FurmlyView(props) {
+			classCallCheck(this, FurmlyView);
 
-			var _this = possibleConstructorReturn(this, (DynamoView.__proto__ || Object.getPrototypeOf(DynamoView)).call(this, props));
+			var _this = possibleConstructorReturn(this, (FurmlyView.__proto__ || Object.getPrototypeOf(FurmlyView)).call(this, props));
 
 			_this.onValueChanged = _this.onValueChanged.bind(_this);
 			_this.submit = _this.submit.bind(_this);
@@ -2528,12 +2528,12 @@ var dynamo_view = (function (Page, Warning, Container) {
 			return _this;
 		}
 
-		createClass(DynamoView, [{
+		createClass(FurmlyView, [{
 			key: "onValueChanged",
 			value: function onValueChanged(form) {
-				//this.state.form = form.dynamo_view;
+				//this.state.form = form.furmly_view;
 				this.props.valueChanged({
-					form: form.dynamo_view,
+					form: form.furmly_view,
 					id: this.props.currentProcess,
 					step: this.props.currentStep
 				});
@@ -2572,7 +2572,7 @@ var dynamo_view = (function (Page, Warning, Container) {
 					React__default.createElement(Container, {
 						label: this.props.title,
 						elements: this.props.elements,
-						name: "dynamo_view",
+						name: "furmly_view",
 						value: this.props.value,
 						valueChanged: this.onValueChanged,
 						validator: this.state.validator,
@@ -2584,15 +2584,15 @@ var dynamo_view = (function (Page, Warning, Container) {
 				/*jshint ignore:end*/
 			}
 		}]);
-		return DynamoView;
+		return FurmlyView;
 	}(React.Component);
 
-	return connect(mapStateToProps, mapDispatchToProps)(DynamoView);
+	return connect(mapStateToProps, mapDispatchToProps)(FurmlyView);
 });
 
 var ReactSSRErrorHandler$2 = require("error_handler");
 
-var dynamo_container = (function () {
+var furmly_container = (function () {
 	for (var _len = arguments.length, args = Array(_len), _key = 0; _key < _len; _key++) {
 		args[_key] = arguments[_key];
 	}
@@ -2609,8 +2609,8 @@ var dynamo_container = (function () {
 		ComponentLocator = args[3];
 	}
 
-	if (invariants.validComponent(Section, "Section") && invariants.validComponent(Header, "Header") && !ComponentLocator) throw new Error("ComponentLocator cannot be null (dynamo_container)");
-	var log = debug("dynamo-client-components:container");
+	if (invariants.validComponent(Section, "Section") && invariants.validComponent(Header, "Header") && !ComponentLocator) throw new Error("ComponentLocator cannot be null (furmly_container)");
+	var log = debug("furmly-client-components:container");
 	return function (_Component) {
 		inherits(_class, _Component);
 		createClass(_class, [{
@@ -2686,7 +2686,7 @@ var dynamo_container = (function () {
 				    elements = (this.props.elements || []).sort(function (x, y) {
 					return x.order - y.order;
 				}).map(function (x, index) {
-					var DynamoComponent = ComponentLocator(x),
+					var FurmlyComponent = ComponentLocator(x),
 					    source = self.props.value,
 
 					//validator = {},
@@ -2694,11 +2694,11 @@ var dynamo_container = (function () {
 					//this._validations.push(validator);
 					if (source && source.hasOwnProperty(x.name) && keys.indexOf(x.name) !== -1) keys.splice(keys.indexOf(x.name), 1);
 					/*jshint ignore:start*/
-					if (!DynamoComponent) throw new Error("Unknown component:" + JSON.stringify(x, null, " "));
-					if (DynamoComponent.notifyExtra) {
+					if (!FurmlyComponent) throw new Error("Unknown component:" + JSON.stringify(x, null, " "));
+					if (FurmlyComponent.notifyExtra) {
 						notifyExtra.push(index);
 						return function (extra) {
-							var component = React__default.createElement(DynamoComponent, _extends$4({}, x, {
+							var component = React__default.createElement(FurmlyComponent, _extends$4({}, x, {
 								extra: extra,
 								key: x.name,
 								value: value,
@@ -2713,7 +2713,7 @@ var dynamo_container = (function () {
 							return component;
 						};
 					}
-					var component = React__default.createElement(DynamoComponent, _extends$4({}, x, {
+					var component = React__default.createElement(FurmlyComponent, _extends$4({}, x, {
 						value: value,
 						validator: _this3.state._validations[index],
 						key: x.name,
@@ -2761,21 +2761,21 @@ var ReactSSRErrorHandler$3 = require("error_handler");
  * @param  {Function} Input Input class
  * @return {Function}       Wrapped class
  */
-var dynamo_process = (function (ProgressBar, TextView, DynamoView) {
+var furmly_process = (function (ProgressBar, TextView, FurmlyView) {
 	invariants.validComponent(ProgressBar, "ProgressBar");
 	invariants.validComponent(TextView, "TextView");
-	invariants.validComponent(DynamoView, "DynamoView");
-	var log = debug("dynamo-client-components:process");
+	invariants.validComponent(FurmlyView, "FurmlyView");
+	var log = debug("furmly-client-components:process");
 
-	//map elements in DynamoInput props to elements in store.
+	//map elements in FurmlyInput props to elements in store.
 	var mapStateToProps = function mapStateToProps(_$$1, initialProps) {
 		return function (state, ownProps) {
-			var _state = state.dynamo.view["" + ownProps.id];
+			var _state = state.furmly.view["" + ownProps.id];
 			return {
-				busy: !!state.dynamo.view[ownProps.id + "-busy"],
+				busy: !!state.furmly.view[ownProps.id + "-busy"],
 				description: _state && _state.description,
 				instanceId: _state && _state.instanceId,
-				message: state.dynamo.view.message,
+				message: state.furmly.view.message,
 				completed: _state && _state.completed
 			};
 		};
@@ -2784,17 +2784,17 @@ var dynamo_process = (function (ProgressBar, TextView, DynamoView) {
 	var mapDispatchToProps = function mapDispatchToProps(dispatch) {
 		return {
 			fetch: function fetch(id, params) {
-				dispatch(fetchDynamoProcess(id, params));
+				dispatch(fetchFurmlyProcess(id, params));
 			},
 			runProcess: function runProcess(info) {
-				dispatch(runDynamoProcess(info));
+				dispatch(runFurmlyProcess(info));
 			}
 		};
 	};
 
-	var DynamoProcess = function (_Component) {
-		inherits(DynamoProcess, _Component);
-		createClass(DynamoProcess, [{
+	var FurmlyProcess = function (_Component) {
+		inherits(FurmlyProcess, _Component);
+		createClass(FurmlyProcess, [{
 			key: "render",
 			value: function render() {
 				try {
@@ -2805,17 +2805,17 @@ var dynamo_process = (function (ProgressBar, TextView, DynamoView) {
 			}
 		}]);
 
-		function DynamoProcess(props) {
-			classCallCheck(this, DynamoProcess);
+		function FurmlyProcess(props) {
+			classCallCheck(this, FurmlyProcess);
 
-			var _this = possibleConstructorReturn(this, (DynamoProcess.__proto__ || Object.getPrototypeOf(DynamoProcess)).call(this, props));
+			var _this = possibleConstructorReturn(this, (FurmlyProcess.__proto__ || Object.getPrototypeOf(FurmlyProcess)).call(this, props));
 
 			_this.state = {};
 			_this.submit = _this.submit.bind(_this);
 			return _this;
 		}
 
-		createClass(DynamoProcess, [{
+		createClass(FurmlyProcess, [{
 			key: "componentDidMount",
 			value: function componentDidMount() {
 				if (!this.props.description || this.props.id !== this.props.description._id && this.props.id !== this.props.description.uid) {
@@ -2849,7 +2849,7 @@ var dynamo_process = (function (ProgressBar, TextView, DynamoView) {
 				if (!this.props.description) {
 					return React__default.createElement(TextView, { text: "Sorry we couldnt load that process...please wait a few minutes and retry." });
 				}
-				return React__default.createElement(DynamoView, {
+				return React__default.createElement(FurmlyView, {
 					currentStep: this.props.currentStep || 0,
 					currentProcess: this.props.id,
 					navigation: this.props.navigation,
@@ -2859,29 +2859,29 @@ var dynamo_process = (function (ProgressBar, TextView, DynamoView) {
 				/*jshint ignore:end */
 			}
 		}]);
-		return DynamoProcess;
+		return FurmlyProcess;
 	}(React.Component);
-	// DynamoProcess.propTypes = {
+	// FurmlyProcess.propTypes = {
 	// 	id: React.PropTypes.string.isRequired,
 	// 	fetchParams: React.PropTypes.object,
 	// 	description: React.PropTypes.object
 	// };
 
 
-	return connect(mapStateToProps, mapDispatchToProps)(DynamoProcess);
+	return connect(mapStateToProps, mapDispatchToProps)(FurmlyProcess);
 });
 
 var ReactSSRErrorHandler$4 = require("error_handler");
 
-var dynamo_section = (function (Layout, Header, Container) {
+var furmly_section = (function (Layout, Header, Container) {
 	invariants.validComponent(Layout, "Layout");
 	invariants.validComponent(Header, "Header");
 	invariants.validComponent(Container, "Container");
-	var log = debug("dynamo-client-components:session");
+	var log = debug("furmly-client-components:session");
 
-	var DynamoSection = function (_Component) {
-		inherits(DynamoSection, _Component);
-		createClass(DynamoSection, [{
+	var FurmlySection = function (_Component) {
+		inherits(FurmlySection, _Component);
+		createClass(FurmlySection, [{
 			key: "render",
 			value: function render() {
 				try {
@@ -2892,12 +2892,12 @@ var dynamo_section = (function (Layout, Header, Container) {
 			}
 		}]);
 
-		function DynamoSection(props) {
-			classCallCheck(this, DynamoSection);
-			return possibleConstructorReturn(this, (DynamoSection.__proto__ || Object.getPrototypeOf(DynamoSection)).call(this, props));
+		function FurmlySection(props) {
+			classCallCheck(this, FurmlySection);
+			return possibleConstructorReturn(this, (FurmlySection.__proto__ || Object.getPrototypeOf(FurmlySection)).call(this, props));
 		}
 
-		createClass(DynamoSection, [{
+		createClass(FurmlySection, [{
 			key: "__originalRenderMethod__",
 			value: function __originalRenderMethod__() {
 				/*jshint ignore:start*/
@@ -2924,17 +2924,17 @@ var dynamo_section = (function (Layout, Header, Container) {
 				/*jshint ignore:end*/
 			}
 		}]);
-		return DynamoSection;
+		return FurmlySection;
 	}(React.Component);
 
-	return DynamoSection;
+	return FurmlySection;
 });
 
 function getTitleFromState(state) {
-	var id = state.dynamo.navigation.stack.length && state.dynamo.navigation.stack[state.dynamo.navigation.stack.length - 1].params.id;
+	var id = state.furmly.navigation.stack.length && state.furmly.navigation.stack[state.furmly.navigation.stack.length - 1].params.id;
 
 	if (!id) return "School Manager";
-	return state.dynamo.view[id] && state.dynamo.view[id + "-busy"] && "Loading..." || state.dynamo.view[id] && state.dynamo.view[id].description && state.dynamo.view[id].description.steps[state.dynamo.view[id].currentStep || 0].description || state.dynamo.view[id] && state.dynamo.view[id].description && state.dynamo.view[id].description.title || "School Manager";
+	return state.furmly.view[id] && state.furmly.view[id + "-busy"] && "Loading..." || state.furmly.view[id] && state.furmly.view[id].description && state.furmly.view[id].description.steps[state.furmly.view[id].currentStep || 0].description || state.furmly.view[id] && state.furmly.view[id].description && state.furmly.view[id].description.title || "School Manager";
 }
 
 function getValueBasedOnMode(props, v) {
@@ -2944,16 +2944,16 @@ function isObjectIdMode(props) {
 	return props.args && props.args.mode === "ObjectId";
 }
 function getCurrentStepFromState(state) {
-	return state.dynamo.navigation.stack.length && state.dynamo.navigation.stack[state.dynamo.navigation.stack.length - 1].params.currentStep || 0;
+	return state.furmly.navigation.stack.length && state.furmly.navigation.stack[state.furmly.navigation.stack.length - 1].params.currentStep || 0;
 }
 function getCurrentStep(state) {
-	return state.dynamo.navigation.stack.length && state.dynamo.navigation.stack[state.dynamo.navigation.stack.length - 1].params.currentStep || 0;
+	return state.furmly.navigation.stack.length && state.furmly.navigation.stack[state.furmly.navigation.stack.length - 1].params.currentStep || 0;
 }
 
 function getCurrentProcess(state) {
-	for (var i = state.dynamo.navigation.stack.length - 1; i >= 0; i--) {
-		if (state.dynamo.navigation.stack[i].key == "Dynamo") {
-			return state.dynamo.navigation.stack[i].params.id;
+	for (var i = state.furmly.navigation.stack.length - 1; i >= 0; i--) {
+		if (state.furmly.navigation.stack[i].key == "Furmly") {
+			return state.furmly.navigation.stack[i].params.id;
 		}
 	}
 	return null;
@@ -2997,9 +2997,9 @@ function unwrapObjectValue(value) {
  * @return {[type]}         [description]
  */
 var getTemplatesAndAddComponentUid = runThroughObj.bind(null, [function (key, data, result, parent) {
-	if (key === "dynamo_ref") {
-		if (data.template) return result[data.dynamo_ref] = data.template, result;
-		if (parent && parent.itemTemplate) return result[data.dynamo_ref] = parent.itemTemplate, result;
+	if (key === "furmly_ref") {
+		if (data.template) return result[data.furmly_ref] = data.template, result;
+		if (parent && parent.itemTemplate) return result[data.furmly_ref] = parent.itemTemplate, result;
 	}
 }, function (key, data, result, parent) {
 	if (key == "elementType" && !data.component_uid) {
@@ -3041,21 +3041,21 @@ var view = {
 
 var ReactSSRErrorHandler$5 = require("error_handler");
 
-var dynamo_select = (function (ProgressIndicator, Layout, Container) {
-	if (invariants.validComponent(ProgressIndicator, "ProgressIndicator") && invariants.validComponent(Layout, "Layout") && !Container) throw new Error("Container cannot be null (dynamo_select)");
+var furmly_select = (function (ProgressIndicator, Layout, Container) {
+	if (invariants.validComponent(ProgressIndicator, "ProgressIndicator") && invariants.validComponent(Layout, "Layout") && !Container) throw new Error("Container cannot be null (furmly_select)");
 
-	var log = debug("dynamo-client-components:select");
+	var log = debug("furmly-client-components:select");
 
-	//map elements in DynamoView props to elements in store.
+	//map elements in FurmlyView props to elements in store.
 	var mapStateToProps = function mapStateToProps(_$$1, initialProps) {
 		return function (state, ownProps) {
 			if (ownProps.args.type == "PROCESSOR") {
 				var component_uid = getKey(state, ownProps.component_uid, ownProps);
-				var st = state.dynamo.view[component_uid];
+				var st = state.furmly.view[component_uid];
 				return {
 					items: st,
-					busy: !!state.dynamo.view[getBusyKey(component_uid)],
-					error: !!state.dynamo.view[getErrorKey(component_uid)],
+					busy: !!state.furmly.view[getBusyKey(component_uid)],
+					error: !!state.furmly.view[getErrorKey(component_uid)],
 					component_uid: component_uid
 				};
 			}
@@ -3066,14 +3066,14 @@ var dynamo_select = (function (ProgressIndicator, Layout, Container) {
 	var mapDispatchToProps = function mapDispatchToProps(dispatch) {
 		return {
 			fetch: function fetch(id, params, key) {
-				dispatch(runDynamoProcessor(id, params, key));
+				dispatch(runFurmlyProcessor(id, params, key));
 			}
 		};
 	};
 
-	var DynamoSelect = function (_Component) {
-		inherits(DynamoSelect, _Component);
-		createClass(DynamoSelect, [{
+	var FurmlySelect = function (_Component) {
+		inherits(FurmlySelect, _Component);
+		createClass(FurmlySelect, [{
 			key: "render",
 			value: function render() {
 				try {
@@ -3084,10 +3084,10 @@ var dynamo_select = (function (ProgressIndicator, Layout, Container) {
 			}
 		}]);
 
-		function DynamoSelect(props) {
-			classCallCheck(this, DynamoSelect);
+		function FurmlySelect(props) {
+			classCallCheck(this, FurmlySelect);
 
-			var _this = possibleConstructorReturn(this, (DynamoSelect.__proto__ || Object.getPrototypeOf(DynamoSelect)).call(this, props));
+			var _this = possibleConstructorReturn(this, (FurmlySelect.__proto__ || Object.getPrototypeOf(FurmlySelect)).call(this, props));
 
 			_this.state = {};
 			_this.fetchItems = _this.fetchItems.bind(_this);
@@ -3102,7 +3102,7 @@ var dynamo_select = (function (ProgressIndicator, Layout, Container) {
 			return _this;
 		}
 
-		createClass(DynamoSelect, [{
+		createClass(FurmlySelect, [{
 			key: "hasValue",
 			value: function hasValue() {
 				return !!this.props.value || "is required";
@@ -3229,17 +3229,17 @@ var dynamo_select = (function (ProgressIndicator, Layout, Container) {
 				/*jshint ignore:end*/
 			}
 		}]);
-		return DynamoSelect;
+		return FurmlySelect;
 	}(React.Component);
 
-	return connect(mapStateToProps, mapDispatchToProps)(DynamoSelect);
+	return connect(mapStateToProps, mapDispatchToProps)(FurmlySelect);
 });
 
 var ReactSSRErrorHandler$6 = require("error_handler");
 
-var DynamoComponentBase = function (_React$Component) {
-	inherits(DynamoComponentBase, _React$Component);
-	createClass(DynamoComponentBase, [{
+var FurmlyComponentBase = function (_React$Component) {
+	inherits(FurmlyComponentBase, _React$Component);
+	createClass(FurmlyComponentBase, [{
 		key: "render",
 		value: function render() {
 			try {
@@ -3250,10 +3250,10 @@ var DynamoComponentBase = function (_React$Component) {
 		}
 	}]);
 
-	function DynamoComponentBase(props, log) {
-		classCallCheck(this, DynamoComponentBase);
+	function FurmlyComponentBase(props, log) {
+		classCallCheck(this, FurmlyComponentBase);
 
-		var _this = possibleConstructorReturn(this, (DynamoComponentBase.__proto__ || Object.getPrototypeOf(DynamoComponentBase)).call(this, props));
+		var _this = possibleConstructorReturn(this, (FurmlyComponentBase.__proto__ || Object.getPrototypeOf(FurmlyComponentBase)).call(this, props));
 
 		_this.log = function (m) {
 			log(m + " for " + _this.props.name);
@@ -3261,37 +3261,37 @@ var DynamoComponentBase = function (_React$Component) {
 		return _this;
 	}
 
-	createClass(DynamoComponentBase, [{
+	createClass(FurmlyComponentBase, [{
 		key: "__originalRenderMethod__",
 		value: function __originalRenderMethod__() {
 			return null;
 		}
 	}]);
-	return DynamoComponentBase;
+	return FurmlyComponentBase;
 }(React__default.Component);
 
-var dynamo_selectset = (function (Layout, Picker, ProgressBar, Container) {
-	//map elements in DynamoView props to elements in store.
+var furmly_selectset = (function (Layout, Picker, ProgressBar, Container) {
+	//map elements in FurmlyView props to elements in store.
 	invariants.validComponent(Layout, "Layout");
 	invariants.validComponent(Picker, "Picker");
 	invariants.validComponent(Container, "Container");
-	var log = debug("dynamo-client-components:selectset");
+	var log = debug("furmly-client-components:selectset");
 	var noPath = "selectset_no_path";
 	var noItems = [];
 	var mapDispatchToProps = function mapDispatchToProps(dispatch) {
 		return {
 			getItems: function getItems(id, args, key, extra) {
-				return dispatch(runDynamoProcessor(id, args, key, extra));
+				return dispatch(runFurmlyProcessor(id, args, key, extra));
 			}
 		};
 	};
 	var mapStateToProps = function mapStateToProps(_$$1, initialProps) {
 		return function (state, ownProps) {
 			var component_uid = getKey(state, ownProps.component_uid, ownProps),
-			    items = state.dynamo.view[component_uid] || ownProps.args.items;
+			    items = state.furmly.view[component_uid] || ownProps.args.items;
 			return {
-				busy: !!state.dynamo.view[getBusyKey(component_uid)],
-				error: !!state.dynamo.view[getErrorKey(component_uid)],
+				busy: !!state.furmly.view[getBusyKey(component_uid)],
+				error: !!state.furmly.view[getErrorKey(component_uid)],
 				items: items,
 				contentItems: getPickerItemsById(ownProps.value, items),
 				component_uid: component_uid
@@ -3310,13 +3310,13 @@ var dynamo_selectset = (function (Layout, Picker, ProgressBar, Container) {
 		return noItems;
 	};
 
-	var DynamoSelectSet = function (_DynamoBase) {
-		inherits(DynamoSelectSet, _DynamoBase);
+	var FurmlySelectSet = function (_FurmlyBase) {
+		inherits(FurmlySelectSet, _FurmlyBase);
 
-		function DynamoSelectSet(props) {
-			classCallCheck(this, DynamoSelectSet);
+		function FurmlySelectSet(props) {
+			classCallCheck(this, FurmlySelectSet);
 
-			var _this = possibleConstructorReturn(this, (DynamoSelectSet.__proto__ || Object.getPrototypeOf(DynamoSelectSet)).call(this, props, log));
+			var _this = possibleConstructorReturn(this, (FurmlySelectSet.__proto__ || Object.getPrototypeOf(FurmlySelectSet)).call(this, props, log));
 
 			_this.retryFetch = _this.retryFetch.bind(_this);
 			_this.onPickerValueChanged = _this.onPickerValueChanged.bind(_this);
@@ -3342,7 +3342,7 @@ var dynamo_selectset = (function (Layout, Picker, ProgressBar, Container) {
 			return _this;
 		}
 
-		createClass(DynamoSelectSet, [{
+		createClass(FurmlySelectSet, [{
 			key: "hasValue",
 			value: function hasValue() {
 				return !!this.props.value || "is required";
@@ -3569,23 +3569,23 @@ var dynamo_selectset = (function (Layout, Picker, ProgressBar, Container) {
 				/*jshint ignore:end*/
 			}
 		}]);
-		return DynamoSelectSet;
-	}(DynamoComponentBase);
+		return FurmlySelectSet;
+	}(FurmlyComponentBase);
 
-	DynamoSelectSet.notifyExtra = true;
-	return connect(mapStateToProps, mapDispatchToProps)(DynamoSelectSet);
+	FurmlySelectSet.notifyExtra = true;
+	return connect(mapStateToProps, mapDispatchToProps)(FurmlySelectSet);
 });
 
 var ReactSSRErrorHandler$7 = require("error_handler");
 
-var dynamo_list = (function (Layout, Button, List, Modal, ErrorText, ProgressBar, Container) {
+var furmly_list = (function (Layout, Button, List, Modal, ErrorText, ProgressBar, Container) {
 	invariants.validComponent(Layout, "Layout");
 	invariants.validComponent(Button, "Button");
 	invariants.validComponent(List, "List");
 	invariants.validComponent(Modal, "Modal");
 	invariants.validComponent(ErrorText, "ErrorText");
 	invariants.validComponent(Container, "Container");
-	var log = debug("dynamo-client-components:list");
+	var log = debug("furmly-client-components:list");
 	var EDIT = "EDIT",
 	    NEW = "NEW";
 	var mapStateToProps = function mapStateToProps(_$$1, initialProps) {
@@ -3594,10 +3594,10 @@ var dynamo_list = (function (Layout, Button, List, Modal, ErrorText, ProgressBar
 
 			return {
 				confirmation: state.app && state.app.confirmationResult && state.app.confirmationResult[component_uid],
-				templateCache: state.dynamo.view.templateCache,
-				dataTemplate: state.dynamo.view[component_uid],
+				templateCache: state.furmly.view.templateCache,
+				dataTemplate: state.furmly.view[component_uid],
 				component_uid: component_uid,
-				busy: state.dynamo.view[component_uid + "-busy"],
+				busy: state.furmly.view[component_uid + "-busy"],
 				items: ownProps.value
 			};
 		};
@@ -3621,7 +3621,7 @@ var dynamo_list = (function (Layout, Button, List, Modal, ErrorText, ProgressBar
 	var mapDispatchToProps = function mapDispatchToProps(dispatch) {
 		return {
 			getListItemDataTemplate: function getListItemDataTemplate(id, args, key) {
-				return dispatch(runDynamoProcessor(id, args, key));
+				return dispatch(runFurmlyProcessor(id, args, key));
 			},
 			openConfirmation: function openConfirmation$$1(id, message, params) {
 				return dispatch(openConfirmation(id, message, params));
@@ -3632,9 +3632,9 @@ var dynamo_list = (function (Layout, Button, List, Modal, ErrorText, ProgressBar
 		};
 	};
 
-	var DynamoList = function (_Component) {
-		inherits(DynamoList, _Component);
-		createClass(DynamoList, [{
+	var FurmlyList = function (_Component) {
+		inherits(FurmlyList, _Component);
+		createClass(FurmlyList, [{
 			key: "render",
 			value: function render() {
 				try {
@@ -3645,10 +3645,10 @@ var dynamo_list = (function (Layout, Button, List, Modal, ErrorText, ProgressBar
 			}
 		}]);
 
-		function DynamoList(props) {
-			classCallCheck(this, DynamoList);
+		function FurmlyList(props) {
+			classCallCheck(this, FurmlyList);
 
-			var _this = possibleConstructorReturn(this, (DynamoList.__proto__ || Object.getPrototypeOf(DynamoList)).call(this, props));
+			var _this = possibleConstructorReturn(this, (FurmlyList.__proto__ || Object.getPrototypeOf(FurmlyList)).call(this, props));
 
 			_this.state = {
 				validator: {},
@@ -3669,7 +3669,7 @@ var dynamo_list = (function (Layout, Button, List, Modal, ErrorText, ProgressBar
 			return _this;
 		}
 
-		createClass(DynamoList, [{
+		createClass(FurmlyList, [{
 			key: "componentWillReceiveProps",
 			value: function componentWillReceiveProps(next) {
 				if (next.confirmation !== this.props.confirmation && next.confirmation && next.confirmation.params && typeof next.confirmation.params.index !== "undefined" && this.props.items && this.props.items.length) {
@@ -3747,7 +3747,7 @@ var dynamo_list = (function (Layout, Button, List, Modal, ErrorText, ProgressBar
 		}, {
 			key: "isTemplateRef",
 			value: function isTemplateRef() {
-				return this.props.args.itemTemplate && !Array.prototype.isPrototypeOf(this.props.args.itemTemplate) && this.props.args.itemTemplate.dynamo_ref || this.props.args.behavior && this.props.args.behavior.dynamo_ref && this.props.args.itemTemplate;
+				return this.props.args.itemTemplate && !Array.prototype.isPrototypeOf(this.props.args.itemTemplate) && this.props.args.itemTemplate.furmly_ref || this.props.args.behavior && this.props.args.behavior.furmly_ref && this.props.args.itemTemplate;
 			}
 		}, {
 			key: "runValidators",
@@ -3811,8 +3811,8 @@ var dynamo_list = (function (Layout, Button, List, Modal, ErrorText, ProgressBar
 		}, {
 			key: "valueChanged",
 			value: function valueChanged$$1(v) {
-				//this.state.form = v && v[DynamoList.modalName()];
-				this.setState({ edit: v && v[DynamoList.modalName()] });
+				//this.state.form = v && v[FurmlyList.modalName()];
+				this.setState({ edit: v && v[FurmlyList.modalName()] });
 			}
 		}, {
 			key: "remove",
@@ -3886,7 +3886,7 @@ var dynamo_list = (function (Layout, Button, List, Modal, ErrorText, ProgressBar
 							template: React__default.createElement(Container, {
 								elements: this.state.itemTemplate,
 								value: this.state.edit,
-								name: DynamoList.modalName(),
+								name: FurmlyList.modalName(),
 								validator: this.state.validator,
 								valueChanged: this.valueChanged,
 								navigation: this.props.navigation,
@@ -3907,17 +3907,17 @@ var dynamo_list = (function (Layout, Button, List, Modal, ErrorText, ProgressBar
 				return "_modal_";
 			}
 		}]);
-		return DynamoList;
+		return FurmlyList;
 	}(React.Component);
 
-	return connect(mapStateToProps, mapDispatchToProps)(DynamoList);
+	return connect(mapStateToProps, mapDispatchToProps)(FurmlyList);
 });
 
 var ReactSSRErrorHandler$8 = require("error_handler");
 
-var DynamoHidden = function (_React$Component) {
-	inherits(DynamoHidden, _React$Component);
-	createClass(DynamoHidden, [{
+var FurmlyHidden = function (_React$Component) {
+	inherits(FurmlyHidden, _React$Component);
+	createClass(FurmlyHidden, [{
 		key: "render",
 		value: function render() {
 			try {
@@ -3928,16 +3928,16 @@ var DynamoHidden = function (_React$Component) {
 		}
 	}]);
 
-	function DynamoHidden(props) {
-		classCallCheck(this, DynamoHidden);
+	function FurmlyHidden(props) {
+		classCallCheck(this, FurmlyHidden);
 
-		var _this = possibleConstructorReturn(this, (DynamoHidden.__proto__ || Object.getPrototypeOf(DynamoHidden)).call(this, props));
+		var _this = possibleConstructorReturn(this, (FurmlyHidden.__proto__ || Object.getPrototypeOf(FurmlyHidden)).call(this, props));
 
 		_this.init = _this.init.bind(_this);
 		return _this;
 	}
 
-	createClass(DynamoHidden, [{
+	createClass(FurmlyHidden, [{
 		key: "componentDidMount",
 		value: function componentDidMount() {
 			this.init();
@@ -3964,14 +3964,14 @@ var DynamoHidden = function (_React$Component) {
 			return null;
 		}
 	}]);
-	return DynamoHidden;
+	return FurmlyHidden;
 }(React__default.Component);
 
 var ReactSSRErrorHandler$9 = require("error_handler");
 
-var dynamo_nav = (function (Link, NavigationActions) {
-	if (invariants.validComponent(Link, "Link") && !NavigationActions) throw new Error("NavigationActions cannot be null (dynamo_nav)");
-	var log = debug("dynamo-client-components:nav");
+var furmly_nav = (function (Link, NavigationActions) {
+	if (invariants.validComponent(Link, "Link") && !NavigationActions) throw new Error("NavigationActions cannot be null (furmly_nav)");
+	var log = debug("furmly-client-components:nav");
 	var mapDispatchToState = function mapDispatchToState(dispatch) {
 		return {
 			dispatch: dispatch
@@ -3981,16 +3981,16 @@ var dynamo_nav = (function (Link, NavigationActions) {
 	var mapStateToProps = function mapStateToProps(_$$1, initialProps) {
 		return function (state) {
 			return {
-				context: state && state.dynamo.view && state.dynamo.view.navigationContext
+				context: state && state.furmly.view && state.furmly.view.navigationContext
 			};
 		};
 	};
 
-	//{text:"link text",type:"DYNAMO or CLIENT",config:{value:""}}
+	//{text:"link text",type:"FURMLY or CLIENT",config:{value:""}}
 
-	var DynamoNav = function (_Component) {
-		inherits(DynamoNav, _Component);
-		createClass(DynamoNav, [{
+	var FurmlyNav = function (_Component) {
+		inherits(FurmlyNav, _Component);
+		createClass(FurmlyNav, [{
 			key: "render",
 			value: function render() {
 				try {
@@ -4001,32 +4001,32 @@ var dynamo_nav = (function (Link, NavigationActions) {
 			}
 		}]);
 
-		function DynamoNav(props) {
-			classCallCheck(this, DynamoNav);
+		function FurmlyNav(props) {
+			classCallCheck(this, FurmlyNav);
 
-			var _this = possibleConstructorReturn(this, (DynamoNav.__proto__ || Object.getPrototypeOf(DynamoNav)).call(this, props));
+			var _this = possibleConstructorReturn(this, (FurmlyNav.__proto__ || Object.getPrototypeOf(FurmlyNav)).call(this, props));
 
 			_this.go = _this.go.bind(_this);
 			_this.state = { link: _this.props.value };
 			return _this;
 		}
 
-		createClass(DynamoNav, [{
+		createClass(FurmlyNav, [{
 			key: "go",
 			value: function go() {
 				var params = null;
 				var link = this.state.link || this.props.args.config && this.props.args.config.value;
 				if (link) {
-					var linkAndParams = DynamoNav.getParams(true, link);
+					var linkAndParams = FurmlyNav.getParams(true, link);
 					if (this.props.args.params) {
-						var paramsOnly = DynamoNav.getParams(false, this.props.args.params);
+						var paramsOnly = FurmlyNav.getParams(false, this.props.args.params);
 						Object.assign(linkAndParams.params, paramsOnly.params);
 					}
 
 					link = linkAndParams.link;
 					params = linkAndParams.params;
 					switch (this.props.args.type) {
-						case DynamoNav.NAV_TYPE.CLIENT:
+						case FurmlyNav.NAV_TYPE.CLIENT:
 							//this.props.dispatch(
 							NavigationActions.navigate({
 								key: link,
@@ -4035,11 +4035,11 @@ var dynamo_nav = (function (Link, NavigationActions) {
 							//);
 							break;
 
-						case DynamoNav.NAV_TYPE.DYNAMO:
+						case FurmlyNav.NAV_TYPE.FURMLY:
 							//const setParamsAction =
 							NavigationActions.setParams({
 								params: { id: link, fetchParams: params },
-								key: "Dynamo"
+								key: "Furmly"
 							}, this.props.context, this.props.navigation);
 						//this.props.dispatch(setParamsAction);
 					}
@@ -4073,18 +4073,18 @@ var dynamo_nav = (function (Link, NavigationActions) {
 				return result;
 			}
 		}]);
-		return DynamoNav;
+		return FurmlyNav;
 	}(React.Component);
 
-	DynamoNav.NAV_TYPE = { CLIENT: "CLIENT", DYNAMO: "DYNAMO" };
-	return connect(mapStateToProps, mapDispatchToState)(DynamoNav);
+	FurmlyNav.NAV_TYPE = { CLIENT: "CLIENT", FURMLY: "FURMLY" };
+	return connect(mapStateToProps, mapDispatchToState)(FurmlyNav);
 });
 
 var ReactSSRErrorHandler$10 = require("error_handler");
 
-var dynamo_image = (function (Image) {
+var furmly_image = (function (Image) {
 	invariants.validComponent(Image, "Image");
-	var log = debug("dynamo-client-components:image");
+	var log = debug("furmly-client-components:image");
 	return function (props) {
 		try {
 			var _value = props.value,
@@ -4113,13 +4113,13 @@ var ITEM_MODES = {
 	EDIT: "EDIT"
 };
 
-var dynamo_grid = (function (Layout, List, ItemView, Header, ProgressBar, CommandsView, NavigationActions, CommandResultView, Container) {
-	if (invariants.validComponent(Layout, "Layout") && invariants.validComponent(Header, "Header") && invariants.validComponent(List, "List") && invariants.validComponent(ItemView, "ItemView") && invariants.validComponent(ProgressBar, "ProgressBar") && invariants.validComponent(CommandsView, "CommandsView") && invariants.validComponent(Container, "Container") && invariants.validComponent(CommandResultView, "CommandResultView") && !NavigationActions) throw new Error("NavigationActions cannot be null (dynamo_grid)");
-	var log = debug("dynamo-client-components:grid");
+var furmly_grid = (function (Layout, List, ItemView, Header, ProgressBar, CommandsView, NavigationActions, CommandResultView, Container) {
+	if (invariants.validComponent(Layout, "Layout") && invariants.validComponent(Header, "Header") && invariants.validComponent(List, "List") && invariants.validComponent(ItemView, "ItemView") && invariants.validComponent(ProgressBar, "ProgressBar") && invariants.validComponent(CommandsView, "CommandsView") && invariants.validComponent(Container, "Container") && invariants.validComponent(CommandResultView, "CommandResultView") && !NavigationActions) throw new Error("NavigationActions cannot be null (furmly_grid)");
+	var log = debug("furmly-client-components:grid");
 	var mapDispatchToProps = function mapDispatchToProps(dispatch) {
 		return {
 			run: function run(id, args, key) {
-				return dispatch(runDynamoProcessor(id, args, key, {
+				return dispatch(runFurmlyProcessor(id, args, key, {
 					disableCache: true,
 					disableRetry: true
 				}));
@@ -4130,7 +4130,7 @@ var dynamo_grid = (function (Layout, List, ItemView, Header, ProgressBar, Comman
 			go: function go(value) {
 				return dispatch(NavigationActions.setParams({
 					params: { id: value },
-					key: "Dynamo"
+					key: "Furmly"
 				}));
 			},
 			getSingleItem: function getSingleItem(id, args, key) {
@@ -4153,7 +4153,7 @@ var dynamo_grid = (function (Layout, List, ItemView, Header, ProgressBar, Comman
 	var mapStateToProps = function mapStateToProps(_$$1, initialProps) {
 		return function (state, ownProps) {
 			var component_uid = getKey(state, ownProps.component_uid, ownProps);
-			var result = state.dynamo.view[component_uid];
+			var result = state.furmly.view[component_uid];
 			return {
 				component_uid: component_uid,
 
@@ -4171,20 +4171,20 @@ var dynamo_grid = (function (Layout, List, ItemView, Header, ProgressBar, Comman
 				itemTemplateError: result && result[getErrorKey("gettingTemplate")],
 				filterTemplateError: result && result[getErrorKey("gettingFilterTemplate")],
 				singleItemError: result && result[getErrorKey("fetchingSingleItem")],
-				commandProcessed: state.dynamo.view[component_uid + DynamoGrid.commandResultViewName()],
-				commandProcessing: state.dynamo.view[component_uid + DynamoGrid.commandResultViewName() + "-busy"],
-				processed: state.dynamo.view[component_uid + DynamoGrid.itemViewName()]
+				commandProcessed: state.furmly.view[component_uid + FurmlyGrid.commandResultViewName()],
+				commandProcessing: state.furmly.view[component_uid + FurmlyGrid.commandResultViewName() + "-busy"],
+				processed: state.furmly.view[component_uid + FurmlyGrid.itemViewName()]
 			};
 		};
 	};
 
-	var DynamoGrid = function (_DynamoBase) {
-		inherits(DynamoGrid, _DynamoBase);
+	var FurmlyGrid = function (_FurmlyBase) {
+		inherits(FurmlyGrid, _FurmlyBase);
 
-		function DynamoGrid(props) {
-			classCallCheck(this, DynamoGrid);
+		function FurmlyGrid(props) {
+			classCallCheck(this, FurmlyGrid);
 
-			var _this = possibleConstructorReturn(this, (DynamoGrid.__proto__ || Object.getPrototypeOf(DynamoGrid)).call(this, props, log));
+			var _this = possibleConstructorReturn(this, (FurmlyGrid.__proto__ || Object.getPrototypeOf(FurmlyGrid)).call(this, props, log));
 
 			_this.state = {
 				form: null,
@@ -4229,7 +4229,7 @@ var dynamo_grid = (function (Layout, List, ItemView, Header, ProgressBar, Comman
 			return _this;
 		}
 
-		createClass(DynamoGrid, [{
+		createClass(FurmlyGrid, [{
 			key: "componentDidMount",
 			value: function componentDidMount() {
 				this._mounted = true;
@@ -4311,7 +4311,7 @@ var dynamo_grid = (function (Layout, List, ItemView, Header, ProgressBar, Comman
 		}, {
 			key: "getFilterValue",
 			value: function getFilterValue() {
-				return this.props.value && this.props.value[DynamoGrid.filterViewName()] || null;
+				return this.props.value && this.props.value[FurmlyGrid.filterViewName()] || null;
 			}
 		}, {
 			key: "filter",
@@ -4352,7 +4352,7 @@ var dynamo_grid = (function (Layout, List, ItemView, Header, ProgressBar, Comman
 
 					_this3.props.run(id, Object.assign(JSON.parse(_this3.props.args.gridArgs || "{}"), {
 						entity: _this3.getItemValue()
-					}), _this3.props.component_uid + DynamoGrid.itemViewName());
+					}), _this3.props.component_uid + FurmlyGrid.itemViewName());
 
 					_this3.cancel();
 				}, function () {
@@ -4439,7 +4439,7 @@ var dynamo_grid = (function (Layout, List, ItemView, Header, ProgressBar, Comman
 			key: "itemValueChanged",
 			value: function itemValueChanged(value) {
 				this.setState({
-					form: Object.assign({}, this.state.form || {}, value && value[DynamoGrid.itemViewName()] || {})
+					form: Object.assign({}, this.state.form || {}, value && value[FurmlyGrid.itemViewName()] || {})
 				});
 			}
 		}, {
@@ -4462,7 +4462,7 @@ var dynamo_grid = (function (Layout, List, ItemView, Header, ProgressBar, Comman
 						this.showItemView(ITEM_MODES.EDIT, item);
 						break;
 					case "PROCESSOR":
-						this.props.run(command.command.value, Object.assign({}, JSON.parse(this.props.args.gridArgs || "{}"), item), this.props.component_uid + DynamoGrid.commandResultViewName());
+						this.props.run(command.command.value, Object.assign({}, JSON.parse(this.props.args.gridArgs || "{}"), item), this.props.component_uid + FurmlyGrid.commandResultViewName());
 						break;
 				}
 			}
@@ -4493,7 +4493,7 @@ var dynamo_grid = (function (Layout, List, ItemView, Header, ProgressBar, Comman
 						elements: this.props.filterTemplate,
 						value: this.getFilterValue(),
 						valueChanged: this.valueChanged,
-						name: DynamoGrid.filterViewName(),
+						name: FurmlyGrid.filterViewName(),
 						validator: this.state._filterValidator,
 						navigation: this.props.navigation,
 						currentProcess: this.props.currentProcess,
@@ -4528,7 +4528,7 @@ var dynamo_grid = (function (Layout, List, ItemView, Header, ProgressBar, Comman
 						template: React__default.createElement(Container, {
 							elements: this.state.itemViewElements,
 							value: this.getItemValue(),
-							name: DynamoGrid.itemViewName(),
+							name: FurmlyGrid.itemViewName(),
 							validator: this.state.validator,
 							valueChanged: this.itemValueChanged,
 							navigation: this.props.navigation,
@@ -4547,7 +4547,7 @@ var dynamo_grid = (function (Layout, List, ItemView, Header, ProgressBar, Comman
 						done: this.closeCommandResult,
 						template: React__default.createElement(Container, {
 							elements: this.state.commandResult,
-							name: DynamoGrid.commandResultViewName(),
+							name: FurmlyGrid.commandResultViewName(),
 							validator: {},
 							navigation: this.props.navigation,
 							currentProcess: this.props.currentProcess,
@@ -4574,19 +4574,19 @@ var dynamo_grid = (function (Layout, List, ItemView, Header, ProgressBar, Comman
 				return "_commandResultView_";
 			}
 		}]);
-		return DynamoGrid;
-	}(DynamoComponentBase);
+		return FurmlyGrid;
+	}(FurmlyComponentBase);
 
-	return connect(mapStateToProps, mapDispatchToProps)(DynamoGrid);
+	return connect(mapStateToProps, mapDispatchToProps)(FurmlyGrid);
 });
 
 var ReactSSRErrorHandler$11 = require("error_handler");
 
-var dynamo_htmlview = (function (PlatformComponent) {
-	var log = debug("dynamo-client-components:html-view");
+var furmly_htmlview = (function (PlatformComponent) {
+	var log = debug("furmly-client-components:html-view");
 	return function (_Component) {
-		inherits(DynamoHTMLViewer, _Component);
-		createClass(DynamoHTMLViewer, [{
+		inherits(FurmlyHTMLViewer, _Component);
+		createClass(FurmlyHTMLViewer, [{
 			key: "render",
 			value: function render() {
 				try {
@@ -4597,12 +4597,12 @@ var dynamo_htmlview = (function (PlatformComponent) {
 			}
 		}]);
 
-		function DynamoHTMLViewer(props) {
-			classCallCheck(this, DynamoHTMLViewer);
-			return possibleConstructorReturn(this, (DynamoHTMLViewer.__proto__ || Object.getPrototypeOf(DynamoHTMLViewer)).call(this, props));
+		function FurmlyHTMLViewer(props) {
+			classCallCheck(this, FurmlyHTMLViewer);
+			return possibleConstructorReturn(this, (FurmlyHTMLViewer.__proto__ || Object.getPrototypeOf(FurmlyHTMLViewer)).call(this, props));
 		}
 
-		createClass(DynamoHTMLViewer, [{
+		createClass(FurmlyHTMLViewer, [{
 			key: "__originalRenderMethod__",
 			value: function __originalRenderMethod__() {
 				return React__default.createElement(PlatformComponent, _extends$4({
@@ -4610,7 +4610,7 @@ var dynamo_htmlview = (function (PlatformComponent) {
 				}, this.props));
 			}
 		}]);
-		return DynamoHTMLViewer;
+		return FurmlyHTMLViewer;
 	}(React.Component);
 });
 
@@ -4623,17 +4623,17 @@ var ReactSSRErrorHandler$12 = require("error_handler");
  * @return {Class}          Configured component.
  */
 
-var dynamo_fileupload = (function (Uploader, ProgressBar, Text) {
+var furmly_fileupload = (function (Uploader, ProgressBar, Text) {
 	var previews = arguments.length > 3 && arguments[3] !== undefined ? arguments[3] : [];
 
 	invariants.validComponent(Uploader, "Uploader");
 	invariants.validComponent(ProgressBar, "ProgressBar");
 	invariants.validComponent(Text, "Text");
-	var log = debug("dynamo-client-components:fileupload");
+	var log = debug("furmly-client-components:fileupload");
 
-	var DynamoFileUpload = function (_Component) {
-		inherits(DynamoFileUpload, _Component);
-		createClass(DynamoFileUpload, [{
+	var FurmlyFileUpload = function (_Component) {
+		inherits(FurmlyFileUpload, _Component);
+		createClass(FurmlyFileUpload, [{
 			key: "render",
 			value: function render() {
 				try {
@@ -4644,10 +4644,10 @@ var dynamo_fileupload = (function (Uploader, ProgressBar, Text) {
 			}
 		}]);
 
-		function DynamoFileUpload(props) {
-			classCallCheck(this, DynamoFileUpload);
+		function FurmlyFileUpload(props) {
+			classCallCheck(this, FurmlyFileUpload);
 
-			var _this = possibleConstructorReturn(this, (DynamoFileUpload.__proto__ || Object.getPrototypeOf(DynamoFileUpload)).call(this, props));
+			var _this = possibleConstructorReturn(this, (FurmlyFileUpload.__proto__ || Object.getPrototypeOf(FurmlyFileUpload)).call(this, props));
 
 			_this.state = {};
 			_this._previewType = _this.getPreviewType.call(_this);
@@ -4661,7 +4661,7 @@ var dynamo_fileupload = (function (Uploader, ProgressBar, Text) {
 			return _this;
 		}
 
-		createClass(DynamoFileUpload, [{
+		createClass(FurmlyFileUpload, [{
 			key: "runValidators",
 			value: function runValidators() {
 				return new Validator(this).run();
@@ -4749,13 +4749,13 @@ var dynamo_fileupload = (function (Uploader, ProgressBar, Text) {
 				});
 			}
 		}]);
-		return DynamoFileUpload;
+		return FurmlyFileUpload;
 	}(React.Component);
 
 	var mapStateToProps = function mapStateToProps(_$$1, initialProps) {
 		return function (state, ownProps) {
 			var component_uid = getKey(state, ownProps.component_uid, ownProps);
-			var st = state.dynamo.view[component_uid] || {};
+			var st = state.furmly.view[component_uid] || {};
 			return {
 				component_uid: component_uid,
 				preview: st.preview,
@@ -4768,28 +4768,28 @@ var dynamo_fileupload = (function (Uploader, ProgressBar, Text) {
 	var mapDispatchToProps = function mapDispatchToProps(dispatch) {
 		return {
 			upload: function upload(file, key) {
-				return dispatch(uploadDynamoFile(file, key));
+				return dispatch(uploadFurmlyFile(file, key));
 			},
 			getPreview: function getPreview(id, key, fileType, query) {
-				return dispatch(getDynamoFilePreview(id, key, fileType, query));
+				return dispatch(getFurmlyFilePreview(id, key, fileType, query));
 			}
 		};
 	};
 
-	return connect(mapStateToProps, mapDispatchToProps)(DynamoFileUpload);
+	return connect(mapStateToProps, mapDispatchToProps)(FurmlyFileUpload);
 });
 
-var dynamo_actionview = (function (Layout, ProgressBar, Filter, FilterContainer, ContentContainer) {
+var furmly_actionview = (function (Layout, ProgressBar, Filter, FilterContainer, ContentContainer) {
 	invariants.validComponent(Filter, "Filter");
 	invariants.validComponent(FilterContainer, "FilterContainer");
 	invariants.validComponent(ContentContainer, "ContentContainer");
 	invariants.validComponent(ProgressBar, "ProgressBar");
 	invariants.validComponent(Layout, "Layout");
-	var log = debug("dynamo-client-components:actionview");
+	var log = debug("furmly-client-components:actionview");
 	var mapDispatchToProps = function mapDispatchToProps(dispatch) {
 		return {
 			run: function run(id, args, key) {
-				return dispatch(runDynamoProcessor(id, args, key, { disableCache: true }));
+				return dispatch(runFurmlyProcessor(id, args, key, { disableCache: true }));
 			},
 			showMessage: function (_showMessage) {
 				function showMessage(_x) {
@@ -4809,11 +4809,11 @@ var dynamo_actionview = (function (Layout, ProgressBar, Filter, FilterContainer,
 	var mapStateToProps = function mapStateToProps(_$$1, initialProps) {
 		return function (state, ownProps) {
 			var component_uid = getKey(state, ownProps.component_uid, ownProps),
-			    _actionState = state.dynamo.view[component_uid];
+			    _actionState = state.furmly.view[component_uid];
 			return {
 				resultUI: _actionState && (_actionState.ui || _actionState),
 				resultData: _actionState && _actionState.data,
-				busy: !!state.dynamo.view[component_uid + "-busy"],
+				busy: !!state.furmly.view[component_uid + "-busy"],
 				component_uid: component_uid
 			};
 		};
@@ -4821,13 +4821,13 @@ var dynamo_actionview = (function (Layout, ProgressBar, Filter, FilterContainer,
 	var itemViewName = "_item_view";
 	var contentViewName = "_content_view";
 
-	var DynamoActionView = function (_DynamoBase) {
-		inherits(DynamoActionView, _DynamoBase);
+	var FurmlyActionView = function (_FurmlyBase) {
+		inherits(FurmlyActionView, _FurmlyBase);
 
-		function DynamoActionView(props) {
-			classCallCheck(this, DynamoActionView);
+		function FurmlyActionView(props) {
+			classCallCheck(this, FurmlyActionView);
 
-			var _this = possibleConstructorReturn(this, (DynamoActionView.__proto__ || Object.getPrototypeOf(DynamoActionView)).call(this, props, log));
+			var _this = possibleConstructorReturn(this, (FurmlyActionView.__proto__ || Object.getPrototypeOf(FurmlyActionView)).call(this, props, log));
 
 			_this.state = { _filterValidator: {}, validator: {} };
 			_this.filter = _this.filter.bind(_this);
@@ -4836,7 +4836,7 @@ var dynamo_actionview = (function (Layout, ProgressBar, Filter, FilterContainer,
 			return _this;
 		}
 
-		createClass(DynamoActionView, [{
+		createClass(FurmlyActionView, [{
 			key: "componentWillReceiveProps",
 			value: function componentWillReceiveProps(next) {
 				if (!_.isEqual(next.resultData, this.props.resultData)) {
@@ -4913,15 +4913,15 @@ var dynamo_actionview = (function (Layout, ProgressBar, Filter, FilterContainer,
 				);
 			}
 		}]);
-		return DynamoActionView;
-	}(DynamoComponentBase);
+		return FurmlyActionView;
+	}(FurmlyComponentBase);
 
-	return connect(mapStateToProps, mapDispatchToProps)(DynamoActionView);
+	return connect(mapStateToProps, mapDispatchToProps)(FurmlyActionView);
 });
 
 var ReactSSRErrorHandler$13 = require("error_handler");
 
-var dynamo_label = (function (Label) {
+var furmly_label = (function (Label) {
 	invariants.validComponent(Label, "Label");
 	return function (props) {
 		try {
@@ -4941,11 +4941,11 @@ var dynamo_label = (function (Label) {
 
 var ReactSSRErrorHandler$14 = require("error_handler");
 
-var dynamo_webview = (function (WebView, Text) {
-	var log = debug("dynamo-client-components:webview");
+var furmly_webview = (function (WebView, Text) {
+	var log = debug("furmly-client-components:webview");
 	return function (_Component) {
-		inherits(DynamoWebView, _Component);
-		createClass(DynamoWebView, [{
+		inherits(FurmlyWebView, _Component);
+		createClass(FurmlyWebView, [{
 			key: "render",
 			value: function render() {
 				try {
@@ -4956,12 +4956,12 @@ var dynamo_webview = (function (WebView, Text) {
 			}
 		}]);
 
-		function DynamoWebView(props) {
-			classCallCheck(this, DynamoWebView);
-			return possibleConstructorReturn(this, (DynamoWebView.__proto__ || Object.getPrototypeOf(DynamoWebView)).call(this, props));
+		function FurmlyWebView(props) {
+			classCallCheck(this, FurmlyWebView);
+			return possibleConstructorReturn(this, (FurmlyWebView.__proto__ || Object.getPrototypeOf(FurmlyWebView)).call(this, props));
 		}
 
-		createClass(DynamoWebView, [{
+		createClass(FurmlyWebView, [{
 			key: "__originalRenderMethod__",
 			value: function __originalRenderMethod__() {
 				if (this.props.args && this.props.args.url) {
@@ -4975,13 +4975,13 @@ var dynamo_webview = (function (WebView, Text) {
 				}
 			}
 		}]);
-		return DynamoWebView;
+		return FurmlyWebView;
 	}(React.Component);
 });
 
 var ReactSSRErrorHandler$15 = require("error_handler");
 
-var dynamo_messenger = (function (Layout, Pane, OpenChats, Editor, ContextMenu, NewChatButton, OpenChatsLayout, Modal, ProgressBar, Login, ContactList, ChatHistory, AddNewContact, PendingInvites, ChatLayout) {
+var furmly_messenger = (function (Layout, Pane, OpenChats, Editor, ContextMenu, NewChatButton, OpenChatsLayout, Modal, ProgressBar, Login, ContactList, ChatHistory, AddNewContact, PendingInvites, ChatLayout) {
 	invariants.validComponent(Layout, "Layout");
 	invariants.validComponent(Pane, "Pane");
 	invariants.validComponent(Editor, "Editor");
@@ -4997,9 +4997,9 @@ var dynamo_messenger = (function (Layout, Pane, OpenChats, Editor, ContextMenu, 
 	invariants.validComponent(AddNewContact, "AddNewContact");
 	invariants.validComponent(PendingInvites, "PendingInvites");
 	invariants.validComponent(ChatLayout, "ChatLayout");
-	var log = debug("dynamo-client-components:messenger");
+	var log = debug("furmly-client-components:messenger");
 	var mapStateToProps = function mapStateToProps(state) {
-		var _state = state.dynamo.chat;
+		var _state = state.furmly.chat;
 		return {
 			chat: _state.chat,
 			contacts: _state.contacts,
@@ -5058,9 +5058,9 @@ var dynamo_messenger = (function (Layout, Pane, OpenChats, Editor, ContextMenu, 
 		};
 	};
 
-	var DynamoMessenger = function (_Component) {
-		inherits(DynamoMessenger, _Component);
-		createClass(DynamoMessenger, [{
+	var FurmlyMessenger = function (_Component) {
+		inherits(FurmlyMessenger, _Component);
+		createClass(FurmlyMessenger, [{
 			key: "render",
 			value: function render() {
 				try {
@@ -5071,10 +5071,10 @@ var dynamo_messenger = (function (Layout, Pane, OpenChats, Editor, ContextMenu, 
 			}
 		}]);
 
-		function DynamoMessenger(props) {
-			classCallCheck(this, DynamoMessenger);
+		function FurmlyMessenger(props) {
+			classCallCheck(this, FurmlyMessenger);
 
-			var _this = possibleConstructorReturn(this, (DynamoMessenger.__proto__ || Object.getPrototypeOf(DynamoMessenger)).call(this, props));
+			var _this = possibleConstructorReturn(this, (FurmlyMessenger.__proto__ || Object.getPrototypeOf(FurmlyMessenger)).call(this, props));
 
 			_this.renderChat = _this.renderChat.bind(_this);
 			_this.renderPendingInvites = _this.renderPendingInvites.bind(_this);
@@ -5104,7 +5104,7 @@ var dynamo_messenger = (function (Layout, Pane, OpenChats, Editor, ContextMenu, 
 			return _this;
 		}
 
-		createClass(DynamoMessenger, [{
+		createClass(FurmlyMessenger, [{
 			key: "sendMessage",
 			value: function sendMessage$$1(contact, message) {
 				this.props.send(contact.type !== "group" ? "msg" : "grpmsg", {
@@ -5311,15 +5311,15 @@ var dynamo_messenger = (function (Layout, Pane, OpenChats, Editor, ContextMenu, 
 				);
 			}
 		}]);
-		return DynamoMessenger;
+		return FurmlyMessenger;
 	}(React.Component);
 
-	return connect(mapStateToProps, mapDispatchToProps)(DynamoMessenger);
+	return connect(mapStateToProps, mapDispatchToProps)(FurmlyMessenger);
 });
 
 var ReactSSRErrorHandler$16 = require("error_handler");
 
-var dynamo_command = (function (Link, customDownloadCommand) {
+var furmly_command = (function (Link, customDownloadCommand) {
 	invariants.validComponent(Link, "Link");
 
 	var mapDispatchToState = function mapDispatchToState(dispatch) {
@@ -5327,11 +5327,11 @@ var dynamo_command = (function (Link, customDownloadCommand) {
 			dispatch: dispatch
 		};
 	};
-	var log = debug("dynamo-client-components:command");
+	var log = debug("furmly-client-components:command");
 
-	var DynamoCommand = function (_Component) {
-		inherits(DynamoCommand, _Component);
-		createClass(DynamoCommand, [{
+	var FurmlyCommand = function (_Component) {
+		inherits(FurmlyCommand, _Component);
+		createClass(FurmlyCommand, [{
 			key: "render",
 			value: function render() {
 				try {
@@ -5342,33 +5342,33 @@ var dynamo_command = (function (Link, customDownloadCommand) {
 			}
 		}]);
 
-		function DynamoCommand(props) {
-			classCallCheck(this, DynamoCommand);
+		function FurmlyCommand(props) {
+			classCallCheck(this, FurmlyCommand);
 
-			var _this = possibleConstructorReturn(this, (DynamoCommand.__proto__ || Object.getPrototypeOf(DynamoCommand)).call(this, props));
+			var _this = possibleConstructorReturn(this, (FurmlyCommand.__proto__ || Object.getPrototypeOf(FurmlyCommand)).call(this, props));
 
 			_this.go = _this.go.bind(_this);
 			_this.run = _this.run.bind(_this);
 			return _this;
 		}
 
-		createClass(DynamoCommand, [{
+		createClass(FurmlyCommand, [{
 			key: "run",
 			value: function run() {
-				this.props.dispatch(runDynamoProcessor(this.props.args.commandProcessor, this.props.args.commandProcessorArgs && JSON.parse(this.props.args.commandProcessorArgs) || {}, this.props.component_uid));
+				this.props.dispatch(runFurmlyProcessor(this.props.args.commandProcessor, this.props.args.commandProcessorArgs && JSON.parse(this.props.args.commandProcessorArgs) || {}, this.props.component_uid));
 			}
 		}, {
 			key: "go",
 			value: function go() {
 				switch (this.props.args.commandType) {
-					case DynamoCommand.COMMAND_TYPE.DOWNLOAD:
+					case FurmlyCommand.COMMAND_TYPE.DOWNLOAD:
 						if (!this.props.args.commandProcessorArgs) {
 							throw new Error("Download is not properly setup.");
 						}
 						var url = void 0;
 						try {
 							var config$$1 = JSON.parse(this.props.args.commandProcessorArgs);
-							url = dynamoDownloadUrl.replace(":id", config$$1.id);
+							url = furmlyDownloadUrl.replace(":id", config$$1.id);
 							if (config$$1.access_token) url += "?_t0=" + config$$1.access_token;
 							if (config$$1.isProcessor) url += (url.indexOf("?") == -1 ? "?" : "&") + "_t1=true";
 						} catch (e) {
@@ -5396,55 +5396,55 @@ var dynamo_command = (function (Link, customDownloadCommand) {
 				);
 			}
 		}]);
-		return DynamoCommand;
+		return FurmlyCommand;
 	}(React.Component);
 
-	DynamoCommand.COMMAND_TYPE = { DEFAULT: "DEFAULT", DOWNLOAD: "DOWNLOAD" };
-	return connect(null, mapDispatchToState)(DynamoCommand);
+	FurmlyCommand.COMMAND_TYPE = { DEFAULT: "DEFAULT", DOWNLOAD: "DOWNLOAD" };
+	return connect(null, mapDispatchToState)(FurmlyCommand);
 });
 
 var components = {
-	dynamo_input: dynamo_input,
-	dynamo_view: dynamo_view,
-	dynamo_container: dynamo_container,
-	dynamo_process: dynamo_process,
-	dynamo_section: dynamo_section,
-	dynamo_select: dynamo_select,
-	dynamo_selectset: dynamo_selectset,
-	dynamo_list: dynamo_list,
-	dynamo_hidden: DynamoHidden,
-	dynamo_nav: dynamo_nav,
-	dynamo_grid: dynamo_grid,
-	dynamo_image: dynamo_image,
-	dynamo_fileupload: dynamo_fileupload,
-	dynamo_actionview: dynamo_actionview,
-	dynamo_htmlview: dynamo_htmlview,
-	dynamo_label: dynamo_label,
-	dynamo_webview: dynamo_webview,
-	dynamo_messenger: dynamo_messenger,
-	dynamo_command: dynamo_command
+	furmly_input: furmly_input,
+	furmly_view: furmly_view,
+	furmly_container: furmly_container,
+	furmly_process: furmly_process,
+	furmly_section: furmly_section,
+	furmly_select: furmly_select,
+	furmly_selectset: furmly_selectset,
+	furmly_list: furmly_list,
+	furmly_hidden: FurmlyHidden,
+	furmly_nav: furmly_nav,
+	furmly_grid: furmly_grid,
+	furmly_image: furmly_image,
+	furmly_fileupload: furmly_fileupload,
+	furmly_actionview: furmly_actionview,
+	furmly_htmlview: furmly_htmlview,
+	furmly_label: furmly_label,
+	furmly_webview: furmly_webview,
+	furmly_messenger: furmly_messenger,
+	furmly_command: furmly_command
 };
 
 var defaultMap = {
-	INPUT: components.dynamo_input,
-	VIEW: components.dynamo_view,
-	CONTAINER: components.dynamo_container,
-	PROCESS: components.dynamo_process,
-	SECTION: components.dynamo_section,
-	SELECT: components.dynamo_select,
-	SELECTSET: components.dynamo_selectset,
-	LIST: components.dynamo_list,
-	HIDDEN: components.dynamo_hidden,
-	NAV: components.dynamo_nav,
-	IMAGE: components.dynamo_image,
-	GRID: components.dynamo_grid,
-	FILEUPLOAD: components.dynamo_fileupload,
-	ACTIONVIEW: components.dynamo_actionview,
-	HTMLVIEW: components.dynamo_htmlview,
-	LABEL: components.dynamo_label,
-	WEBVIEW: components.dynamo_webview,
-	MESSENGER: components.dynamo_messenger,
-	COMMAND: components.dynamo_command,
+	INPUT: components.furmly_input,
+	VIEW: components.furmly_view,
+	CONTAINER: components.furmly_container,
+	PROCESS: components.furmly_process,
+	SECTION: components.furmly_section,
+	SELECT: components.furmly_select,
+	SELECTSET: components.furmly_selectset,
+	LIST: components.furmly_list,
+	HIDDEN: components.furmly_hidden,
+	NAV: components.furmly_nav,
+	IMAGE: components.furmly_image,
+	GRID: components.furmly_grid,
+	FILEUPLOAD: components.furmly_fileupload,
+	ACTIONVIEW: components.furmly_actionview,
+	HTMLVIEW: components.furmly_htmlview,
+	LABEL: components.furmly_label,
+	WEBVIEW: components.furmly_webview,
+	MESSENGER: components.furmly_messenger,
+	COMMAND: components.furmly_command,
 	recipes: {},
 	_defaultMap: {},
 	componentLocator: function componentLocator(interceptors) {
@@ -5637,7 +5637,7 @@ function view$1 () {
 			return Object.assign({}, state);
 		case ACTIONS.CLEAR_STACK:
 			return {};
-		case ACTIONS.DYNAMO_PROCESS_FAILED:
+		case ACTIONS.FURMLY_PROCESS_FAILED:
 			return Object.assign({}, state, defineProperty({}, getBusyKey(action.meta), false));
 
 		case ACTIONS.REPLACE_STACK:
@@ -5651,13 +5651,13 @@ function view$1 () {
 				message: state.message
 			});
 			return _state;
-		case ACTIONS.REMOVE_LAST_DYNAMO_PARAMS:
-			//check if value is a dynamo screen
+		case ACTIONS.REMOVE_LAST_FURMLY_PARAMS:
+			//check if value is a furmly screen
 			//if it is check if its a process navigation or step navigation
 			//if it is a process navigation remove the data from the process.
 			//if it is a step navigation remove the step data from the process.
-			if (action.payload.item.key == "Dynamo" || action.payload.item.$routeName == "Dynamo") {
-				//it is a dynamo navigation
+			if (action.payload.item.key == "Furmly" || action.payload.item.$routeName == "Furmly") {
+				//it is a furmly navigation
 				//confirm there are no other references down the line.
 				var _state2 = state[action.payload.item.params.id],
 				    currentStep = _state2 && _state2.currentStep || 0;
@@ -5681,7 +5681,7 @@ function view$1 () {
 				}
 			}
 			return state;
-		case ACTIONS.DYNAMO_PROCESS_RAN:
+		case ACTIONS.FURMLY_PROCESS_RAN:
 			if (action.error || !action.payload) {
 				return state;
 			}
@@ -5727,19 +5727,19 @@ function view$1 () {
 		case ACTIONS.ERROR_WHILE_FETCHING_GRID:
 			return Object.assign({}, state, defineProperty({}, action.meta, failedToFetchGrid(state[action.meta])));
 
-		case ACTIONS.DYNAMO_GET_MORE_FOR_GRID:
+		case ACTIONS.FURMLY_GET_MORE_FOR_GRID:
 			return Object.assign({}, state, defineProperty({}, action.payload.key, reduceGrid(state[action.payload.key], action)));
 
-		case ACTIONS.DYNAMO_PROCESS_RUNNING:
+		case ACTIONS.FURMLY_PROCESS_RUNNING:
 			return Object.assign({}, state, (_Object$assign16 = {}, defineProperty(_Object$assign16, getBusyKey(action.meta.id), !action.error), defineProperty(_Object$assign16, action.meta.id, Object.assign({}, state[action.meta.id], defineProperty({}, state[action.meta.id].currentStep || 0, action.meta.form))), _Object$assign16));
 		case ACTIONS.VALUE_CHANGED:
 			return Object.assign({}, state, defineProperty({}, action.payload.id, Object.assign({}, state[action.payload.id], defineProperty({}, state[action.payload.id].currentStep || 0, action.payload.form))));
-		case ACTIONS.DYNAMO_PROCESSOR_RAN:
+		case ACTIONS.FURMLY_PROCESSOR_RAN:
 			return Object.assign({}, state, (_Object$assign19 = {}, defineProperty(_Object$assign19, action.payload.key, action.payload.data), defineProperty(_Object$assign19, getBusyKey(action.payload.key), false), defineProperty(_Object$assign19, getErrorKey(action.payload.key), !!action.error), _Object$assign19));
 
-		case ACTIONS.DYNAMO_PROCESSOR_RUNNING:
+		case ACTIONS.FURMLY_PROCESSOR_RUNNING:
 			return Object.assign({}, state, (_Object$assign20 = {}, defineProperty(_Object$assign20, getBusyKey(action.meta.key), !action.error), defineProperty(_Object$assign20, getErrorKey(action.meta.key), !!action.error), _Object$assign20));
-		case ACTIONS.DYNAMO_PROCESSOR_FAILED:
+		case ACTIONS.FURMLY_PROCESSOR_FAILED:
 			return Object.assign({}, state, (_Object$assign21 = {}, defineProperty(_Object$assign21, getBusyKey(action.meta), false), defineProperty(_Object$assign21, action.meta, null), defineProperty(_Object$assign21, getErrorKey(action.meta), true), _Object$assign21));
 		case ACTIONS.FETCHED_PROCESS:
 			var fetchedValue = Object.assign({}, action.payload.data.data);
@@ -5927,7 +5927,7 @@ function index$1 () {
 	var action = arguments[1];
 
 	if (action.type == "persist/REHYDRATE") {
-		var incoming = action.payload.dynamo;
+		var incoming = action.payload.furmly;
 		if (incoming) {
 			toggleAllBusyIndicators(incoming);
 			state = _extends$4({}, state, incoming);

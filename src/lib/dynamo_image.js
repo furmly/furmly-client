@@ -3,7 +3,7 @@ import invariants from "./utils/invariants";
 import debug from "debug";
 export default Image => {
 	invariants.validComponent(Image, "Image");
-	const log = debug("dynamo-client-components:image");
+	const log = debug("furmly-client-components:image");
 	return props => {
 		let { value, args, ...rest } = props;
 		if (value && props.args.type == "URL") {

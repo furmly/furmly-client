@@ -1,6 +1,6 @@
 import React, { Component } from "react";
 import { connect } from "react-redux";
-import { fetchDynamoProcess, runDynamoProcess } from "./actions";
+import { fetchFurmlyProcess, runFurmlyProcess } from "./actions";
 import _ from "lodash";
 import invariants from "./utils/invariants";
 import debug from "debug";
@@ -9,20 +9,20 @@ import debug from "debug";
  * @param  {Function} Input Input class
  * @return {Function}       Wrapped class
  */
-export default (ProgressBar, TextView, DynamoView) => {
+export default (ProgressBar, TextView, FurmlyView) => {
 	invariants.validComponent(ProgressBar, "ProgressBar");
 	invariants.validComponent(TextView, "TextView");
-	invariants.validComponent(DynamoView, "DynamoView");
-	const log = debug("dynamo-client-components:process");
+	invariants.validComponent(FurmlyView, "FurmlyView");
+	const log = debug("furmly-client-components:process");
 
-	//map elements in DynamoInput props to elements in store.
+	//map elements in FurmlyInput props to elements in store.
 	const mapStateToProps = (_, initialProps) => (state, ownProps) => {
-		let _state = state.dynamo.view[`${ownProps.id}`];
+		let _state = state.furmly.view[`${ownProps.id}`];
 		return {
-			busy: !!state.dynamo.view[`${ownProps.id}-busy`],
+			busy: !!state.furmly.view[`${ownProps.id}-busy`],
 			description: _state && _state.description,
 			instanceId: _state && _state.instanceId,
-			message: state.dynamo.view.message,
+			message: state.furmly.view.message,
 			completed: _state && _state.completed
 		};
 	};
@@ -30,15 +30,15 @@ export default (ProgressBar, TextView, DynamoView) => {
 	const mapDispatchToProps = dispatch => {
 		return {
 			fetch: (id, params) => {
-				dispatch(fetchDynamoProcess(id, params));
+				dispatch(fetchFurmlyProcess(id, params));
 			},
 			runProcess: info => {
-				dispatch(runDynamoProcess(info));
+				dispatch(runFurmlyProcess(info));
 			}
 		};
 	};
 
-	class DynamoProcess extends Component {
+	class FurmlyProcess extends Component {
 		constructor(props) {
 			super(props);
 			this.state = {};
@@ -87,7 +87,7 @@ export default (ProgressBar, TextView, DynamoView) => {
 				);
 			}
 			return (
-				<DynamoView
+				<FurmlyView
 					currentStep={this.props.currentStep || 0}
 					currentProcess={this.props.id}
 					navigation={this.props.navigation}
@@ -98,10 +98,10 @@ export default (ProgressBar, TextView, DynamoView) => {
 			/*jshint ignore:end */
 		}
 	}
-	// DynamoProcess.propTypes = {
+	// FurmlyProcess.propTypes = {
 	// 	id: React.PropTypes.string.isRequired,
 	// 	fetchParams: React.PropTypes.object,
 	// 	description: React.PropTypes.object
 	// };
-	return connect(mapStateToProps, mapDispatchToProps)(DynamoProcess);
+	return connect(mapStateToProps, mapDispatchToProps)(FurmlyProcess);
 };

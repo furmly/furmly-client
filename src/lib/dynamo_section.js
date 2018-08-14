@@ -5,8 +5,8 @@ export default (Layout, Header, Container) => {
 	invariants.validComponent(Layout, "Layout");
 	invariants.validComponent(Header, "Header");
 	invariants.validComponent(Container, "Container");
-	const log = debug("dynamo-client-components:session");
-	class DynamoSection extends Component {
+	const log = debug("furmly-client-components:session");
+	class FurmlySection extends Component {
 		constructor(props) {
 			super(props);
 		}
@@ -34,5 +34,5 @@ export default (Layout, Header, Container) => {
 		}
 	}
 
-	return DynamoSection;
+	return FurmlySection;
 };

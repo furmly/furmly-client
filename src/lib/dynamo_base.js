@@ -1,5 +1,5 @@
 import React from "react";
-export default class DynamoComponentBase extends React.Component {
+export default class FurmlyComponentBase extends React.Component {
 	constructor(props, log) {
 		super(props);
 		this.log = m => {

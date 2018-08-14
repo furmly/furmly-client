@@ -1,7 +1,7 @@
 import React from "react";
 import { isObjectIdMode, getValueBasedOnMode } from "./utils/view";
 
-export default class DynamoHidden extends React.Component {
+export default class FurmlyHidden extends React.Component {
 	constructor(props) {
 		super(props);
 		this.init = this.init.bind(this);

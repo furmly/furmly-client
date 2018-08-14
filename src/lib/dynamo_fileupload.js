@@ -1,6 +1,6 @@
 import React, { Component } from "react";
 import { connect } from "react-redux";
-import { uploadDynamoFile, getDynamoFilePreview } from "./actions";
+import { uploadFurmlyFile, getFurmlyFilePreview } from "./actions";
 import invariants from "./utils/invariants";
 import ValidationHelper from "./utils/validator";
 import { getKey } from "./utils/view";
@@ -16,8 +16,8 @@ export default (Uploader, ProgressBar, Text, previews = []) => {
 	invariants.validComponent(Uploader, "Uploader");
 	invariants.validComponent(ProgressBar, "ProgressBar");
 	invariants.validComponent(Text, "Text");
-	const log = debug("dynamo-client-components:fileupload");
-	class DynamoFileUpload extends Component {
+	const log = debug("furmly-client-components:fileupload");
+	class FurmlyFileUpload extends Component {
 		constructor(props) {
 			super(props);
 			this.state = {};
@@ -119,7 +119,7 @@ export default (Uploader, ProgressBar, Text, previews = []) => {
 
 	const mapStateToProps = (_, initialProps) => (state, ownProps) => {
 		let component_uid = getKey(state, ownProps.component_uid, ownProps);
-		let st = state.dynamo.view[component_uid] || {};
+		let st = state.furmly.view[component_uid] || {};
 		return {
 			component_uid,
 			preview: st.preview,
@@ -130,11 +130,11 @@ export default (Uploader, ProgressBar, Text, previews = []) => {
 	};
 	const mapDispatchToProps = dispatch => {
 		return {
-			upload: (file, key) => dispatch(uploadDynamoFile(file, key)),
+			upload: (file, key) => dispatch(uploadFurmlyFile(file, key)),
 			getPreview: (id, key, fileType, query) =>
-				dispatch(getDynamoFilePreview(id, key, fileType, query))
+				dispatch(getFurmlyFilePreview(id, key, fileType, query))
 		};
 	};
 
-	return connect(mapStateToProps, mapDispatchToProps)(DynamoFileUpload);
+	return connect(mapStateToProps, mapDispatchToProps)(FurmlyFileUpload);
 };

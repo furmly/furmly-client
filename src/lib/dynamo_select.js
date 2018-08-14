@@ -1,6 +1,6 @@
 import React, { Component } from "react";
 import { connect } from "react-redux";
-import { runDynamoProcessor } from "./actions";
+import { runFurmlyProcessor } from "./actions";
 import ValidationHelper, { VALIDATOR_TYPES } from "./utils/validator";
 import invariants from "./utils/invariants";
 import {
@@ -16,19 +16,19 @@ export default (ProgressIndicator, Layout, Container) => {
 		invariants.validComponent(Layout, "Layout") &&
 		!Container
 	)
-		throw new Error("Container cannot be null (dynamo_select)");
+		throw new Error("Container cannot be null (furmly_select)");
 
-	const log = debug("dynamo-client-components:select");
+	const log = debug("furmly-client-components:select");
 
-	//map elements in DynamoView props to elements in store.
+	//map elements in FurmlyView props to elements in store.
 	const mapStateToProps = (_, initialProps) => (state, ownProps) => {
 		if (ownProps.args.type == "PROCESSOR") {
 			let component_uid = getKey(state, ownProps.component_uid, ownProps);
-			let st = state.dynamo.view[component_uid];
+			let st = state.furmly.view[component_uid];
 			return {
 				items: st,
-				busy: !!state.dynamo.view[getBusyKey(component_uid)],
-				error: !!state.dynamo.view[getErrorKey(component_uid)],
+				busy: !!state.furmly.view[getBusyKey(component_uid)],
+				error: !!state.furmly.view[getErrorKey(component_uid)],
 				component_uid
 			};
 		}
@@ -38,12 +38,12 @@ export default (ProgressIndicator, Layout, Container) => {
 	const mapDispatchToProps = dispatch => {
 		return {
 			fetch: (id, params, key) => {
-				dispatch(runDynamoProcessor(id, params, key));
+				dispatch(runFurmlyProcessor(id, params, key));
 			}
 		};
 	};
 
-	class DynamoSelect extends Component {
+	class FurmlySelect extends Component {
 		constructor(props) {
 			super(props);
 			this.state = {};
@@ -208,5 +208,5 @@ export default (ProgressIndicator, Layout, Container) => {
 		}
 	}
 
-	return connect(mapStateToProps, mapDispatchToProps)(DynamoSelect);
+	return connect(mapStateToProps, mapDispatchToProps)(FurmlySelect);
 };

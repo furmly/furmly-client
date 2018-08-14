@@ -1,11 +1,11 @@
 import React, { Component } from "react";
 import { connect } from "react-redux";
-import { runDynamoProcessor } from "./actions";
+import { runFurmlyProcessor } from "./actions";
 import invariants from "./utils/invariants";
 import _ from "lodash";
 import { getKey } from "./utils/view";
 import debug from "debug";
-import DynamoBase from "./dynamo_base";
+import FurmlyBase from "./furmly_base";
 export default (
 	Layout,
 	ProgressBar,
@@ -18,29 +18,29 @@ export default (
 	invariants.validComponent(ContentContainer, "ContentContainer");
 	invariants.validComponent(ProgressBar, "ProgressBar");
 	invariants.validComponent(Layout, "Layout");
-	const log = debug("dynamo-client-components:actionview");
+	const log = debug("furmly-client-components:actionview");
 	const mapDispatchToProps = dispatch => {
 		return {
 			run: (id, args, key) =>
 				dispatch(
-					runDynamoProcessor(id, args, key, { disableCache: true })
+					runFurmlyProcessor(id, args, key, { disableCache: true })
 				),
 			showMessage: message => dispatch(showMessage(message))
 		};
 	};
 	const mapStateToProps = (_, initialProps) => (state, ownProps) => {
 		var component_uid = getKey(state, ownProps.component_uid, ownProps),
-			_actionState = state.dynamo.view[component_uid];
+			_actionState = state.furmly.view[component_uid];
 		return {
 			resultUI: _actionState && (_actionState.ui || _actionState),
 			resultData: _actionState && _actionState.data,
-			busy: !!state.dynamo.view[component_uid + "-busy"],
+			busy: !!state.furmly.view[component_uid + "-busy"],
 			component_uid
 		};
 	};
 	const itemViewName = "_item_view";
 	const contentViewName = "_content_view";
-	class DynamoActionView extends DynamoBase {
+	class FurmlyActionView extends FurmlyBase {
 		constructor(props) {
 			super(props, log);
 			this.state = { _filterValidator: {}, validator: {} };
@@ -119,5 +119,5 @@ export default (
 		}
 	}
 
-	return connect(mapStateToProps, mapDispatchToProps)(DynamoActionView);
+	return connect(mapStateToProps, mapDispatchToProps)(FurmlyActionView);
 };

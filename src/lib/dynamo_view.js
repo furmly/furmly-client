@@ -7,11 +7,11 @@ export default (Page, Warning, Container) => {
 	invariants.validComponent(Page, "Page");
 	invariants.validComponent(Warning, "Warning");
 	invariants.validComponent(Container, "Container");
-	//map elements in DynamoView props to elements in store.
-	const log = debug("dynamo-client-components:view");
+	//map elements in FurmlyView props to elements in store.
+	const log = debug("furmly-client-components:view");
 	const mapStateToProps = (_, initialProps) => (state, ownProps) => {
 		//log("mapping state to props");
-		let _state = state.dynamo.view[ownProps.currentProcess],
+		let _state = state.furmly.view[ownProps.currentProcess],
 			description = _state && _state.description,
 			map = {
 				value: (_state && _state[ownProps.currentStep]) || null
@@ -33,7 +33,7 @@ export default (Page, Warning, Container) => {
 		};
 	};
 
-	class DynamoView extends Component {
+	class FurmlyView extends Component {
 		constructor(props) {
 			super(props);
 			this.onValueChanged = this.onValueChanged.bind(this);
@@ -45,9 +45,9 @@ export default (Page, Warning, Container) => {
 		}
 
 		onValueChanged(form) {
-			//this.state.form = form.dynamo_view;
+			//this.state.form = form.furmly_view;
 			this.props.valueChanged({
-				form: form.dynamo_view,
+				form: form.furmly_view,
 				id: this.props.currentProcess,
 				step: this.props.currentStep
 			});
@@ -86,7 +86,7 @@ export default (Page, Warning, Container) => {
 					<Container
 						label={this.props.title}
 						elements={this.props.elements}
-						name="dynamo_view"
+						name="furmly_view"
 						value={this.props.value}
 						valueChanged={this.onValueChanged}
 						validator={this.state.validator}
@@ -100,5 +100,5 @@ export default (Page, Warning, Container) => {
 		}
 	}
 
-	return connect(mapStateToProps, mapDispatchToProps)(DynamoView);
+	return connect(mapStateToProps, mapDispatchToProps)(FurmlyView);
 };

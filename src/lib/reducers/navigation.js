@@ -3,7 +3,7 @@ import _ from "lodash";
 
 export default function(state = createStack(), action) {
 	switch (action.type) {
-		case ACTIONS.SET_DYNAMO_PARAMS:
+		case ACTIONS.SET_FURMLY_PARAMS:
 		case ACTIONS.ALREADY_VISIBLE:
 			if (hasScreenAlready(state, action.payload)) {
 				makeTop(state, action.payload);
@@ -21,12 +21,12 @@ export default function(state = createStack(), action) {
 			);
 			return Object.assign({}, state, stack);
 
-		case ACTIONS.REMOVE_LAST_DYNAMO_PARAMS:
+		case ACTIONS.REMOVE_LAST_FURMLY_PARAMS:
 			var stack = copyStack(state),
 				item = stack.stack.pop();
 			if (
 				item &&
-				(item.key == "Dynamo" || item.$routeName == "Dynamo") &&
+				(item.key == "Furmly" || item.$routeName == "Furmly") &&
 				stack._references[item.params.id]
 			) {
 				let refs = stack._references[item.params.id][0];
@@ -60,7 +60,7 @@ export function hasScreenAlready(state, current) {
 
 function addToStack(item, stack) {}
 function countRef(stack, index, e) {
-	if (e.key == "Dynamo" || e.$routeName == "Dynamo") {
+	if (e.key == "Furmly" || e.$routeName == "Furmly") {
 		if (stack._references[e.params.id]) {
 			stack._references[e.params.id][0] =
 				stack._references[e.params.id][0] + 1;

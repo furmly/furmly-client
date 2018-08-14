@@ -1,22 +1,22 @@
 export function getTitleFromState(state) {
 	let id =
-		state.dynamo.navigation.stack.length &&
-		state.dynamo.navigation.stack[state.dynamo.navigation.stack.length - 1]
+		state.furmly.navigation.stack.length &&
+		state.furmly.navigation.stack[state.furmly.navigation.stack.length - 1]
 			.params.id;
 
 	if (!id) return "School Manager";
 	return (
-		(state.dynamo.view[id] &&
-			state.dynamo.view[`${id}-busy`] &&
+		(state.furmly.view[id] &&
+			state.furmly.view[`${id}-busy`] &&
 			"Loading...") ||
-		(state.dynamo.view[id] &&
-			state.dynamo.view[id].description &&
-			state.dynamo.view[id].description.steps[
-				state.dynamo.view[id].currentStep || 0
+		(state.furmly.view[id] &&
+			state.furmly.view[id].description &&
+			state.furmly.view[id].description.steps[
+				state.furmly.view[id].currentStep || 0
 			].description) ||
-		(state.dynamo.view[id] &&
-			state.dynamo.view[id].description &&
-			state.dynamo.view[id].description.title) ||
+		(state.furmly.view[id] &&
+			state.furmly.view[id].description &&
+			state.furmly.view[id].description.title) ||
 		"School Manager"
 	);
 }
@@ -35,27 +35,27 @@ export function isObjectIdMode(props) {
 }
 export function getCurrentStepFromState(state) {
 	return (
-		(state.dynamo.navigation.stack.length &&
-			state.dynamo.navigation.stack[
-				state.dynamo.navigation.stack.length - 1
+		(state.furmly.navigation.stack.length &&
+			state.furmly.navigation.stack[
+				state.furmly.navigation.stack.length - 1
 			].params.currentStep) ||
 		0
 	);
 }
 export function getCurrentStep(state) {
 	return (
-		(state.dynamo.navigation.stack.length &&
-			state.dynamo.navigation.stack[
-				state.dynamo.navigation.stack.length - 1
+		(state.furmly.navigation.stack.length &&
+			state.furmly.navigation.stack[
+				state.furmly.navigation.stack.length - 1
 			].params.currentStep) ||
 		0
 	);
 }
 
 export function getCurrentProcess(state) {
-	for (var i = state.dynamo.navigation.stack.length - 1; i >= 0; i--) {
-		if (state.dynamo.navigation.stack[i].key == "Dynamo") {
-			return state.dynamo.navigation.stack[i].params.id;
+	for (var i = state.furmly.navigation.stack.length - 1; i >= 0; i--) {
+		if (state.furmly.navigation.stack[i].key == "Furmly") {
+			return state.furmly.navigation.stack[i].params.id;
 		}
 	}
 	return null;
@@ -101,11 +101,11 @@ export function unwrapObjectValue(value) {
  */
 export const getTemplatesAndAddComponentUid = runThroughObj.bind(null, [
 	(key, data, result, parent) => {
-		if (key === "dynamo_ref") {
+		if (key === "furmly_ref") {
 			if (data.template)
-				return (result[data.dynamo_ref] = data.template), result;
+				return (result[data.furmly_ref] = data.template), result;
 			if (parent && parent.itemTemplate)
-				return (result[data.dynamo_ref] = parent.itemTemplate), result;
+				return (result[data.furmly_ref] = parent.itemTemplate), result;
 		}
 	},
 	(key, data, result, parent) => {

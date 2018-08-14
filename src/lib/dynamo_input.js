@@ -1,7 +1,7 @@
 import PropTypes from "prop-types";
 import React, { Component } from "react";
 import { connect } from "react-redux";
-import { runDynamoProcessor } from "./actions";
+import { runFurmlyProcessor } from "./actions";
 import ValidationHelper, { VALIDATOR_TYPES } from "./utils/validator";
 import invariants from "./utils/invariants";
 import debug from "debug";
@@ -15,8 +15,8 @@ export default (LabelWrapper, Input, DatePicker, Checkbox) => {
 	invariants.validComponent(Input, "Input");
 	invariants.validComponent(DatePicker, "DatePicker");
 	invariants.validComponent(Checkbox, "Checkbox");
-	const log = debug("dynamo-client-components:input");
-	class DynamoInput extends Component {
+	const log = debug("furmly-client-components:input");
+	class FurmlyInput extends Component {
 		constructor(props) {
 			super(props);
 			this.state = {};
@@ -220,8 +220,8 @@ export default (LabelWrapper, Input, DatePicker, Checkbox) => {
 			/*jshint ignore:end */
 		}
 	}
-	DynamoInput.propTypes = {
+	FurmlyInput.propTypes = {
 		valueChanged: PropTypes.func
 	};
-	return DynamoInput;
+	return FurmlyInput;
 };

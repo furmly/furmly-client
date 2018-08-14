@@ -19,8 +19,8 @@ export default (...args) => {
 		invariants.validComponent(Header, "Header") &&
 		!ComponentLocator
 	)
-		throw new Error("ComponentLocator cannot be null (dynamo_container)");
-	const log = debug("dynamo-client-components:container");
+		throw new Error("ComponentLocator cannot be null (furmly_container)");
+	const log = debug("furmly-client-components:container");
 	return class extends Component {
 		constructor(props) {
 			super(props);
@@ -76,7 +76,7 @@ export default (...args) => {
 						return x.order - y.order;
 					})
 					.map((x, index) => {
-						let DynamoComponent = ComponentLocator(x),
+						let FurmlyComponent = ComponentLocator(x),
 							source = self.props.value,
 							//validator = {},
 							value = source ? this.props.value[x.name] : null;
@@ -88,16 +88,16 @@ export default (...args) => {
 						)
 							keys.splice(keys.indexOf(x.name), 1);
 						/*jshint ignore:start*/
-						if (!DynamoComponent)
+						if (!FurmlyComponent)
 							throw new Error(
 								"Unknown component:" +
 									JSON.stringify(x, null, " ")
 							);
-						if (DynamoComponent.notifyExtra) {
+						if (FurmlyComponent.notifyExtra) {
 							notifyExtra.push(index);
 							return extra => {
 								let component = (
-									<DynamoComponent
+									<FurmlyComponent
 										{...x}
 										extra={extra}
 										key={x.name}
@@ -125,7 +125,7 @@ export default (...args) => {
 							};
 						}
 						let component = (
-							<DynamoComponent
+							<FurmlyComponent
 								{...x}
 								value={value}
 								validator={this.state._validations[index]}
