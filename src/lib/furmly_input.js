@@ -1,7 +1,5 @@
 import PropTypes from "prop-types";
 import React, { Component } from "react";
-import { connect } from "react-redux";
-import { runFurmlyProcessor } from "./actions";
 import ValidationHelper, { VALIDATOR_TYPES } from "./utils/validator";
 import invariants from "./utils/invariants";
 import debug from "debug";

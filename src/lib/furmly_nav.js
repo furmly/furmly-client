@@ -1,6 +1,5 @@
 import React, { Component } from "react";
 import { connect } from "react-redux";
-import { fetchFurmlyProcess } from "./actions";
 import invariants from "./utils/invariants";
 import debug from "debug";
 export default (Link, NavigationActions) => {
