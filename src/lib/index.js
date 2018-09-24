@@ -15,7 +15,6 @@ import furmly_fileupload from './furmly_fileupload';
 import furmly_actionview from "./furmly_actionview";
 import furmly_label from './furmly_label';
 import furmly_webview from "./furmly_webview";
-import furmly_messenger from "./furmly_messenger";
 import furmly_command from "./furmly_command";
 
 export default {
@@ -36,6 +35,5 @@ export default {
 	furmly_htmlview,
 	furmly_label,
 	furmly_webview,
-	furmly_messenger,
 	furmly_command
 }; 

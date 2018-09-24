@@ -1,9 +1,7 @@
-import chat from "./chat";
 import view from "./view";
 import navigation from "./navigation";
 import { toggleAllBusyIndicators } from "../utils/view";
 const reducers = [
-	{ name: "chat", run: chat },
 	{ name: "navigation", run: navigation },
 	{ name: "view", run: view }
 ];

@@ -4,1219 +4,15 @@ Object.defineProperty(exports, '__esModule', { value: true });
 
 function _interopDefault (ex) { return (ex && (typeof ex === 'object') && 'default' in ex) ? ex['default'] : ex; }
 
-var PropTypes = _interopDefault(require('prop-types'));
 var React = require('react');
 var React__default = _interopDefault(React);
-var hoistStatics = _interopDefault(require('hoist-non-react-statics'));
-var invariant = _interopDefault(require('invariant'));
+var debug = _interopDefault(require('debug'));
+var hoistNonReactStatic = _interopDefault(require('hoist-non-react-statics'));
+var PropTypes = _interopDefault(require('prop-types'));
 var _ = _interopDefault(require('lodash'));
 var config = _interopDefault(require('client_config'));
 var CALL_API = _interopDefault(require('call_api'));
-var openSocket = _interopDefault(require('socket.io-client'));
-var debug = _interopDefault(require('debug'));
-var uuid$1 = _interopDefault(require('uuid/v4'));
-
-var subscriptionShape = PropTypes.shape({
-  trySubscribe: PropTypes.func.isRequired,
-  tryUnsubscribe: PropTypes.func.isRequired,
-  notifyNestedSubs: PropTypes.func.isRequired,
-  isSubscribed: PropTypes.func.isRequired
-});
-
-var storeShape = PropTypes.shape({
-  subscribe: PropTypes.func.isRequired,
-  dispatch: PropTypes.func.isRequired,
-  getState: PropTypes.func.isRequired
-});
-
-/**
- * Prints a warning in the console if it exists.
- *
- * @param {String} message The warning message.
- * @returns {void}
- */
-function warning(message) {
-  /* eslint-disable no-console */
-  if (typeof console !== 'undefined' && typeof console.error === 'function') {
-    console.error(message);
-  }
-  /* eslint-enable no-console */
-  try {
-    // This error was thrown as a convenience so that if you enable
-    // "break on all exceptions" in your console,
-    // it would pause the execution at this line.
-    throw new Error(message);
-    /* eslint-disable no-empty */
-  } catch (e) {}
-  /* eslint-enable no-empty */
-}
-
-function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
-
-function _possibleConstructorReturn(self, call) { if (!self) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return call && (typeof call === "object" || typeof call === "function") ? call : self; }
-
-function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
-
-var didWarnAboutReceivingStore = false;
-function warnAboutReceivingStore() {
-  if (didWarnAboutReceivingStore) {
-    return;
-  }
-  didWarnAboutReceivingStore = true;
-
-  warning('<Provider> does not support changing `store` on the fly. ' + 'It is most likely that you see this error because you updated to ' + 'Redux 2.x and React Redux 2.x which no longer hot reload reducers ' + 'automatically. See https://github.com/reactjs/react-redux/releases/' + 'tag/v2.0.0 for the migration instructions.');
-}
-
-function createProvider() {
-  var _Provider$childContex;
-
-  var storeKey = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : 'store';
-  var subKey = arguments[1];
-
-  var subscriptionKey = subKey || storeKey + 'Subscription';
-
-  var Provider = function (_Component) {
-    _inherits(Provider, _Component);
-
-    Provider.prototype.getChildContext = function getChildContext() {
-      var _ref;
-
-      return _ref = {}, _ref[storeKey] = this[storeKey], _ref[subscriptionKey] = null, _ref;
-    };
-
-    function Provider(props, context) {
-      _classCallCheck(this, Provider);
-
-      var _this = _possibleConstructorReturn(this, _Component.call(this, props, context));
-
-      _this[storeKey] = props.store;
-      return _this;
-    }
-
-    Provider.prototype.render = function render() {
-      return React.Children.only(this.props.children);
-    };
-
-    return Provider;
-  }(React.Component);
-
-  if (process.env.NODE_ENV !== 'production') {
-    Provider.prototype.componentWillReceiveProps = function (nextProps) {
-      if (this[storeKey] !== nextProps.store) {
-        warnAboutReceivingStore();
-      }
-    };
-  }
-
-  Provider.propTypes = {
-    store: storeShape.isRequired,
-    children: PropTypes.element.isRequired
-  };
-  Provider.childContextTypes = (_Provider$childContex = {}, _Provider$childContex[storeKey] = storeShape.isRequired, _Provider$childContex[subscriptionKey] = subscriptionShape, _Provider$childContex);
-
-  return Provider;
-}
-
-createProvider();
-
-function _classCallCheck$1(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
-
-// encapsulates the subscription logic for connecting a component to the redux store, as
-// well as nesting subscriptions of descendant components, so that we can ensure the
-// ancestor components re-render before descendants
-
-var CLEARED = null;
-var nullListeners = {
-  notify: function notify() {}
-};
-
-function createListenerCollection() {
-  // the current/next pattern is copied from redux's createStore code.
-  // TODO: refactor+expose that code to be reusable here?
-  var current = [];
-  var next = [];
-
-  return {
-    clear: function clear() {
-      next = CLEARED;
-      current = CLEARED;
-    },
-    notify: function notify() {
-      var listeners = current = next;
-      for (var i = 0; i < listeners.length; i++) {
-        listeners[i]();
-      }
-    },
-    get: function get() {
-      return next;
-    },
-    subscribe: function subscribe(listener) {
-      var isSubscribed = true;
-      if (next === current) next = current.slice();
-      next.push(listener);
-
-      return function unsubscribe() {
-        if (!isSubscribed || current === CLEARED) return;
-        isSubscribed = false;
-
-        if (next === current) next = current.slice();
-        next.splice(next.indexOf(listener), 1);
-      };
-    }
-  };
-}
-
-var Subscription = function () {
-  function Subscription(store, parentSub, onStateChange) {
-    _classCallCheck$1(this, Subscription);
-
-    this.store = store;
-    this.parentSub = parentSub;
-    this.onStateChange = onStateChange;
-    this.unsubscribe = null;
-    this.listeners = nullListeners;
-  }
-
-  Subscription.prototype.addNestedSub = function addNestedSub(listener) {
-    this.trySubscribe();
-    return this.listeners.subscribe(listener);
-  };
-
-  Subscription.prototype.notifyNestedSubs = function notifyNestedSubs() {
-    this.listeners.notify();
-  };
-
-  Subscription.prototype.isSubscribed = function isSubscribed() {
-    return Boolean(this.unsubscribe);
-  };
-
-  Subscription.prototype.trySubscribe = function trySubscribe() {
-    if (!this.unsubscribe) {
-      this.unsubscribe = this.parentSub ? this.parentSub.addNestedSub(this.onStateChange) : this.store.subscribe(this.onStateChange);
-
-      this.listeners = createListenerCollection();
-    }
-  };
-
-  Subscription.prototype.tryUnsubscribe = function tryUnsubscribe() {
-    if (this.unsubscribe) {
-      this.unsubscribe();
-      this.unsubscribe = null;
-      this.listeners.clear();
-      this.listeners = nullListeners;
-    }
-  };
-
-  return Subscription;
-}();
-
-var _extends = Object.assign || function (target) { for (var i = 1; i < arguments.length; i++) { var source = arguments[i]; for (var key in source) { if (Object.prototype.hasOwnProperty.call(source, key)) { target[key] = source[key]; } } } return target; };
-
-function _classCallCheck$2(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
-
-function _possibleConstructorReturn$1(self, call) { if (!self) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return call && (typeof call === "object" || typeof call === "function") ? call : self; }
-
-function _inherits$1(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
-
-function _objectWithoutProperties(obj, keys) { var target = {}; for (var i in obj) { if (keys.indexOf(i) >= 0) continue; if (!Object.prototype.hasOwnProperty.call(obj, i)) continue; target[i] = obj[i]; } return target; }
-
-var hotReloadingVersion = 0;
-var dummyState = {};
-function noop() {}
-function makeSelectorStateful(sourceSelector, store) {
-  // wrap the selector in an object that tracks its results between runs.
-  var selector = {
-    run: function runComponentSelector(props) {
-      try {
-        var nextProps = sourceSelector(store.getState(), props);
-        if (nextProps !== selector.props || selector.error) {
-          selector.shouldComponentUpdate = true;
-          selector.props = nextProps;
-          selector.error = null;
-        }
-      } catch (error) {
-        selector.shouldComponentUpdate = true;
-        selector.error = error;
-      }
-    }
-  };
-
-  return selector;
-}
-
-function connectAdvanced(
-/*
-  selectorFactory is a func that is responsible for returning the selector function used to
-  compute new props from state, props, and dispatch. For example:
-     export default connectAdvanced((dispatch, options) => (state, props) => ({
-      thing: state.things[props.thingId],
-      saveThing: fields => dispatch(actionCreators.saveThing(props.thingId, fields)),
-    }))(YourComponent)
-   Access to dispatch is provided to the factory so selectorFactories can bind actionCreators
-  outside of their selector as an optimization. Options passed to connectAdvanced are passed to
-  the selectorFactory, along with displayName and WrappedComponent, as the second argument.
-   Note that selectorFactory is responsible for all caching/memoization of inbound and outbound
-  props. Do not use connectAdvanced directly without memoizing results between calls to your
-  selector, otherwise the Connect component will re-render on every state or props change.
-*/
-selectorFactory) {
-  var _contextTypes, _childContextTypes;
-
-  var _ref = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : {},
-      _ref$getDisplayName = _ref.getDisplayName,
-      getDisplayName = _ref$getDisplayName === undefined ? function (name) {
-    return 'ConnectAdvanced(' + name + ')';
-  } : _ref$getDisplayName,
-      _ref$methodName = _ref.methodName,
-      methodName = _ref$methodName === undefined ? 'connectAdvanced' : _ref$methodName,
-      _ref$renderCountProp = _ref.renderCountProp,
-      renderCountProp = _ref$renderCountProp === undefined ? undefined : _ref$renderCountProp,
-      _ref$shouldHandleStat = _ref.shouldHandleStateChanges,
-      shouldHandleStateChanges = _ref$shouldHandleStat === undefined ? true : _ref$shouldHandleStat,
-      _ref$storeKey = _ref.storeKey,
-      storeKey = _ref$storeKey === undefined ? 'store' : _ref$storeKey,
-      _ref$withRef = _ref.withRef,
-      withRef = _ref$withRef === undefined ? false : _ref$withRef,
-      connectOptions = _objectWithoutProperties(_ref, ['getDisplayName', 'methodName', 'renderCountProp', 'shouldHandleStateChanges', 'storeKey', 'withRef']);
-
-  var subscriptionKey = storeKey + 'Subscription';
-  var version = hotReloadingVersion++;
-
-  var contextTypes = (_contextTypes = {}, _contextTypes[storeKey] = storeShape, _contextTypes[subscriptionKey] = subscriptionShape, _contextTypes);
-  var childContextTypes = (_childContextTypes = {}, _childContextTypes[subscriptionKey] = subscriptionShape, _childContextTypes);
-
-  return function wrapWithConnect(WrappedComponent) {
-    invariant(typeof WrappedComponent == 'function', 'You must pass a component to the function returned by ' + (methodName + '. Instead received ' + JSON.stringify(WrappedComponent)));
-
-    var wrappedComponentName = WrappedComponent.displayName || WrappedComponent.name || 'Component';
-
-    var displayName = getDisplayName(wrappedComponentName);
-
-    var selectorFactoryOptions = _extends({}, connectOptions, {
-      getDisplayName: getDisplayName,
-      methodName: methodName,
-      renderCountProp: renderCountProp,
-      shouldHandleStateChanges: shouldHandleStateChanges,
-      storeKey: storeKey,
-      withRef: withRef,
-      displayName: displayName,
-      wrappedComponentName: wrappedComponentName,
-      WrappedComponent: WrappedComponent
-    });
-
-    var Connect = function (_Component) {
-      _inherits$1(Connect, _Component);
-
-      function Connect(props, context) {
-        _classCallCheck$2(this, Connect);
-
-        var _this = _possibleConstructorReturn$1(this, _Component.call(this, props, context));
-
-        _this.version = version;
-        _this.state = {};
-        _this.renderCount = 0;
-        _this.store = props[storeKey] || context[storeKey];
-        _this.propsMode = Boolean(props[storeKey]);
-        _this.setWrappedInstance = _this.setWrappedInstance.bind(_this);
-
-        invariant(_this.store, 'Could not find "' + storeKey + '" in either the context or props of ' + ('"' + displayName + '". Either wrap the root component in a <Provider>, ') + ('or explicitly pass "' + storeKey + '" as a prop to "' + displayName + '".'));
-
-        _this.initSelector();
-        _this.initSubscription();
-        return _this;
-      }
-
-      Connect.prototype.getChildContext = function getChildContext() {
-        var _ref2;
-
-        // If this component received store from props, its subscription should be transparent
-        // to any descendants receiving store+subscription from context; it passes along
-        // subscription passed to it. Otherwise, it shadows the parent subscription, which allows
-        // Connect to control ordering of notifications to flow top-down.
-        var subscription = this.propsMode ? null : this.subscription;
-        return _ref2 = {}, _ref2[subscriptionKey] = subscription || this.context[subscriptionKey], _ref2;
-      };
-
-      Connect.prototype.componentDidMount = function componentDidMount() {
-        if (!shouldHandleStateChanges) return;
-
-        // componentWillMount fires during server side rendering, but componentDidMount and
-        // componentWillUnmount do not. Because of this, trySubscribe happens during ...didMount.
-        // Otherwise, unsubscription would never take place during SSR, causing a memory leak.
-        // To handle the case where a child component may have triggered a state change by
-        // dispatching an action in its componentWillMount, we have to re-run the select and maybe
-        // re-render.
-        this.subscription.trySubscribe();
-        this.selector.run(this.props);
-        if (this.selector.shouldComponentUpdate) this.forceUpdate();
-      };
-
-      Connect.prototype.componentWillReceiveProps = function componentWillReceiveProps(nextProps) {
-        this.selector.run(nextProps);
-      };
-
-      Connect.prototype.shouldComponentUpdate = function shouldComponentUpdate() {
-        return this.selector.shouldComponentUpdate;
-      };
-
-      Connect.prototype.componentWillUnmount = function componentWillUnmount() {
-        if (this.subscription) this.subscription.tryUnsubscribe();
-        this.subscription = null;
-        this.notifyNestedSubs = noop;
-        this.store = null;
-        this.selector.run = noop;
-        this.selector.shouldComponentUpdate = false;
-      };
-
-      Connect.prototype.getWrappedInstance = function getWrappedInstance() {
-        invariant(withRef, 'To access the wrapped instance, you need to specify ' + ('{ withRef: true } in the options argument of the ' + methodName + '() call.'));
-        return this.wrappedInstance;
-      };
-
-      Connect.prototype.setWrappedInstance = function setWrappedInstance(ref) {
-        this.wrappedInstance = ref;
-      };
-
-      Connect.prototype.initSelector = function initSelector() {
-        var sourceSelector = selectorFactory(this.store.dispatch, selectorFactoryOptions);
-        this.selector = makeSelectorStateful(sourceSelector, this.store);
-        this.selector.run(this.props);
-      };
-
-      Connect.prototype.initSubscription = function initSubscription() {
-        if (!shouldHandleStateChanges) return;
-
-        // parentSub's source should match where store came from: props vs. context. A component
-        // connected to the store via props shouldn't use subscription from context, or vice versa.
-        var parentSub = (this.propsMode ? this.props : this.context)[subscriptionKey];
-        this.subscription = new Subscription(this.store, parentSub, this.onStateChange.bind(this));
-
-        // `notifyNestedSubs` is duplicated to handle the case where the component is  unmounted in
-        // the middle of the notification loop, where `this.subscription` will then be null. An
-        // extra null check every change can be avoided by copying the method onto `this` and then
-        // replacing it with a no-op on unmount. This can probably be avoided if Subscription's
-        // listeners logic is changed to not call listeners that have been unsubscribed in the
-        // middle of the notification loop.
-        this.notifyNestedSubs = this.subscription.notifyNestedSubs.bind(this.subscription);
-      };
-
-      Connect.prototype.onStateChange = function onStateChange() {
-        this.selector.run(this.props);
-
-        if (!this.selector.shouldComponentUpdate) {
-          this.notifyNestedSubs();
-        } else {
-          this.componentDidUpdate = this.notifyNestedSubsOnComponentDidUpdate;
-          this.setState(dummyState);
-        }
-      };
-
-      Connect.prototype.notifyNestedSubsOnComponentDidUpdate = function notifyNestedSubsOnComponentDidUpdate() {
-        // `componentDidUpdate` is conditionally implemented when `onStateChange` determines it
-        // needs to notify nested subs. Once called, it unimplements itself until further state
-        // changes occur. Doing it this way vs having a permanent `componentDidUpdate` that does
-        // a boolean check every time avoids an extra method call most of the time, resulting
-        // in some perf boost.
-        this.componentDidUpdate = undefined;
-        this.notifyNestedSubs();
-      };
-
-      Connect.prototype.isSubscribed = function isSubscribed() {
-        return Boolean(this.subscription) && this.subscription.isSubscribed();
-      };
-
-      Connect.prototype.addExtraProps = function addExtraProps(props) {
-        if (!withRef && !renderCountProp && !(this.propsMode && this.subscription)) return props;
-        // make a shallow copy so that fields added don't leak to the original selector.
-        // this is especially important for 'ref' since that's a reference back to the component
-        // instance. a singleton memoized selector would then be holding a reference to the
-        // instance, preventing the instance from being garbage collected, and that would be bad
-        var withExtras = _extends({}, props);
-        if (withRef) withExtras.ref = this.setWrappedInstance;
-        if (renderCountProp) withExtras[renderCountProp] = this.renderCount++;
-        if (this.propsMode && this.subscription) withExtras[subscriptionKey] = this.subscription;
-        return withExtras;
-      };
-
-      Connect.prototype.render = function render() {
-        var selector = this.selector;
-        selector.shouldComponentUpdate = false;
-
-        if (selector.error) {
-          throw selector.error;
-        } else {
-          return React.createElement(WrappedComponent, this.addExtraProps(selector.props));
-        }
-      };
-
-      return Connect;
-    }(React.Component);
-
-    Connect.WrappedComponent = WrappedComponent;
-    Connect.displayName = displayName;
-    Connect.childContextTypes = childContextTypes;
-    Connect.contextTypes = contextTypes;
-    Connect.propTypes = contextTypes;
-
-    if (process.env.NODE_ENV !== 'production') {
-      Connect.prototype.componentWillUpdate = function componentWillUpdate() {
-        var _this2 = this;
-
-        // We are hot reloading!
-        if (this.version !== version) {
-          this.version = version;
-          this.initSelector();
-
-          // If any connected descendants don't hot reload (and resubscribe in the process), their
-          // listeners will be lost when we unsubscribe. Unfortunately, by copying over all
-          // listeners, this does mean that the old versions of connected descendants will still be
-          // notified of state changes; however, their onStateChange function is a no-op so this
-          // isn't a huge deal.
-          var oldListeners = [];
-
-          if (this.subscription) {
-            oldListeners = this.subscription.listeners.get();
-            this.subscription.tryUnsubscribe();
-          }
-          this.initSubscription();
-          if (shouldHandleStateChanges) {
-            this.subscription.trySubscribe();
-            oldListeners.forEach(function (listener) {
-              return _this2.subscription.listeners.subscribe(listener);
-            });
-          }
-        }
-      };
-    }
-
-    return hoistStatics(Connect, WrappedComponent);
-  };
-}
-
-var hasOwn = Object.prototype.hasOwnProperty;
-
-function is(x, y) {
-  if (x === y) {
-    return x !== 0 || y !== 0 || 1 / x === 1 / y;
-  } else {
-    return x !== x && y !== y;
-  }
-}
-
-function shallowEqual(objA, objB) {
-  if (is(objA, objB)) return true;
-
-  if (typeof objA !== 'object' || objA === null || typeof objB !== 'object' || objB === null) {
-    return false;
-  }
-
-  var keysA = Object.keys(objA);
-  var keysB = Object.keys(objB);
-
-  if (keysA.length !== keysB.length) return false;
-
-  for (var i = 0; i < keysA.length; i++) {
-    if (!hasOwn.call(objB, keysA[i]) || !is(objA[keysA[i]], objB[keysA[i]])) {
-      return false;
-    }
-  }
-
-  return true;
-}
-
-/** Detect free variable `global` from Node.js. */
-var freeGlobal = typeof global == 'object' && global && global.Object === Object && global;
-
-/** Detect free variable `self`. */
-var freeSelf = typeof self == 'object' && self && self.Object === Object && self;
-
-/** Used as a reference to the global object. */
-var root = freeGlobal || freeSelf || Function('return this')();
-
-/** Built-in value references. */
-var Symbol$1 = root.Symbol;
-
-/** Used for built-in method references. */
-var objectProto = Object.prototype;
-
-/** Used to check objects for own properties. */
-var hasOwnProperty = objectProto.hasOwnProperty;
-
-/**
- * Used to resolve the
- * [`toStringTag`](http://ecma-international.org/ecma-262/7.0/#sec-object.prototype.tostring)
- * of values.
- */
-var nativeObjectToString = objectProto.toString;
-
-/** Built-in value references. */
-var symToStringTag = Symbol$1 ? Symbol$1.toStringTag : undefined;
-
-/**
- * A specialized version of `baseGetTag` which ignores `Symbol.toStringTag` values.
- *
- * @private
- * @param {*} value The value to query.
- * @returns {string} Returns the raw `toStringTag`.
- */
-function getRawTag(value) {
-  var isOwn = hasOwnProperty.call(value, symToStringTag),
-      tag = value[symToStringTag];
-
-  try {
-    value[symToStringTag] = undefined;
-    var unmasked = true;
-  } catch (e) {}
-
-  var result = nativeObjectToString.call(value);
-  if (unmasked) {
-    if (isOwn) {
-      value[symToStringTag] = tag;
-    } else {
-      delete value[symToStringTag];
-    }
-  }
-  return result;
-}
-
-/** Used for built-in method references. */
-var objectProto$1 = Object.prototype;
-
-/**
- * Used to resolve the
- * [`toStringTag`](http://ecma-international.org/ecma-262/7.0/#sec-object.prototype.tostring)
- * of values.
- */
-var nativeObjectToString$1 = objectProto$1.toString;
-
-/**
- * Converts `value` to a string using `Object.prototype.toString`.
- *
- * @private
- * @param {*} value The value to convert.
- * @returns {string} Returns the converted string.
- */
-function objectToString(value) {
-  return nativeObjectToString$1.call(value);
-}
-
-/** `Object#toString` result references. */
-var nullTag = '[object Null]';
-var undefinedTag = '[object Undefined]';
-
-/** Built-in value references. */
-var symToStringTag$1 = Symbol$1 ? Symbol$1.toStringTag : undefined;
-
-/**
- * The base implementation of `getTag` without fallbacks for buggy environments.
- *
- * @private
- * @param {*} value The value to query.
- * @returns {string} Returns the `toStringTag`.
- */
-function baseGetTag(value) {
-  if (value == null) {
-    return value === undefined ? undefinedTag : nullTag;
-  }
-  return (symToStringTag$1 && symToStringTag$1 in Object(value))
-    ? getRawTag(value)
-    : objectToString(value);
-}
-
-/**
- * Creates a unary function that invokes `func` with its argument transformed.
- *
- * @private
- * @param {Function} func The function to wrap.
- * @param {Function} transform The argument transform.
- * @returns {Function} Returns the new function.
- */
-function overArg(func, transform) {
-  return function(arg) {
-    return func(transform(arg));
-  };
-}
-
-/** Built-in value references. */
-var getPrototype = overArg(Object.getPrototypeOf, Object);
-
-/**
- * Checks if `value` is object-like. A value is object-like if it's not `null`
- * and has a `typeof` result of "object".
- *
- * @static
- * @memberOf _
- * @since 4.0.0
- * @category Lang
- * @param {*} value The value to check.
- * @returns {boolean} Returns `true` if `value` is object-like, else `false`.
- * @example
- *
- * _.isObjectLike({});
- * // => true
- *
- * _.isObjectLike([1, 2, 3]);
- * // => true
- *
- * _.isObjectLike(_.noop);
- * // => false
- *
- * _.isObjectLike(null);
- * // => false
- */
-function isObjectLike(value) {
-  return value != null && typeof value == 'object';
-}
-
-/** `Object#toString` result references. */
-var objectTag = '[object Object]';
-
-/** Used for built-in method references. */
-var funcProto = Function.prototype;
-var objectProto$2 = Object.prototype;
-
-/** Used to resolve the decompiled source of functions. */
-var funcToString = funcProto.toString;
-
-/** Used to check objects for own properties. */
-var hasOwnProperty$1 = objectProto$2.hasOwnProperty;
-
-/** Used to infer the `Object` constructor. */
-var objectCtorString = funcToString.call(Object);
-
-/**
- * Checks if `value` is a plain object, that is, an object created by the
- * `Object` constructor or one with a `[[Prototype]]` of `null`.
- *
- * @static
- * @memberOf _
- * @since 0.8.0
- * @category Lang
- * @param {*} value The value to check.
- * @returns {boolean} Returns `true` if `value` is a plain object, else `false`.
- * @example
- *
- * function Foo() {
- *   this.a = 1;
- * }
- *
- * _.isPlainObject(new Foo);
- * // => false
- *
- * _.isPlainObject([1, 2, 3]);
- * // => false
- *
- * _.isPlainObject({ 'x': 0, 'y': 0 });
- * // => true
- *
- * _.isPlainObject(Object.create(null));
- * // => true
- */
-function isPlainObject(value) {
-  if (!isObjectLike(value) || baseGetTag(value) != objectTag) {
-    return false;
-  }
-  var proto = getPrototype(value);
-  if (proto === null) {
-    return true;
-  }
-  var Ctor = hasOwnProperty$1.call(proto, 'constructor') && proto.constructor;
-  return typeof Ctor == 'function' && Ctor instanceof Ctor &&
-    funcToString.call(Ctor) == objectCtorString;
-}
-
-function symbolObservablePonyfill(root) {
-	var result;
-	var Symbol = root.Symbol;
-
-	if (typeof Symbol === 'function') {
-		if (Symbol.observable) {
-			result = Symbol.observable;
-		} else {
-			result = Symbol('observable');
-			Symbol.observable = result;
-		}
-	} else {
-		result = '@@observable';
-	}
-
-	return result;
-}
-
-/* global window */
-var root$2;
-
-if (typeof self !== 'undefined') {
-  root$2 = self;
-} else if (typeof window !== 'undefined') {
-  root$2 = window;
-} else if (typeof global !== 'undefined') {
-  root$2 = global;
-} else if (typeof module !== 'undefined') {
-  root$2 = module;
-} else {
-  root$2 = Function('return this')();
-}
-
-var result = symbolObservablePonyfill(root$2);
-
-/**
- * These are private action types reserved by Redux.
- * For any unknown actions, you must return the current state.
- * If the current state is undefined, you must return the initial state.
- * Do not reference these action types directly in your code.
- */
-
-/**
- * Prints a warning in the console if it exists.
- *
- * @param {String} message The warning message.
- * @returns {void}
- */
-function warning$1(message) {
-  /* eslint-disable no-console */
-  if (typeof console !== 'undefined' && typeof console.error === 'function') {
-    console.error(message);
-  }
-  /* eslint-enable no-console */
-  try {
-    // This error was thrown as a convenience so that if you enable
-    // "break on all exceptions" in your console,
-    // it would pause the execution at this line.
-    throw new Error(message);
-    /* eslint-disable no-empty */
-  } catch (e) {}
-  /* eslint-enable no-empty */
-}
-
-function bindActionCreator(actionCreator, dispatch) {
-  return function () {
-    return dispatch(actionCreator.apply(undefined, arguments));
-  };
-}
-
-/**
- * Turns an object whose values are action creators, into an object with the
- * same keys, but with every function wrapped into a `dispatch` call so they
- * may be invoked directly. This is just a convenience method, as you can call
- * `store.dispatch(MyActionCreators.doSomething())` yourself just fine.
- *
- * For convenience, you can also pass a single function as the first argument,
- * and get a function in return.
- *
- * @param {Function|Object} actionCreators An object whose values are action
- * creator functions. One handy way to obtain it is to use ES6 `import * as`
- * syntax. You may also pass a single function.
- *
- * @param {Function} dispatch The `dispatch` function available on your Redux
- * store.
- *
- * @returns {Function|Object} The object mimicking the original object, but with
- * every action creator wrapped into the `dispatch` call. If you passed a
- * function as `actionCreators`, the return value will also be a single
- * function.
- */
-function bindActionCreators(actionCreators, dispatch) {
-  if (typeof actionCreators === 'function') {
-    return bindActionCreator(actionCreators, dispatch);
-  }
-
-  if (typeof actionCreators !== 'object' || actionCreators === null) {
-    throw new Error('bindActionCreators expected an object or a function, instead received ' + (actionCreators === null ? 'null' : typeof actionCreators) + '. ' + 'Did you write "import ActionCreators from" instead of "import * as ActionCreators from"?');
-  }
-
-  var keys = Object.keys(actionCreators);
-  var boundActionCreators = {};
-  for (var i = 0; i < keys.length; i++) {
-    var key = keys[i];
-    var actionCreator = actionCreators[key];
-    if (typeof actionCreator === 'function') {
-      boundActionCreators[key] = bindActionCreator(actionCreator, dispatch);
-    }
-  }
-  return boundActionCreators;
-}
-
-/**
- * Composes single-argument functions from right to left. The rightmost
- * function can take multiple arguments as it provides the signature for
- * the resulting composite function.
- *
- * @param {...Function} funcs The functions to compose.
- * @returns {Function} A function obtained by composing the argument functions
- * from right to left. For example, compose(f, g, h) is identical to doing
- * (...args) => f(g(h(...args))).
- */
-
-/*
-* This is a dummy function to check if the function name has been altered by minification.
-* If the function has been minified and NODE_ENV !== 'production', warn the user.
-*/
-function isCrushed() {}
-
-if (process.env.NODE_ENV !== 'production' && typeof isCrushed.name === 'string' && isCrushed.name !== 'isCrushed') {
-  warning$1('You are currently using minified code outside of NODE_ENV === \'production\'. ' + 'This means that you are running a slower development build of Redux. ' + 'You can use loose-envify (https://github.com/zertosh/loose-envify) for browserify ' + 'or DefinePlugin for webpack (http://stackoverflow.com/questions/30030031) ' + 'to ensure you have the correct code for your production build.');
-}
-
-function verifyPlainObject(value, displayName, methodName) {
-  if (!isPlainObject(value)) {
-    warning(methodName + '() in ' + displayName + ' must return a plain object. Instead received ' + value + '.');
-  }
-}
-
-function wrapMapToPropsConstant(getConstant) {
-  return function initConstantSelector(dispatch, options) {
-    var constant = getConstant(dispatch, options);
-
-    function constantSelector() {
-      return constant;
-    }
-    constantSelector.dependsOnOwnProps = false;
-    return constantSelector;
-  };
-}
-
-// dependsOnOwnProps is used by createMapToPropsProxy to determine whether to pass props as args
-// to the mapToProps function being wrapped. It is also used by makePurePropsSelector to determine
-// whether mapToProps needs to be invoked when props have changed.
-// 
-// A length of one signals that mapToProps does not depend on props from the parent component.
-// A length of zero is assumed to mean mapToProps is getting args via arguments or ...args and
-// therefore not reporting its length accurately..
-function getDependsOnOwnProps(mapToProps) {
-  return mapToProps.dependsOnOwnProps !== null && mapToProps.dependsOnOwnProps !== undefined ? Boolean(mapToProps.dependsOnOwnProps) : mapToProps.length !== 1;
-}
-
-// Used by whenMapStateToPropsIsFunction and whenMapDispatchToPropsIsFunction,
-// this function wraps mapToProps in a proxy function which does several things:
-// 
-//  * Detects whether the mapToProps function being called depends on props, which
-//    is used by selectorFactory to decide if it should reinvoke on props changes.
-//    
-//  * On first call, handles mapToProps if returns another function, and treats that
-//    new function as the true mapToProps for subsequent calls.
-//    
-//  * On first call, verifies the first result is a plain object, in order to warn
-//    the developer that their mapToProps function is not returning a valid result.
-//    
-function wrapMapToPropsFunc(mapToProps, methodName) {
-  return function initProxySelector(dispatch, _ref) {
-    var displayName = _ref.displayName;
-
-    var proxy = function mapToPropsProxy(stateOrDispatch, ownProps) {
-      return proxy.dependsOnOwnProps ? proxy.mapToProps(stateOrDispatch, ownProps) : proxy.mapToProps(stateOrDispatch);
-    };
-
-    // allow detectFactoryAndVerify to get ownProps
-    proxy.dependsOnOwnProps = true;
-
-    proxy.mapToProps = function detectFactoryAndVerify(stateOrDispatch, ownProps) {
-      proxy.mapToProps = mapToProps;
-      proxy.dependsOnOwnProps = getDependsOnOwnProps(mapToProps);
-      var props = proxy(stateOrDispatch, ownProps);
-
-      if (typeof props === 'function') {
-        proxy.mapToProps = props;
-        proxy.dependsOnOwnProps = getDependsOnOwnProps(props);
-        props = proxy(stateOrDispatch, ownProps);
-      }
-
-      if (process.env.NODE_ENV !== 'production') verifyPlainObject(props, displayName, methodName);
-
-      return props;
-    };
-
-    return proxy;
-  };
-}
-
-function whenMapDispatchToPropsIsFunction(mapDispatchToProps) {
-  return typeof mapDispatchToProps === 'function' ? wrapMapToPropsFunc(mapDispatchToProps, 'mapDispatchToProps') : undefined;
-}
-
-function whenMapDispatchToPropsIsMissing(mapDispatchToProps) {
-  return !mapDispatchToProps ? wrapMapToPropsConstant(function (dispatch) {
-    return { dispatch: dispatch };
-  }) : undefined;
-}
-
-function whenMapDispatchToPropsIsObject(mapDispatchToProps) {
-  return mapDispatchToProps && typeof mapDispatchToProps === 'object' ? wrapMapToPropsConstant(function (dispatch) {
-    return bindActionCreators(mapDispatchToProps, dispatch);
-  }) : undefined;
-}
-
-var defaultMapDispatchToPropsFactories = [whenMapDispatchToPropsIsFunction, whenMapDispatchToPropsIsMissing, whenMapDispatchToPropsIsObject];
-
-function whenMapStateToPropsIsFunction(mapStateToProps) {
-  return typeof mapStateToProps === 'function' ? wrapMapToPropsFunc(mapStateToProps, 'mapStateToProps') : undefined;
-}
-
-function whenMapStateToPropsIsMissing(mapStateToProps) {
-  return !mapStateToProps ? wrapMapToPropsConstant(function () {
-    return {};
-  }) : undefined;
-}
-
-var defaultMapStateToPropsFactories = [whenMapStateToPropsIsFunction, whenMapStateToPropsIsMissing];
-
-var _extends$2 = Object.assign || function (target) { for (var i = 1; i < arguments.length; i++) { var source = arguments[i]; for (var key in source) { if (Object.prototype.hasOwnProperty.call(source, key)) { target[key] = source[key]; } } } return target; };
-
-function defaultMergeProps(stateProps, dispatchProps, ownProps) {
-  return _extends$2({}, ownProps, stateProps, dispatchProps);
-}
-
-function wrapMergePropsFunc(mergeProps) {
-  return function initMergePropsProxy(dispatch, _ref) {
-    var displayName = _ref.displayName,
-        pure = _ref.pure,
-        areMergedPropsEqual = _ref.areMergedPropsEqual;
-
-    var hasRunOnce = false;
-    var mergedProps = void 0;
-
-    return function mergePropsProxy(stateProps, dispatchProps, ownProps) {
-      var nextMergedProps = mergeProps(stateProps, dispatchProps, ownProps);
-
-      if (hasRunOnce) {
-        if (!pure || !areMergedPropsEqual(nextMergedProps, mergedProps)) mergedProps = nextMergedProps;
-      } else {
-        hasRunOnce = true;
-        mergedProps = nextMergedProps;
-
-        if (process.env.NODE_ENV !== 'production') verifyPlainObject(mergedProps, displayName, 'mergeProps');
-      }
-
-      return mergedProps;
-    };
-  };
-}
-
-function whenMergePropsIsFunction(mergeProps) {
-  return typeof mergeProps === 'function' ? wrapMergePropsFunc(mergeProps) : undefined;
-}
-
-function whenMergePropsIsOmitted(mergeProps) {
-  return !mergeProps ? function () {
-    return defaultMergeProps;
-  } : undefined;
-}
-
-var defaultMergePropsFactories = [whenMergePropsIsFunction, whenMergePropsIsOmitted];
-
-function verify(selector, methodName, displayName) {
-  if (!selector) {
-    throw new Error('Unexpected value for ' + methodName + ' in ' + displayName + '.');
-  } else if (methodName === 'mapStateToProps' || methodName === 'mapDispatchToProps') {
-    if (!selector.hasOwnProperty('dependsOnOwnProps')) {
-      warning('The selector for ' + methodName + ' of ' + displayName + ' did not specify a value for dependsOnOwnProps.');
-    }
-  }
-}
-
-function verifySubselectors(mapStateToProps, mapDispatchToProps, mergeProps, displayName) {
-  verify(mapStateToProps, 'mapStateToProps', displayName);
-  verify(mapDispatchToProps, 'mapDispatchToProps', displayName);
-  verify(mergeProps, 'mergeProps', displayName);
-}
-
-function _objectWithoutProperties$1(obj, keys) { var target = {}; for (var i in obj) { if (keys.indexOf(i) >= 0) continue; if (!Object.prototype.hasOwnProperty.call(obj, i)) continue; target[i] = obj[i]; } return target; }
-
-function impureFinalPropsSelectorFactory(mapStateToProps, mapDispatchToProps, mergeProps, dispatch) {
-  return function impureFinalPropsSelector(state, ownProps) {
-    return mergeProps(mapStateToProps(state, ownProps), mapDispatchToProps(dispatch, ownProps), ownProps);
-  };
-}
-
-function pureFinalPropsSelectorFactory(mapStateToProps, mapDispatchToProps, mergeProps, dispatch, _ref) {
-  var areStatesEqual = _ref.areStatesEqual,
-      areOwnPropsEqual = _ref.areOwnPropsEqual,
-      areStatePropsEqual = _ref.areStatePropsEqual;
-
-  var hasRunAtLeastOnce = false;
-  var state = void 0;
-  var ownProps = void 0;
-  var stateProps = void 0;
-  var dispatchProps = void 0;
-  var mergedProps = void 0;
-
-  function handleFirstCall(firstState, firstOwnProps) {
-    state = firstState;
-    ownProps = firstOwnProps;
-    stateProps = mapStateToProps(state, ownProps);
-    dispatchProps = mapDispatchToProps(dispatch, ownProps);
-    mergedProps = mergeProps(stateProps, dispatchProps, ownProps);
-    hasRunAtLeastOnce = true;
-    return mergedProps;
-  }
-
-  function handleNewPropsAndNewState() {
-    stateProps = mapStateToProps(state, ownProps);
-
-    if (mapDispatchToProps.dependsOnOwnProps) dispatchProps = mapDispatchToProps(dispatch, ownProps);
-
-    mergedProps = mergeProps(stateProps, dispatchProps, ownProps);
-    return mergedProps;
-  }
-
-  function handleNewProps() {
-    if (mapStateToProps.dependsOnOwnProps) stateProps = mapStateToProps(state, ownProps);
-
-    if (mapDispatchToProps.dependsOnOwnProps) dispatchProps = mapDispatchToProps(dispatch, ownProps);
-
-    mergedProps = mergeProps(stateProps, dispatchProps, ownProps);
-    return mergedProps;
-  }
-
-  function handleNewState() {
-    var nextStateProps = mapStateToProps(state, ownProps);
-    var statePropsChanged = !areStatePropsEqual(nextStateProps, stateProps);
-    stateProps = nextStateProps;
-
-    if (statePropsChanged) mergedProps = mergeProps(stateProps, dispatchProps, ownProps);
-
-    return mergedProps;
-  }
-
-  function handleSubsequentCalls(nextState, nextOwnProps) {
-    var propsChanged = !areOwnPropsEqual(nextOwnProps, ownProps);
-    var stateChanged = !areStatesEqual(nextState, state);
-    state = nextState;
-    ownProps = nextOwnProps;
-
-    if (propsChanged && stateChanged) return handleNewPropsAndNewState();
-    if (propsChanged) return handleNewProps();
-    if (stateChanged) return handleNewState();
-    return mergedProps;
-  }
-
-  return function pureFinalPropsSelector(nextState, nextOwnProps) {
-    return hasRunAtLeastOnce ? handleSubsequentCalls(nextState, nextOwnProps) : handleFirstCall(nextState, nextOwnProps);
-  };
-}
-
-// TODO: Add more comments
-
-// If pure is true, the selector returned by selectorFactory will memoize its results,
-// allowing connectAdvanced's shouldComponentUpdate to return false if final
-// props have not changed. If false, the selector will always return a new
-// object and shouldComponentUpdate will always return true.
-
-function finalPropsSelectorFactory(dispatch, _ref2) {
-  var initMapStateToProps = _ref2.initMapStateToProps,
-      initMapDispatchToProps = _ref2.initMapDispatchToProps,
-      initMergeProps = _ref2.initMergeProps,
-      options = _objectWithoutProperties$1(_ref2, ['initMapStateToProps', 'initMapDispatchToProps', 'initMergeProps']);
-
-  var mapStateToProps = initMapStateToProps(dispatch, options);
-  var mapDispatchToProps = initMapDispatchToProps(dispatch, options);
-  var mergeProps = initMergeProps(dispatch, options);
-
-  if (process.env.NODE_ENV !== 'production') {
-    verifySubselectors(mapStateToProps, mapDispatchToProps, mergeProps, options.displayName);
-  }
-
-  var selectorFactory = options.pure ? pureFinalPropsSelectorFactory : impureFinalPropsSelectorFactory;
-
-  return selectorFactory(mapStateToProps, mapDispatchToProps, mergeProps, dispatch, options);
-}
-
-var _extends$3 = Object.assign || function (target) { for (var i = 1; i < arguments.length; i++) { var source = arguments[i]; for (var key in source) { if (Object.prototype.hasOwnProperty.call(source, key)) { target[key] = source[key]; } } } return target; };
-
-function _objectWithoutProperties$2(obj, keys) { var target = {}; for (var i in obj) { if (keys.indexOf(i) >= 0) continue; if (!Object.prototype.hasOwnProperty.call(obj, i)) continue; target[i] = obj[i]; } return target; }
-
-/*
-  connect is a facade over connectAdvanced. It turns its args into a compatible
-  selectorFactory, which has the signature:
-
-    (dispatch, options) => (nextState, nextOwnProps) => nextFinalProps
-  
-  connect passes its args to connectAdvanced as options, which will in turn pass them to
-  selectorFactory each time a Connect component instance is instantiated or hot reloaded.
-
-  selectorFactory returns a final props selector from its mapStateToProps,
-  mapStateToPropsFactories, mapDispatchToProps, mapDispatchToPropsFactories, mergeProps,
-  mergePropsFactories, and pure args.
-
-  The resulting final props selector is called by the Connect component instance whenever
-  it receives new props or store state.
- */
-
-function match(arg, factories, name) {
-  for (var i = factories.length - 1; i >= 0; i--) {
-    var result = factories[i](arg);
-    if (result) return result;
-  }
-
-  return function (dispatch, options) {
-    throw new Error('Invalid value of type ' + typeof arg + ' for ' + name + ' argument when connecting component ' + options.wrappedComponentName + '.');
-  };
-}
-
-function strictEqual(a, b) {
-  return a === b;
-}
-
-// createConnect with default args builds the 'official' connect behavior. Calling it with
-// different options opens up some testing and extensibility scenarios
-function createConnect() {
-  var _ref = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : {},
-      _ref$connectHOC = _ref.connectHOC,
-      connectHOC = _ref$connectHOC === undefined ? connectAdvanced : _ref$connectHOC,
-      _ref$mapStateToPropsF = _ref.mapStateToPropsFactories,
-      mapStateToPropsFactories = _ref$mapStateToPropsF === undefined ? defaultMapStateToPropsFactories : _ref$mapStateToPropsF,
-      _ref$mapDispatchToPro = _ref.mapDispatchToPropsFactories,
-      mapDispatchToPropsFactories = _ref$mapDispatchToPro === undefined ? defaultMapDispatchToPropsFactories : _ref$mapDispatchToPro,
-      _ref$mergePropsFactor = _ref.mergePropsFactories,
-      mergePropsFactories = _ref$mergePropsFactor === undefined ? defaultMergePropsFactories : _ref$mergePropsFactor,
-      _ref$selectorFactory = _ref.selectorFactory,
-      selectorFactory = _ref$selectorFactory === undefined ? finalPropsSelectorFactory : _ref$selectorFactory;
-
-  return function connect(mapStateToProps, mapDispatchToProps, mergeProps) {
-    var _ref2 = arguments.length > 3 && arguments[3] !== undefined ? arguments[3] : {},
-        _ref2$pure = _ref2.pure,
-        pure = _ref2$pure === undefined ? true : _ref2$pure,
-        _ref2$areStatesEqual = _ref2.areStatesEqual,
-        areStatesEqual = _ref2$areStatesEqual === undefined ? strictEqual : _ref2$areStatesEqual,
-        _ref2$areOwnPropsEqua = _ref2.areOwnPropsEqual,
-        areOwnPropsEqual = _ref2$areOwnPropsEqua === undefined ? shallowEqual : _ref2$areOwnPropsEqua,
-        _ref2$areStatePropsEq = _ref2.areStatePropsEqual,
-        areStatePropsEqual = _ref2$areStatePropsEq === undefined ? shallowEqual : _ref2$areStatePropsEq,
-        _ref2$areMergedPropsE = _ref2.areMergedPropsEqual,
-        areMergedPropsEqual = _ref2$areMergedPropsE === undefined ? shallowEqual : _ref2$areMergedPropsE,
-        extraOptions = _objectWithoutProperties$2(_ref2, ['pure', 'areStatesEqual', 'areOwnPropsEqual', 'areStatePropsEqual', 'areMergedPropsEqual']);
-
-    var initMapStateToProps = match(mapStateToProps, mapStateToPropsFactories, 'mapStateToProps');
-    var initMapDispatchToProps = match(mapDispatchToProps, mapDispatchToPropsFactories, 'mapDispatchToProps');
-    var initMergeProps = match(mergeProps, mergePropsFactories, 'mergeProps');
-
-    return connectHOC(selectorFactory, _extends$3({
-      // used in error messages
-      methodName: 'connect',
-
-      // used to compute Connect's displayName from the wrapped component's displayName.
-      getDisplayName: function getDisplayName(name) {
-        return 'Connect(' + name + ')';
-      },
-
-      // if mapStateToProps is falsy, the Connect component doesn't subscribe to store state changes
-      shouldHandleStateChanges: Boolean(mapStateToProps),
-
-      // passed through to selectorFactory
-      initMapStateToProps: initMapStateToProps,
-      initMapDispatchToProps: initMapDispatchToProps,
-      initMergeProps: initMergeProps,
-      pure: pure,
-      areStatesEqual: areStatesEqual,
-      areOwnPropsEqual: areOwnPropsEqual,
-      areStatePropsEqual: areStatePropsEqual,
-      areMergedPropsEqual: areMergedPropsEqual
-
-    }, extraOptions));
-  };
-}
-
-var connect = createConnect();
+var reactRedux = require('react-redux');
 
 var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol" ? function (obj) {
   return typeof obj;
@@ -1277,7 +73,7 @@ var defineProperty = function (obj, key, value) {
   return obj;
 };
 
-var _extends$4 = Object.assign || function (target) {
+var _extends = Object.assign || function (target) {
   for (var i = 1; i < arguments.length; i++) {
     var source = arguments[i];
 
@@ -1401,6 +197,389 @@ var toConsumableArray = function (arr) {
   }
 };
 
+var Validator = function () {
+	function Validator(context) {
+		classCallCheck(this, Validator);
+
+		this.run = this.run.bind(context);
+	}
+
+	createClass(Validator, [{
+		key: "run",
+		value: function run() {
+			var _this = this;
+
+			return new Promise(function (resolve, reject) {
+				if ((!_this.props.validators || !_this.props.validators.length) && (!_this.props.asyncValidators || !_this.props.asyncValidators.length)) return resolve();
+
+				if (_this.props.validators) {
+					var result = _this.props.validators.reduce(function (current, element) {
+						// statements
+						var valid = current.valid,
+						    error = "";
+						switch (element.validatorType) {
+							case VALIDATOR_TYPES.REQUIRED:
+								valid = _this.hasValue();
+								break;
+							case VALIDATOR_TYPES.MAXLENGTH:
+								valid = _this.isLessThanMaxLength(element);
+								break;
+							case VALIDATOR_TYPES.MINLENGTH:
+								valid = _this.isGreaterThanMinLength(element);
+								break;
+							case VALIDATOR_TYPES.REGEX:
+								valid = _this.matchesRegex(element);
+								break;
+						}
+						if (typeof valid == "string") {
+							error = valid;
+							return current.errors.push(error), current.valid = false, current;
+						}
+						return current;
+					}, { errors: [], valid: true });
+					if (!result.valid) {
+						_this.setState({ errors: result.errors });
+						return reject();
+					}
+				}
+
+				if (_this.props.asyncValidators && _this.props.asyncValidators.length && !_this.props.valid) {
+					return reject();
+				}
+
+				_this.setState({ errors: null });
+				resolve();
+			});
+		}
+	}]);
+	return Validator;
+}();
+
+var VALIDATOR_TYPES = {
+	REQUIRED: "REQUIRED",
+	MAXLENGTH: "MAXLENGTH",
+	MINLENGTH: "MINLENGTH",
+	REGEX: "REGEX"
+};
+
+var invariants = {
+	validComponent: function validComponent(component, name) {
+		if (!component) throw new Error(name + " cannot be null");
+		if (!React.Component.prototype.isPrototypeOf(component) && typeof component !== "function") throw new Error(name + " must either be a valid react Component or a Function");
+		return true;
+	}
+};
+
+var ReactSSRErrorHandler = require("error_handler");
+
+var withLogger$1 = (function (WrappedComponent) {
+  var HOCComponent = function (_React$Component) {
+    inherits(HOCComponent, _React$Component);
+    createClass(HOCComponent, [{
+      key: "render",
+      value: function render() {
+        try {
+          return this.__originalRenderMethod__();
+        } catch (e) {
+          return ReactSSRErrorHandler(e, this.constructor.name);
+        }
+      }
+    }]);
+
+    function HOCComponent(props) {
+      classCallCheck(this, HOCComponent);
+
+      var _this = possibleConstructorReturn(this, (HOCComponent.__proto__ || Object.getPrototypeOf(HOCComponent)).call(this, props));
+
+      _this.log = _this.log.bind(_this);
+      return _this;
+    }
+
+    createClass(HOCComponent, [{
+      key: "componentDidMount",
+      value: function componentDidMount() {
+        this.logger = debug("furmly-client:" + this._constructor.name);
+        this.props.log("componentDidMount");
+      }
+    }, {
+      key: "componentWillUnmount",
+      value: function componentWillUnmount() {
+        this.props.log("componentWillUnmount");
+        this.logger = null;
+      }
+    }, {
+      key: "log",
+      value: function log(m) {
+        this.logger(m + ":::" + this.props.name);
+      }
+    }, {
+      key: "__originalRenderMethod__",
+      value: function __originalRenderMethod__() {
+        this.props.log("render");
+        return React__default.createElement(WrappedComponent, _extends({}, this.props, { log: this.log }));
+      }
+    }]);
+    return HOCComponent;
+  }(React__default.Component);
+
+  hoistNonReactStatic(HOCComponent, WrappedComponent);
+  return HOCComponent;
+});
+
+var ReactSSRErrorHandler$1 = require("error_handler");
+
+/**
+ * Higher order function that recieves Platform specific implementation of Input
+ * @param  {Function} Input Input class
+ * @return {Function}       Wrapped class
+ */
+var furmly_input = (function (LabelWrapper, Input, DatePicker, Checkbox) {
+  invariants.validComponent(LabelWrapper, "LabelWrapper");
+  invariants.validComponent(Input, "Input");
+  invariants.validComponent(DatePicker, "DatePicker");
+  invariants.validComponent(Checkbox, "Checkbox");
+
+  var FurmlyInput = function (_Component) {
+    inherits(FurmlyInput, _Component);
+    createClass(FurmlyInput, [{
+      key: "render",
+      value: function render() {
+        try {
+          return this.__originalRenderMethod__();
+        } catch (e) {
+          return ReactSSRErrorHandler$1(e, this.constructor.name);
+        }
+      }
+    }]);
+
+    function FurmlyInput(props) {
+      classCallCheck(this, FurmlyInput);
+
+      var _this = possibleConstructorReturn(this, (FurmlyInput.__proto__ || Object.getPrototypeOf(FurmlyInput)).call(this, props));
+
+      _this.state = {};
+      _this.setDefault = _this.setDefault.bind(_this);
+      _this.valueChanged = _this.valueChanged.bind(_this);
+      _this.runValidators = _this.runValidators.bind(_this);
+      _this.hasValue = _this.hasValue.bind(_this);
+      _this.isLessThanMaxLength = _this.isLessThanMaxLength.bind(_this);
+      _this.isGreaterThanMinLength = _this.isGreaterThanMinLength.bind(_this);
+      _this.matchesRegex = _this.matchesRegex.bind(_this);
+      _this.runAsyncValidators = _this.runAsyncValidators.bind(_this);
+      _this.props.validator.validate = function () {
+        return _this.runValidators();
+      };
+      _this.toValueChanged = _this.toValueChanged.bind(_this);
+      _this.formatDateRange = _this.formatDateRange.bind(_this);
+      _this.fromValueChanged = _this.fromValueChanged.bind(_this);
+      _this.setDateFromRange = _this.setDateFromRange.bind(_this);
+      _this.isDateRange = _this.isDateRange.bind(_this);
+      return _this;
+    }
+
+    createClass(FurmlyInput, [{
+      key: "componentDidMount",
+      value: function componentDidMount() {
+        var _this2 = this;
+
+        this._mounted = true;
+        setTimeout(function () {
+          if (_this2._mounted) {
+            _this2.setDefault();
+            _this2.setDateFromRange();
+          }
+        }, 0);
+      }
+    }, {
+      key: "componentWillReceiveProps",
+      value: function componentWillReceiveProps(next) {
+        if (next.component_uid !== this.props.component_uid) {
+          this.setDefault(next);
+        }
+        if (next.value && this.props.value !== next.value && this.isDateRange(next)) {
+          this.setDateFromRange(next);
+        }
+      }
+    }, {
+      key: "componentWillUnmount",
+      value: function componentWillUnmount() {
+        this._mounted = false;
+      }
+    }, {
+      key: "isDateRange",
+      value: function isDateRange() {
+        var props = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : this.props;
+
+        return props.args && props.args.config && props.args.config.isRange;
+      }
+    }, {
+      key: "setDateFromRange",
+      value: function setDateFromRange() {
+        var props = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : this.props;
+
+        if (props.value && this.isDateRange()) {
+          var _props$value$split = props.value.split("-"),
+              _props$value$split2 = slicedToArray(_props$value$split, 2),
+              fromValue = _props$value$split2[0],
+              toValue = _props$value$split2[1];
+
+          this.setState({
+            fromValue: new Date(fromValue),
+            toValue: new Date(toValue)
+          });
+        }
+      }
+    }, {
+      key: "runValidators",
+      value: function runValidators() {
+        return new Validator(this).run();
+      }
+    }, {
+      key: "runAsyncValidators",
+      value: function runAsyncValidators(value) {
+        this.props.runAsyncValidator(this.props.asyncValidators[0], value, this.props.asyncValidators[0] + this.props.component_uid);
+      }
+    }, {
+      key: "hasValue",
+      value: function hasValue() {
+        return !!this.props.value || "is required";
+      }
+    }, {
+      key: "isRequired",
+      value: function isRequired() {
+        return this.props.validators && this.props.validators.filter(function (x) {
+          return x.validatorType == VALIDATOR_TYPES.REQUIRED;
+        }).length > 0;
+      }
+    }, {
+      key: "isLessThanMaxLength",
+      value: function isLessThanMaxLength(element) {
+        return this.props.value && this.props.value.length <= element.args.max || element.error || "The maximum number of letters/numbers is " + element.args.max;
+      }
+    }, {
+      key: "isGreaterThanMinLength",
+      value: function isGreaterThanMinLength(element) {
+        return this.props.value && this.props.value.length >= element.args.min || element.error || "The minimum number of letters/numbers is" + element.args.min;
+      }
+    }, {
+      key: "matchesRegex",
+      value: function matchesRegex(element) {
+        return new RegExp(element.args.exp).test(this.props.value) || element.error || "Invalid entry";
+      }
+    }, {
+      key: "valueChanged",
+      value: function valueChanged(value) {
+        this.props.valueChanged(defineProperty({}, this.props.name, value));
+        if (this.props.asyncValidators && this.props.asyncValidators.length) this.runAsyncValidators(value);
+
+        this.setState({ errors: [] });
+      }
+    }, {
+      key: "fromValueChanged",
+      value: function fromValueChanged(fromValue) {
+        if (this.state.toValue && fromValue < this.state.toValue) {
+          this.valueChanged(this.formatDateRange(fromValue));
+        } else {
+          this.valueChanged(null);
+        }
+        this.setState({
+          fromValue: fromValue,
+          toValue: fromValue > this.state.toValue ? null : this.state.toValue
+        });
+      }
+    }, {
+      key: "formatDateRange",
+      value: function formatDateRange() {
+        var from = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : this.state.fromValue;
+        var to = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : this.state.toValue;
+
+        return from.toLocaleDateString() + " - " + to.toLocaleDateString();
+      }
+    }, {
+      key: "toValueChanged",
+      value: function toValueChanged(toValue) {
+        if (this.state.fromValue) {
+          this.valueChanged(this.formatDateRange(this.state.fromValue, toValue));
+        }
+        this.setState({
+          toValue: toValue
+        });
+      }
+    }, {
+      key: "getDateConfig",
+      value: function getDateConfig(args) {
+        var result = {};
+        if (args.config) {
+          args = args.config;
+          if (args.max) {
+            if (args.max == "TODAY") result.maxDate = new Date();else result.maxDate = new Date(args.maxConfig.date);
+          }
+          if (args.min) {
+            if (args.min == "TODAY") result.minDate = new Date();else result.minDate = new Date(args.minConfig.date);
+          }
+          if (args.isRange) {
+            result.toValueChanged = this.toValueChanged;
+            result.fromValueChanged = this.fromValueChanged;
+            result.toValue = this.state.toValue;
+            result.fromValue = this.state.fromValue;
+          }
+          result.isRange = args.isRange;
+        }
+
+        return result;
+      }
+    }, {
+      key: "setDefault",
+      value: function setDefault() {
+        var props = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : this.props;
+
+        if (!props.value && props.args && props.args.default) this.valueChanged(props.args.default);
+      }
+    }, {
+      key: "__originalRenderMethod__",
+      value: function __originalRenderMethod__() {
+        /*jshint ignore:start */
+        var args = this.props.args,
+            Result = void 0;
+        var _props = this.props,
+            type = _props.type,
+            valueChanged = _props.valueChanged,
+            passThrough = objectWithoutProperties(_props, ["type", "valueChanged"]);
+
+        if (!args || !args.type || args.type == "text" || args.type == "number" || args.type == "password") {
+          Result = Input;
+          args = args || { type: "text" };
+        }
+        if (args.type == "checkbox") Result = Checkbox;
+
+        if (args.type == "date") {
+          Result = DatePicker;
+          Object.assign(passThrough, this.getDateConfig(args));
+        }
+        return React__default.createElement(LabelWrapper, {
+          value: this.props.label,
+          inner: React__default.createElement(Result, _extends({
+            type: args.type
+          }, passThrough, {
+            disabled: args && args.disabled,
+            required: this.isRequired(),
+            value: this.props.value,
+            errors: this.state.errors,
+            valueChanged: this.valueChanged
+          }))
+        });
+        /*jshint ignore:end */
+      }
+    }]);
+    return FurmlyInput;
+  }(React.Component);
+
+  FurmlyInput.propTypes = {
+    valueChanged: PropTypes.func
+  };
+  return withLogger$1(FurmlyInput);
+});
+
 var MemCache = function () {
 	function MemCache(opts) {
 		classCallCheck(this, MemCache);
@@ -1469,38 +648,6 @@ var ACTIONS = {
 	ADD_NAVIGATION_CONTEXT: "ADD_NAVIGATION_CONTEXT",
 	REMOVE_NAVIGATION_CONTEXT: "REMOVE_NAVIGATION_CONTEXT",
 	OPEN_CONFIRMATION: "OPEN_CONFIRMATION",
-	OPEN_CHAT: "OPEN_CHAT",
-	CLOSE_CHAT: "CLOSE_CHAT",
-	GET_CONTACTS: "GET_CONTACTS",
-	GOT_CONTACTS: "GOT_CONTACTS",
-	FAILED_TO_GET_CONTACTS: "FAILED_TO_GET_CONTACTS",
-	GET_INVITES: "GET_INVITES",
-	GOT_INVITES: "GOT_INVITES",
-	FAILED_TO_GET_INVITES: "FAILED_TO_GET_INVITES",
-	SEARCH: "SEARCH",
-	FOUND: "FOUND",
-	NOT_FOUND: "NOT_FOUND",
-	LOGIN_CHAT: "LOGIN_CHAT",
-	LOGGED_IN_CHAT: "LOGGED_IN_CHAT",
-	FAILED_TO_LOGIN_CHAT: "FAILED_TO_LOGIN_CHAT",
-	SEND_CHAT: "SEND_CHAT",
-	SENT_CHAT: "SENT_CHAT",
-	FAILED_TO_SEND_CHAT: "FAILED_TO_SEND_CHAT",
-	CREATE_GROUP: "CREATE_GROUP",
-	CREATED_GROUP: "CREATED_GROUP",
-	FAILED_TO_CREATE_GROUP: "FAILED_TO_CREATE_GROUP",
-	SEND_FRIEND_REQUEST: "SEND_FRIEND_REQUEST",
-	SENT_FRIEND_REQUEST: "SENT_FRIEND_REQUEST",
-	FAILED_TO_SEND_FRIEND_REQUEST: "FAILED_TO_SEND_FRIEND_REQUEST",
-	ACCEPT_FRIEND_REQUEST: "ACCEPT_FRIEND_REQUEST",
-	ACCEPTED_FRIEND_REQUEST: "ACCEPTED_FRIEND_REQUEST",
-	FAILED_TO_ACCEPT_FRIEND_REQUEST: "FAILED_TO_ACCEPT_FRIEND_REQUEST",
-	REJECT_FRIEND_REQUEST: "REJECT_FRIEND_REQUEST",
-	REJECTED_FRIEND_REQUEST: "REJECTED_FRIEND_REQUEST",
-	FAILED_TO_REJECT_FRIEND_REQUEST: "FAILED_TO_REJECT_FRIEND_REQUEST",
-	GET_FRIEND_REQUEST: "GET_FRIEND_REQUEST",
-	GOT_FRIEND_REQUEST: "GOT_FRIEND_REQUEST",
-	FAILED_TO_GET_FRIEND_REQUEST: "FAILED_TO_GET_FRIEND_REQUEST",
 	FETCHED_PROCESS: "FETCHED_PROCESS",
 	FAILED_TO_FETCH_PROCESS: "FAILED_TO_FETCH_PROCESS",
 	FETCHING_PROCESS: "FETCHING_PROCESS",
@@ -1609,24 +756,20 @@ var CHECK_FOR_EXISTING_SCREEN = Symbol("CHECK FOR EXISTING SCREEN");
 var enhancers = [{
 	id: CHECK_FOR_EXISTING_SCREEN,
 	mapState: function mapState(state, action) {
-		if (hasScreenAlready(state.furmly.navigation, action.payload)) return _extends$4({ hasScreenAlready: true }, action.payload);
+		if (hasScreenAlready(state.furmly.navigation, action.payload)) return _extends({ hasScreenAlready: true }, action.payload);
 	}
 }];
 var index = (function () {
 	return enhancers;
 });
 
-var log = debug("furmly-actions");
+var log$1 = debug("furmly-actions");
 
 var preDispatch = config.preDispatch;
 var preRefreshToken = config.preRefreshToken;
 var BASE_URL = global.BASE_URL || config.baseUrl;
-var CHAT_URL = global.CHAT_URL || config.chatUrl;
-var preLogin = config.preLogin;
 var throttled = {};
 var cache = new MemCache({ ttl: config.processorsCacheTimeout });
-
-var socket = void 0;
 
 var displayMessage = function displayMessage(text) {
   return {
@@ -1699,8 +842,8 @@ function defaultError(dispatch, customType, _meta, throttleEnabled) {
     type: customType || "SHOW_MESSAGE",
     meta: function meta(action, state, res) {
       if (customType && res.status !== 401) dispatch(displayMessage(res.statusText || res.headers && res.headers.map && res.headers.map.errormessage && res.headers.map.errormessage[0] || "Sorry , an error occurred while processing your request"));
-      log("an error occurred");
-      log(action);
+      log$1("an error occurred");
+      log$1(action);
       var args = action[CALL_API];
       if (throttleEnabled) {
         var throttleKey = args.endpoint + args.body;
@@ -1933,7 +1076,7 @@ function runFurmlyProcess(details) {
             }
             return { id: details.id, data: d };
           }).catch(function (er) {
-            log(er);
+            log$1(er);
             dispatch({
               type: "SHOW_MESSAGE",
               message: "An error occurred while trying to understand a response from the server."
@@ -2006,755 +1149,294 @@ function uploadFurmlyFile(file, key) {
   };
 }
 
-function loginChat(credentials, extra) {
-  return function (dispatch, getState) {
-    dispatch({ type: ACTIONS.LOGIN_CHAT });
-    socket.emit("login", preLogin(credentials, getState()), function (msg) {
-      if (msg.error) {
-        if (!msg.isSignedUp && credentials.handle) {
-          dispatch(showMessage$1("An error occurred while contacting the chat server. Please retry"));
-        }
-        return dispatch({ type: ACTIONS.FAILED_TO_LOGIN_CHAT, payload: msg });
-      }
-      if (extra) {
-        extra();
-      }
-      return dispatch({
-        type: ACTIONS.LOGGED_IN_CHAT,
-        payload: msg.message,
-        meta: credentials
-      });
-    });
-  };
-}
-
-function sendMessage(type, msg) {
-  return emit(type, msg, {
-    requestType: ACTIONS.SEND_CHAT,
-    resultType: ACTIONS.SENT_CHAT,
-    errorType: ACTIONS.FAILED_TO_SEND_CHAT
-  });
-}
-function createGroup(msg) {
-  return emit("create group", msg, {
-    requestType: ACTIONS.CREATE_GROUP,
-    resultType: ACTIONS.CREATED_GROUP
-  });
-}
-
-function sendFriendRequest(handle) {
-  return emit("friend request", handle, {
-    requestType: ACTIONS.SEND_FRIEND_REQUEST,
-    resultType: ACTIONS.SENT_FRIEND_REQUEST,
-    errorType: ACTIONS.FAILED_TO_SEND_FRIEND_REQUEST
-  });
-}
-function getContacts() {
-  return emit("friends", null, {
-    requestType: ACTIONS.GET_CONTACTS,
-    resultType: ACTIONS.GOT_CONTACTS,
-    errorType: ACTIONS.FAILED_TO_GET_CONTACTS
-  });
-}
-
-function fetchInvites() {
-  return emit("pending friend requests", null, {
-    requestType: ACTIONS.GET_INVITES,
-    resultType: ACTIONS.GOT_INVITES,
-    errorType: ACTIONS.FAILED_TO_GET_INVITES
-  });
-}
-
-function acceptInvite(handle) {
-  return emit("approve friend request", handle, {
-    requestType: ACTIONS.ACCEPT_FRIEND_REQUEST,
-    resultType: ACTIONS.ACCEPTED_FRIEND_REQUEST,
-    errorType: ACTIONS.FAILED_TO_ACCEPT_FRIEND_REQUEST
-  });
-}
-function rejectInvite(handle) {
-  return emit("reject friend request", handle, {
-    requestType: ACTIONS.REJECT_FRIEND_REQUEST,
-    resultType: ACTIONS.REJECTED_FRIEND_REQUEST,
-    errorType: ACTIONS.FAILED_TO_REJECT_FRIEND_REQUEST
-  });
-}
-function searchForHandle(handle) {
-  return emit("search for handle", handle, {
-    requestType: ACTIONS.SEARCH,
-    resultType: ACTIONS.FOUND,
-    errorType: ACTIONS.NOT_FOUND
-  });
-}
-
-function emit(type, message, _ref3) {
-  var requestType = _ref3.requestType,
-      resultType = _ref3.resultType,
-      errorType = _ref3.errorType;
-
-  var args = Array.prototype.slice.call(arguments);
-  return function (dispatch, getState) {
-    dispatch({ type: requestType });
-    socket.emit(type, message, function (result) {
-      if (result.error) {
-        if (result.message == "Unauthorized") {
-          var state = getState();
-          if (state.authentication.username) {
-            return dispatch(loginChat({ username: state.authentication.username }, function () {
-              dispatch(emit.apply(null, args));
-            }));
-          }
-        }
-
-        return dispatch(showMessage$1(result.message)), errorType && dispatch({ type: errorType, payload: result });
-      }
-      dispatch({
-        type: resultType,
-        payload: result && result.message,
-        meta: message
-      });
-    });
-  };
-}
-
-function addToOpenChats(chat) {
-  return { type: ACTIONS.ADD_TO_OPEN_CHATS, payload: chat };
-}
-function openChat(chat) {
-  return { type: ACTIONS.OPEN_CHAT, payload: chat };
-}
-function closeChat() {
-  return { type: ACTIONS.CLOSE_CHAT };
-}
-
-function startReceivingMessages(store) {
-  socket = openSocket(CHAT_URL);
-  socket.on("msg", function (message, fn) {
-    store.dispatch({ type: ACTIONS.NEW_MESSAGE, payload: message });
-    fn();
-  });
-  socket.on("grpmsg", function (message, fn) {
-    store.dispatch({ type: ACTIONS.NEW_GROUP_MESSAGE, payload: message });
-    fn();
-  });
-}
-
-var Validator = function () {
-	function Validator(context) {
-		classCallCheck(this, Validator);
-
-		this.run = this.run.bind(context);
-	}
-
-	createClass(Validator, [{
-		key: "run",
-		value: function run() {
-			var _this = this;
-
-			return new Promise(function (resolve, reject) {
-				if ((!_this.props.validators || !_this.props.validators.length) && (!_this.props.asyncValidators || !_this.props.asyncValidators.length)) return resolve();
-
-				if (_this.props.validators) {
-					var result = _this.props.validators.reduce(function (current, element) {
-						// statements
-						var valid = current.valid,
-						    error = "";
-						switch (element.validatorType) {
-							case VALIDATOR_TYPES.REQUIRED:
-								valid = _this.hasValue();
-								break;
-							case VALIDATOR_TYPES.MAXLENGTH:
-								valid = _this.isLessThanMaxLength(element);
-								break;
-							case VALIDATOR_TYPES.MINLENGTH:
-								valid = _this.isGreaterThanMinLength(element);
-								break;
-							case VALIDATOR_TYPES.REGEX:
-								valid = _this.matchesRegex(element);
-								break;
-						}
-						if (typeof valid == "string") {
-							error = valid;
-							return current.errors.push(error), current.valid = false, current;
-						}
-						return current;
-					}, { errors: [], valid: true });
-					if (!result.valid) {
-						_this.setState({ errors: result.errors });
-						return reject();
-					}
-				}
-
-				if (_this.props.asyncValidators && _this.props.asyncValidators.length && !_this.props.valid) {
-					return reject();
-				}
-
-				_this.setState({ errors: null });
-				resolve();
-			});
-		}
-	}]);
-	return Validator;
-}();
-
-var VALIDATOR_TYPES = {
-	REQUIRED: "REQUIRED",
-	MAXLENGTH: "MAXLENGTH",
-	MINLENGTH: "MINLENGTH",
-	REGEX: "REGEX"
-};
-
-var invariants = {
-	validComponent: function validComponent(component, name) {
-		if (!component) throw new Error(name + " cannot be null");
-		if (!React.Component.prototype.isPrototypeOf(component) && typeof component !== "function") throw new Error(name + " must either be a valid react Component or a Function");
-		return true;
-	}
-};
-
-var ReactSSRErrorHandler = require("error_handler");
-
-/**
- * Higher order function that recieves Platform specific implementation of Input
- * @param  {Function} Input Input class
- * @return {Function}       Wrapped class
- */
-var furmly_input = (function (LabelWrapper, Input, DatePicker, Checkbox) {
-	invariants.validComponent(LabelWrapper, "LabelWrapper");
-	invariants.validComponent(Input, "Input");
-	invariants.validComponent(DatePicker, "DatePicker");
-	invariants.validComponent(Checkbox, "Checkbox");
-	var log = debug("furmly-client-components:input");
-
-	var FurmlyInput = function (_Component) {
-		inherits(FurmlyInput, _Component);
-		createClass(FurmlyInput, [{
-			key: "render",
-			value: function render() {
-				try {
-					return this.__originalRenderMethod__();
-				} catch (e) {
-					return ReactSSRErrorHandler(e, this.constructor.name);
-				}
-			}
-		}]);
-
-		function FurmlyInput(props) {
-			classCallCheck(this, FurmlyInput);
-
-			var _this = possibleConstructorReturn(this, (FurmlyInput.__proto__ || Object.getPrototypeOf(FurmlyInput)).call(this, props));
-
-			_this.state = {};
-			_this.setDefault = _this.setDefault.bind(_this);
-			_this.valueChanged = _this.valueChanged.bind(_this);
-			_this.runValidators = _this.runValidators.bind(_this);
-			_this.hasValue = _this.hasValue.bind(_this);
-			_this.isLessThanMaxLength = _this.isLessThanMaxLength.bind(_this);
-			_this.isGreaterThanMinLength = _this.isGreaterThanMinLength.bind(_this);
-			_this.matchesRegex = _this.matchesRegex.bind(_this);
-			_this.runAsyncValidators = _this.runAsyncValidators.bind(_this);
-			_this.props.validator.validate = function () {
-				return _this.runValidators();
-			};
-			_this.toValueChanged = _this.toValueChanged.bind(_this);
-			_this.formatDateRange = _this.formatDateRange.bind(_this);
-			_this.fromValueChanged = _this.fromValueChanged.bind(_this);
-			_this.setDateFromRange = _this.setDateFromRange.bind(_this);
-			_this.isDateRange = _this.isDateRange.bind(_this);
-			return _this;
-		}
-
-		createClass(FurmlyInput, [{
-			key: "componentDidMount",
-			value: function componentDidMount() {
-				var _this2 = this;
-
-				this._mounted = true;
-				setTimeout(function () {
-					if (_this2._mounted) {
-						_this2.setDefault();
-						_this2.setDateFromRange();
-					}
-				}, 0);
-			}
-		}, {
-			key: "componentWillReceiveProps",
-			value: function componentWillReceiveProps(next) {
-				if (next.component_uid !== this.props.component_uid) {
-					this.setDefault(next);
-				}
-				if (next.value && this.props.value !== next.value && this.isDateRange(next)) {
-					this.setDateFromRange(next);
-				}
-			}
-		}, {
-			key: "componentWillUnmount",
-			value: function componentWillUnmount() {
-				this._mounted = false;
-			}
-		}, {
-			key: "isDateRange",
-			value: function isDateRange() {
-				var props = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : this.props;
-
-				return props.args && props.args.config && props.args.config.isRange;
-			}
-		}, {
-			key: "setDateFromRange",
-			value: function setDateFromRange() {
-				var props = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : this.props;
-
-				if (props.value && this.isDateRange()) {
-					var _props$value$split = props.value.split("-"),
-					    _props$value$split2 = slicedToArray(_props$value$split, 2),
-					    fromValue = _props$value$split2[0],
-					    toValue = _props$value$split2[1];
-
-					this.setState({
-						fromValue: new Date(fromValue),
-						toValue: new Date(toValue)
-					});
-				}
-			}
-		}, {
-			key: "runValidators",
-			value: function runValidators() {
-				return new Validator(this).run();
-			}
-		}, {
-			key: "runAsyncValidators",
-			value: function runAsyncValidators(value) {
-				this.props.runAsyncValidator(this.props.asyncValidators[0], value, this.props.asyncValidators[0] + this.props.component_uid);
-			}
-		}, {
-			key: "hasValue",
-			value: function hasValue() {
-				return !!this.props.value || "is required";
-			}
-		}, {
-			key: "isRequired",
-			value: function isRequired() {
-				return this.props.validators && this.props.validators.filter(function (x) {
-					return x.validatorType == VALIDATOR_TYPES.REQUIRED;
-				}).length > 0;
-			}
-		}, {
-			key: "isLessThanMaxLength",
-			value: function isLessThanMaxLength(element) {
-				return this.props.value && this.props.value.length <= element.args.max || element.error || "The maximum number of letters/numbers is " + element.args.max;
-			}
-		}, {
-			key: "isGreaterThanMinLength",
-			value: function isGreaterThanMinLength(element) {
-				return this.props.value && this.props.value.length >= element.args.min || element.error || "The minimum number of letters/numbers is" + element.args.min;
-			}
-		}, {
-			key: "matchesRegex",
-			value: function matchesRegex(element) {
-				return new RegExp(element.args.exp).test(this.props.value) || element.error || "Invalid entry";
-			}
-		}, {
-			key: "valueChanged",
-			value: function valueChanged$$1(value) {
-				this.props.valueChanged(defineProperty({}, this.props.name, value));
-				if (this.props.asyncValidators && this.props.asyncValidators.length) this.runAsyncValidators(value);
-
-				this.setState({ errors: [] });
-			}
-		}, {
-			key: "fromValueChanged",
-			value: function fromValueChanged(fromValue) {
-				if (this.state.toValue && fromValue < this.state.toValue) {
-					this.valueChanged(this.formatDateRange(fromValue));
-				} else {
-					this.valueChanged(null);
-				}
-				this.setState({
-					fromValue: fromValue,
-					toValue: fromValue > this.state.toValue ? null : this.state.toValue
-				});
-			}
-		}, {
-			key: "formatDateRange",
-			value: function formatDateRange() {
-				var from = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : this.state.fromValue;
-				var to = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : this.state.toValue;
-
-				return from.toLocaleDateString() + " - " + to.toLocaleDateString();
-			}
-		}, {
-			key: "toValueChanged",
-			value: function toValueChanged(toValue) {
-				if (this.state.fromValue) {
-					this.valueChanged(this.formatDateRange(this.state.fromValue, toValue));
-				}
-				this.setState({
-					toValue: toValue
-				});
-			}
-		}, {
-			key: "getDateConfig",
-			value: function getDateConfig(args) {
-				var result = {};
-				if (args.config) {
-					args = args.config;
-					if (args.max) {
-						if (args.max == "TODAY") result.maxDate = new Date();else result.maxDate = new Date(args.maxConfig.date);
-					}
-					if (args.min) {
-						if (args.min == "TODAY") result.minDate = new Date();else result.minDate = new Date(args.minConfig.date);
-					}
-					if (args.isRange) {
-						result.toValueChanged = this.toValueChanged;
-						result.fromValueChanged = this.fromValueChanged;
-						result.toValue = this.state.toValue;
-						result.fromValue = this.state.fromValue;
-					}
-					result.isRange = args.isRange;
-				}
-
-				return result;
-			}
-		}, {
-			key: "setDefault",
-			value: function setDefault() {
-				var props = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : this.props;
-
-				if (!props.value && props.args && props.args.default) this.valueChanged(props.args.default);
-			}
-		}, {
-			key: "__originalRenderMethod__",
-			value: function __originalRenderMethod__() {
-				/*jshint ignore:start */
-				var args = this.props.args,
-				    Result = void 0;
-				var _props = this.props,
-				    type = _props.type,
-				    valueChanged$$1 = _props.valueChanged,
-				    passThrough = objectWithoutProperties(_props, ["type", "valueChanged"]);
-
-				if (!args || !args.type || args.type == "text" || args.type == "number" || args.type == "password") {
-					Result = Input;
-					args = args || { type: "text" };
-				}
-				if (args.type == "checkbox") Result = Checkbox;
-
-				if (args.type == "date") {
-					Result = DatePicker;
-					Object.assign(passThrough, this.getDateConfig(args));
-				}
-				return React__default.createElement(LabelWrapper, {
-					value: this.props.label,
-					inner: React__default.createElement(Result, _extends$4({
-						type: args.type
-					}, passThrough, {
-						disabled: args && args.disabled,
-						required: this.isRequired(),
-						value: this.props.value,
-						errors: this.state.errors,
-						valueChanged: this.valueChanged
-					}))
-				});
-				/*jshint ignore:end */
-			}
-		}]);
-		return FurmlyInput;
-	}(React.Component);
-
-	FurmlyInput.propTypes = {
-		valueChanged: PropTypes.func
-	};
-	return FurmlyInput;
-});
-
-var ReactSSRErrorHandler$1 = require("error_handler");
-
-var furmly_view = (function (Page, Warning, Container) {
-	invariants.validComponent(Page, "Page");
-	invariants.validComponent(Warning, "Warning");
-	invariants.validComponent(Container, "Container");
-	//map elements in FurmlyView props to elements in store.
-	var log = debug("furmly-client-components:view");
-	var mapStateToProps = function mapStateToProps(_$$1, initialProps) {
-		return function (state, ownProps) {
-			//log("mapping state to props");
-			var _state = state.furmly.view[ownProps.currentProcess],
-			    description = _state && _state.description,
-			    map = {
-				value: _state && _state[ownProps.currentStep] || null
-			};
-
-			if (description && description.steps[ownProps.currentStep]) {
-				map.elements = description.steps[ownProps.currentStep].form.elements;
-				if (description.steps[ownProps.currentStep].mode == "VIEW") map.hideSubmit = true;
-				map.title = description.title;
-				map.processDescription = description.description;
-			}
-			return map;
-		};
-	};
-	var mapDispatchToProps = function mapDispatchToProps(dispatch) {
-		return {
-			valueChanged: function valueChanged$$1(args) {
-				return dispatch(valueChanged(args));
-			}
-		};
-	};
-
-	var FurmlyView = function (_Component) {
-		inherits(FurmlyView, _Component);
-		createClass(FurmlyView, [{
-			key: "render",
-			value: function render() {
-				try {
-					return this.__originalRenderMethod__();
-				} catch (e) {
-					return ReactSSRErrorHandler$1(e, this.constructor.name);
-				}
-			}
-		}]);
-
-		function FurmlyView(props) {
-			classCallCheck(this, FurmlyView);
-
-			var _this = possibleConstructorReturn(this, (FurmlyView.__proto__ || Object.getPrototypeOf(FurmlyView)).call(this, props));
-
-			_this.onValueChanged = _this.onValueChanged.bind(_this);
-			_this.submit = _this.submit.bind(_this);
-			//pass reference to validate func
-			_this.state = {
-				validator: {}
-			};
-			return _this;
-		}
-
-		createClass(FurmlyView, [{
-			key: "onValueChanged",
-			value: function onValueChanged(form) {
-				//this.state.form = form.furmly_view;
-				this.props.valueChanged({
-					form: form.furmly_view,
-					id: this.props.currentProcess,
-					step: this.props.currentStep
-				});
-			}
-		}, {
-			key: "submit",
-			value: function submit() {
-				var _this2 = this;
-
-				this.state.validator.validate().then(function () {
-					log("currentStep:" + (_this2.props.currentStep || "0"));
-					_this2.props.submit(_this2.props.value);
-				}, function () {
-					log("the form is invalid");
-				}).catch(function (er) {
-					log("an error occurred while validating form ");
-					log(er);
-				});
-			}
-		}, {
-			key: "__originalRenderMethod__",
-			value: function __originalRenderMethod__() {
-				if (!this.props.elements || !this.props.elements.length) return React__default.createElement(
-					Page,
-					{ hideSubmit: true },
-					React__default.createElement(Warning, { message: "Oops you are not supposed to be here. Something may be broken. Please navigate home/login" })
-				);
-				/*jshint ignore:start*/
-				return React__default.createElement(
-					Page,
-					{
-						submit: this.submit,
-						hideSubmit: this.props.hideSubmit,
-						processDescription: this.props.processDescription
-					},
-					React__default.createElement(Container, {
-						label: this.props.title,
-						elements: this.props.elements,
-						name: "furmly_view",
-						value: this.props.value,
-						valueChanged: this.onValueChanged,
-						validator: this.state.validator,
-						navigation: this.props.navigation,
-						currentStep: this.props.currentStep,
-						currentProcess: this.props.currentProcess
-					})
-				);
-				/*jshint ignore:end*/
-			}
-		}]);
-		return FurmlyView;
-	}(React.Component);
-
-	return connect(mapStateToProps, mapDispatchToProps)(FurmlyView);
-});
-
 var ReactSSRErrorHandler$2 = require("error_handler");
 
-var furmly_container = (function () {
-	for (var _len = arguments.length, args = Array(_len), _key = 0; _key < _len; _key++) {
-		args[_key] = arguments[_key];
-	}
+var furmly_view = (function (Page, Warning, Container) {
+  invariants.validComponent(Page, "Page");
+  invariants.validComponent(Warning, "Warning");
+  invariants.validComponent(Container, "Container");
 
-	//invariants
-	var Section = args[0],
-	    Header = args[1],
-	    ComponentWrapper = void 0,
-	    ComponentLocator = void 0;
-	if (args.length == 3) {
-		ComponentLocator = args[2];
-	} else {
-		ComponentWrapper = args[2];
-		ComponentLocator = args[3];
-	}
+  var mapStateToProps = function mapStateToProps(_$$1, initialProps) {
+    return function (state, ownProps) {
+      //log("mapping state to props");
+      var _state = state.furmly.view[ownProps.currentProcess],
+          description = _state && _state.description,
+          map = {
+        value: _state && _state[ownProps.currentStep] || null
+      };
 
-	if (invariants.validComponent(Section, "Section") && invariants.validComponent(Header, "Header") && !ComponentLocator) throw new Error("ComponentLocator cannot be null (furmly_container)");
-	var log = debug("furmly-client-components:container");
-	return function (_Component) {
-		inherits(_class, _Component);
-		createClass(_class, [{
-			key: "render",
-			value: function render() {
-				try {
-					return this.__originalRenderMethod__();
-				} catch (e) {
-					return ReactSSRErrorHandler$2(e, this.constructor.name);
-				}
-			}
-		}]);
+      if (description && description.steps[ownProps.currentStep]) {
+        map.elements = description.steps[ownProps.currentStep].form.elements;
+        if (description.steps[ownProps.currentStep].mode == "VIEW") map.hideSubmit = true;
+        map.title = description.title;
+        map.processDescription = description.description;
+      }
+      return map;
+    };
+  };
+  var mapDispatchToProps = function mapDispatchToProps(dispatch) {
+    return {
+      valueChanged: function valueChanged$$1(args) {
+        return dispatch(valueChanged(args));
+      }
+    };
+  };
 
-		function _class(props) {
-			classCallCheck(this, _class);
+  var FurmlyView = function (_Component) {
+    inherits(FurmlyView, _Component);
+    createClass(FurmlyView, [{
+      key: "render",
+      value: function render() {
+        try {
+          return this.__originalRenderMethod__();
+        } catch (e) {
+          return ReactSSRErrorHandler$2(e, this.constructor.name);
+        }
+      }
+    }]);
 
-			var _this = possibleConstructorReturn(this, (_class.__proto__ || Object.getPrototypeOf(_class)).call(this, props));
+    function FurmlyView(props) {
+      classCallCheck(this, FurmlyView);
 
-			_this.onValueChanged = _this.onValueChanged.bind(_this);
-			_this.state = {
-				_validations: (_this.props.elements || []).map(function (x) {
-					return {};
-				})
-			};
-			_this.setValidator = _this.setValidator.bind(_this);
-			_this.setValidator();
-			return _this;
-		}
+      var _this = possibleConstructorReturn(this, (FurmlyView.__proto__ || Object.getPrototypeOf(FurmlyView)).call(this, props));
 
-		createClass(_class, [{
-			key: "componentWillReceiveProps",
-			value: function componentWillReceiveProps(next) {
-				if (next.elements && (next.elements !== this.props.elements || next.elements.length !== this.props.elements.length)) {
-					var _validations = next.elements.map(function (x) {
-						return {};
-					});
-					log("creating new validators for container " + this.props.name);
-					this.setState({ _validations: _validations });
-				}
-			}
-		}, {
-			key: "setValidator",
-			value: function setValidator() {
-				var _this2 = this;
+      _this.onValueChanged = _this.onValueChanged.bind(_this);
+      _this.submit = _this.submit.bind(_this);
+      //pass reference to validate func
+      _this.state = {
+        validator: {}
+      };
+      return _this;
+    }
 
-				this.props.validator.validate = function () {
-					return Promise.all(_this2.state._validations.map(function (x) {
-						if (x.validate) return x.validate();
+    createClass(FurmlyView, [{
+      key: "onValueChanged",
+      value: function onValueChanged(form) {
+        //this.state.form = form.furmly_view;
+        this.props.valueChanged({
+          form: form.furmly_view,
+          id: this.props.currentProcess,
+          step: this.props.currentStep
+        });
+      }
+    }, {
+      key: "submit",
+      value: function submit() {
+        var _this2 = this;
 
-						return new Promise(function (resolve, reject) {
-							resolve();
-						});
-					}));
-				};
-			}
-		}, {
-			key: "onValueChanged",
-			value: function onValueChanged() {
-				var form = Object.assign.apply(Object, [{}, this.props.value || {}].concat(toConsumableArray(Array.prototype.slice.call(arguments))));
+        this.state.validator.validate().then(function () {
+          _this2.props.log("currentStep:" + (_this2.props.currentStep || "0"));
+          _this2.props.submit(_this2.props.value);
+        }, function () {
+          _this2.props.log("the form is invalid");
+        }).catch(function (er) {
+          _this2.props.log("an error occurred while validating form ");
+          _this2.props.log(er);
+        });
+      }
+    }, {
+      key: "__originalRenderMethod__",
+      value: function __originalRenderMethod__() {
+        if (!this.props.elements || !this.props.elements.length) return React__default.createElement(
+          Page,
+          { hideSubmit: true },
+          React__default.createElement(Warning, { message: "Oops you are not supposed to be here. Something may be broken. Please navigate home/login" })
+        );
+        /*jshint ignore:start*/
+        return React__default.createElement(
+          Page,
+          {
+            submit: this.submit,
+            hideSubmit: this.props.hideSubmit,
+            processDescription: this.props.processDescription
+          },
+          React__default.createElement(Container, {
+            label: this.props.title,
+            elements: this.props.elements,
+            name: "furmly_view",
+            value: this.props.value,
+            valueChanged: this.onValueChanged,
+            validator: this.state.validator,
+            navigation: this.props.navigation,
+            currentStep: this.props.currentStep,
+            currentProcess: this.props.currentProcess
+          })
+        );
+        /*jshint ignore:end*/
+      }
+    }]);
+    return FurmlyView;
+  }(React.Component);
 
-				this.props.valueChanged(defineProperty({}, this.props.name, form));
-			}
-		}, {
-			key: "__originalRenderMethod__",
-			value: function __originalRenderMethod__() {
-				var _this3 = this;
-
-				//this._validations.length = 0;
-				var keys = this.props.value ? Object.keys(this.props.value) : [],
-				    self = this,
-				    extraVal = {},
-				    notifyExtra = [],
-				    elements = (this.props.elements || []).sort(function (x, y) {
-					return x.order - y.order;
-				}).map(function (x, index) {
-					var FurmlyComponent = ComponentLocator(x),
-					    source = self.props.value,
-
-					//validator = {},
-					value = source ? _this3.props.value[x.name] : null;
-					//this._validations.push(validator);
-					if (source && source.hasOwnProperty(x.name) && keys.indexOf(x.name) !== -1) keys.splice(keys.indexOf(x.name), 1);
-					/*jshint ignore:start*/
-					if (!FurmlyComponent) throw new Error("Unknown component:" + JSON.stringify(x, null, " "));
-					if (FurmlyComponent.notifyExtra) {
-						notifyExtra.push(index);
-						return function (extra) {
-							var component = React__default.createElement(FurmlyComponent, _extends$4({}, x, {
-								extra: extra,
-								key: x.name,
-								value: value,
-								validator: _this3.state._validations[index],
-								valueChanged: _this3.onValueChanged,
-								navigation: _this3.props.navigation,
-								currentProcess: _this3.props.currentProcess,
-								currentStep: _this3.props.currentStep
-							}));
-							if (ComponentWrapper) return ComponentWrapper(x.elementType, x.uid, x.name, component);
-
-							return component;
-						};
-					}
-					var component = React__default.createElement(FurmlyComponent, _extends$4({}, x, {
-						value: value,
-						validator: _this3.state._validations[index],
-						key: x.name,
-						valueChanged: _this3.onValueChanged,
-						navigation: _this3.props.navigation,
-						currentProcess: _this3.props.currentProcess,
-						currentStep: _this3.props.currentStep
-					}));
-					return ComponentWrapper ? ComponentWrapper(x.elementType, x.uid, x.name, component) : component;
-					/*jshint ignore:end*/
-				});
-
-				if (keys.length || notifyExtra.length) {
-					keys.forEach(function (x) {
-						extraVal[x] = self.props.value[x];
-					});
-
-					notifyExtra.forEach(function (x) {
-						elements[x] = elements[x](Object.assign({}, extraVal));
-					});
-				}
-				if (this.props.label) return React__default.createElement(
-					Section,
-					null,
-					React__default.createElement(Header, { text: this.props.label }),
-					elements
-				);
-				/*jshint ignore:start*/
-				return React__default.createElement(
-					Section,
-					null,
-					elements
-				);
-				/*jshint ignore:end*/
-			}
-		}]);
-		return _class;
-	}(React.Component);
+  return reactRedux.connect(mapStateToProps, mapDispatchToProps)(withLogger$1(FurmlyView));
 });
 
 var ReactSSRErrorHandler$3 = require("error_handler");
+
+var furmly_container = (function () {
+  for (var _len = arguments.length, args = Array(_len), _key = 0; _key < _len; _key++) {
+    args[_key] = arguments[_key];
+  }
+
+  //invariants
+  var Section = args[0],
+      Header = args[1],
+      ComponentWrapper = void 0,
+      ComponentLocator = void 0;
+  if (args.length == 3) {
+    ComponentLocator = args[2];
+  } else {
+    ComponentWrapper = args[2];
+    ComponentLocator = args[3];
+  }
+
+  if (invariants.validComponent(Section, "Section") && invariants.validComponent(Header, "Header") && !ComponentLocator) throw new Error("ComponentLocator cannot be null (furmly_container)");
+
+  return withLogger(function (_Component) {
+    inherits(_class, _Component);
+    createClass(_class, [{
+      key: "render",
+      value: function render() {
+        try {
+          return this.__originalRenderMethod__();
+        } catch (e) {
+          return ReactSSRErrorHandler$3(e, this.constructor.name);
+        }
+      }
+    }]);
+
+    function _class(props) {
+      classCallCheck(this, _class);
+
+      var _this = possibleConstructorReturn(this, (_class.__proto__ || Object.getPrototypeOf(_class)).call(this, props));
+
+      _this.onValueChanged = _this.onValueChanged.bind(_this);
+      _this.state = {
+        _validations: (_this.props.elements || []).map(function (x) {
+          return {};
+        })
+      };
+      _this.setValidator = _this.setValidator.bind(_this);
+      _this.setValidator();
+      return _this;
+    }
+    /*jshint ignore:end*/
+
+
+    createClass(_class, [{
+      key: "componentWillReceiveProps",
+      value: function componentWillReceiveProps(next) {
+        if (next.elements && (next.elements !== this.props.elements || next.elements.length !== this.props.elements.length)) {
+          var _validations = next.elements.map(function (x) {
+            return {};
+          });
+          this.props.log("creating new validators for container " + this.props.name);
+          this.setState({ _validations: _validations });
+        }
+      }
+    }, {
+      key: "setValidator",
+      value: function setValidator() {
+        var _this2 = this;
+
+        this.props.validator.validate = function () {
+          return Promise.all(_this2.state._validations.map(function (x) {
+            if (x.validate) return x.validate();
+
+            return new Promise(function (resolve, reject) {
+              resolve();
+            });
+          }));
+        };
+      }
+    }, {
+      key: "onValueChanged",
+      value: function onValueChanged() {
+        var form = Object.assign.apply(Object, [{}, this.props.value || {}].concat(toConsumableArray(Array.prototype.slice.call(arguments))));
+
+        this.props.valueChanged(defineProperty({}, this.props.name, form));
+      }
+    }, {
+      key: "__originalRenderMethod__",
+      value: function __originalRenderMethod__() {
+        var _this3 = this;
+
+        //this._validations.length = 0;
+        var keys = this.props.value ? Object.keys(this.props.value) : [],
+            self = this,
+            extraVal = {},
+            notifyExtra = [],
+            elements = (this.props.elements || []).sort(function (x, y) {
+          return x.order - y.order;
+        }).map(function (x, index) {
+          var FurmlyComponent = ComponentLocator(x),
+              source = self.props.value,
+
+          //validator = {},
+          value = source ? _this3.props.value[x.name] : null;
+          //this._validations.push(validator);
+          if (source && source.hasOwnProperty(x.name) && keys.indexOf(x.name) !== -1) keys.splice(keys.indexOf(x.name), 1);
+          /*jshint ignore:start*/
+          if (!FurmlyComponent) throw new Error("Unknown component:" + JSON.stringify(x, null, " "));
+          if (FurmlyComponent.notifyExtra) {
+            notifyExtra.push(index);
+            return function (extra) {
+              var component = React__default.createElement(FurmlyComponent, _extends({}, x, {
+                extra: extra,
+                key: x.name,
+                value: value,
+                validator: _this3.state._validations[index],
+                valueChanged: _this3.onValueChanged,
+                navigation: _this3.props.navigation,
+                currentProcess: _this3.props.currentProcess,
+                currentStep: _this3.props.currentStep
+              }));
+              if (ComponentWrapper) return ComponentWrapper(x.elementType, x.uid, x.name, component);
+
+              return component;
+            };
+          }
+          var component = React__default.createElement(FurmlyComponent, _extends({}, x, {
+            value: value,
+            validator: _this3.state._validations[index],
+            key: x.name,
+            valueChanged: _this3.onValueChanged,
+            navigation: _this3.props.navigation,
+            currentProcess: _this3.props.currentProcess,
+            currentStep: _this3.props.currentStep
+          }));
+          return ComponentWrapper ? ComponentWrapper(x.elementType, x.uid, x.name, component) : component;
+          /*jshint ignore:end*/
+        });
+
+        if (keys.length || notifyExtra.length) {
+          keys.forEach(function (x) {
+            extraVal[x] = self.props.value[x];
+          });
+
+          notifyExtra.forEach(function (x) {
+            elements[x] = elements[x](Object.assign({}, extraVal));
+          });
+        }
+        if (this.props.label) return React__default.createElement(
+          Section,
+          null,
+          React__default.createElement(Header, { text: this.props.label }),
+          elements
+        );
+        /*jshint ignore:start*/
+        return React__default.createElement(
+          Section,
+          null,
+          elements
+        );
+      }
+    }]);
+    return _class;
+  }(React.Component));
+});
+
+var ReactSSRErrorHandler$4 = require("error_handler");
 
 /**
  * Higher order function that recieves Platform specific implementation of Input
@@ -2762,172 +1444,170 @@ var ReactSSRErrorHandler$3 = require("error_handler");
  * @return {Function}       Wrapped class
  */
 var furmly_process = (function (ProgressBar, TextView, FurmlyView) {
-	invariants.validComponent(ProgressBar, "ProgressBar");
-	invariants.validComponent(TextView, "TextView");
-	invariants.validComponent(FurmlyView, "FurmlyView");
-	var log = debug("furmly-client-components:process");
+  invariants.validComponent(ProgressBar, "ProgressBar");
+  invariants.validComponent(TextView, "TextView");
+  invariants.validComponent(FurmlyView, "FurmlyView");
 
-	//map elements in FurmlyInput props to elements in store.
-	var mapStateToProps = function mapStateToProps(_$$1, initialProps) {
-		return function (state, ownProps) {
-			var _state = state.furmly.view["" + ownProps.id];
-			return {
-				busy: !!state.furmly.view[ownProps.id + "-busy"],
-				description: _state && _state.description,
-				instanceId: _state && _state.instanceId,
-				message: state.furmly.view.message,
-				completed: _state && _state.completed
-			};
-		};
-	};
+  //map elements in FurmlyInput props to elements in store.
+  var mapStateToProps = function mapStateToProps(_$$1, initialProps) {
+    return function (state, ownProps) {
+      var _state = state.furmly.view["" + ownProps.id];
+      return {
+        busy: !!state.furmly.view[ownProps.id + "-busy"],
+        description: _state && _state.description,
+        instanceId: _state && _state.instanceId,
+        message: state.furmly.view.message,
+        completed: _state && _state.completed
+      };
+    };
+  };
 
-	var mapDispatchToProps = function mapDispatchToProps(dispatch) {
-		return {
-			fetch: function fetch(id, params) {
-				dispatch(fetchFurmlyProcess(id, params));
-			},
-			runProcess: function runProcess(info) {
-				dispatch(runFurmlyProcess(info));
-			}
-		};
-	};
+  var mapDispatchToProps = function mapDispatchToProps(dispatch) {
+    return {
+      fetch: function fetch(id, params) {
+        dispatch(fetchFurmlyProcess(id, params));
+      },
+      runProcess: function runProcess(info) {
+        dispatch(runFurmlyProcess(info));
+      }
+    };
+  };
 
-	var FurmlyProcess = function (_Component) {
-		inherits(FurmlyProcess, _Component);
-		createClass(FurmlyProcess, [{
-			key: "render",
-			value: function render() {
-				try {
-					return this.__originalRenderMethod__();
-				} catch (e) {
-					return ReactSSRErrorHandler$3(e, this.constructor.name);
-				}
-			}
-		}]);
+  var FurmlyProcess = function (_Component) {
+    inherits(FurmlyProcess, _Component);
+    createClass(FurmlyProcess, [{
+      key: "render",
+      value: function render() {
+        try {
+          return this.__originalRenderMethod__();
+        } catch (e) {
+          return ReactSSRErrorHandler$4(e, this.constructor.name);
+        }
+      }
+    }]);
 
-		function FurmlyProcess(props) {
-			classCallCheck(this, FurmlyProcess);
+    function FurmlyProcess(props) {
+      classCallCheck(this, FurmlyProcess);
 
-			var _this = possibleConstructorReturn(this, (FurmlyProcess.__proto__ || Object.getPrototypeOf(FurmlyProcess)).call(this, props));
+      var _this = possibleConstructorReturn(this, (FurmlyProcess.__proto__ || Object.getPrototypeOf(FurmlyProcess)).call(this, props));
 
-			_this.state = {};
-			_this.submit = _this.submit.bind(_this);
-			return _this;
-		}
+      _this.state = {};
+      _this.submit = _this.submit.bind(_this);
+      return _this;
+    }
 
-		createClass(FurmlyProcess, [{
-			key: "componentDidMount",
-			value: function componentDidMount() {
-				if (!this.props.description || this.props.id !== this.props.description._id && this.props.id !== this.props.description.uid) {
-					this.props.fetch(this.props.id, this.props.fetchParams);
-				}
-			}
-		}, {
-			key: "componentWillReceiveProps",
-			value: function componentWillReceiveProps(next) {
-				if (next.completed && next.completed != this.props.completed) return this.props.navigation.goBack();
+    createClass(FurmlyProcess, [{
+      key: "componentDidMount",
+      value: function componentDidMount() {
+        if (!this.props.description || this.props.id !== this.props.description._id && this.props.id !== this.props.description.uid) {
+          this.props.fetch(this.props.id, this.props.fetchParams);
+        }
+      }
+    }, {
+      key: "componentWillReceiveProps",
+      value: function componentWillReceiveProps(next) {
+        if (next.completed && next.completed != this.props.completed) return this.props.navigation.goBack();
 
-				if ((next.id !== this.props.id || !_.isEqual(next.fetchParams, this.props.fetchParams)) && !next.busy && !next.description || next.id == this.props.id && !_.isEqual(next.fetchParams, this.props.fetchParams) && !next.busy) this.props.fetch(next.id, next.fetchParams);
-			}
-		}, {
-			key: "submit",
-			value: function submit(form) {
-				this.props.runProcess({
-					id: this.props.id,
-					form: form,
-					currentStep: this.props.currentStep,
-					instanceId: this.props.instanceId
-				});
-			}
-		}, {
-			key: "__originalRenderMethod__",
-			value: function __originalRenderMethod__() {
-				/*jshint ignore:start */
-				if (this.props.busy || typeof this.props.busy == "undefined") {
-					return React__default.createElement(ProgressBar, { title: "Please wait..." });
-				}
-				if (!this.props.description) {
-					return React__default.createElement(TextView, { text: "Sorry we couldnt load that process...please wait a few minutes and retry." });
-				}
-				return React__default.createElement(FurmlyView, {
-					currentStep: this.props.currentStep || 0,
-					currentProcess: this.props.id,
-					navigation: this.props.navigation,
-					submit: this.submit
-				});
+        if ((next.id !== this.props.id || !_.isEqual(next.fetchParams, this.props.fetchParams)) && !next.busy && !next.description || next.id == this.props.id && !_.isEqual(next.fetchParams, this.props.fetchParams) && !next.busy) this.props.fetch(next.id, next.fetchParams);
+      }
+    }, {
+      key: "submit",
+      value: function submit(form) {
+        this.props.runProcess({
+          id: this.props.id,
+          form: form,
+          currentStep: this.props.currentStep,
+          instanceId: this.props.instanceId
+        });
+      }
+    }, {
+      key: "__originalRenderMethod__",
+      value: function __originalRenderMethod__() {
+        /*jshint ignore:start */
+        if (this.props.busy || typeof this.props.busy == "undefined") {
+          return React__default.createElement(ProgressBar, { title: "Please wait..." });
+        }
+        if (!this.props.description) {
+          return React__default.createElement(TextView, { text: "Sorry we couldnt load that process...please wait a few minutes and retry." });
+        }
+        return React__default.createElement(FurmlyView, {
+          currentStep: this.props.currentStep || 0,
+          currentProcess: this.props.id,
+          navigation: this.props.navigation,
+          submit: this.submit
+        });
 
-				/*jshint ignore:end */
-			}
-		}]);
-		return FurmlyProcess;
-	}(React.Component);
-	// FurmlyProcess.propTypes = {
-	// 	id: React.PropTypes.string.isRequired,
-	// 	fetchParams: React.PropTypes.object,
-	// 	description: React.PropTypes.object
-	// };
+        /*jshint ignore:end */
+      }
+    }]);
+    return FurmlyProcess;
+  }(React.Component);
+  // FurmlyProcess.propTypes = {
+  // 	id: React.PropTypes.string.isRequired,
+  // 	fetchParams: React.PropTypes.object,
+  // 	description: React.PropTypes.object
+  // };
 
 
-	return connect(mapStateToProps, mapDispatchToProps)(FurmlyProcess);
+  return reactRedux.connect(mapStateToProps, mapDispatchToProps)(withLogger$1(FurmlyProcess));
 });
 
-var ReactSSRErrorHandler$4 = require("error_handler");
+var ReactSSRErrorHandler$5 = require("error_handler");
 
 var furmly_section = (function (Layout, Header, Container) {
-	invariants.validComponent(Layout, "Layout");
-	invariants.validComponent(Header, "Header");
-	invariants.validComponent(Container, "Container");
-	var log = debug("furmly-client-components:session");
+  invariants.validComponent(Layout, "Layout");
+  invariants.validComponent(Header, "Header");
+  invariants.validComponent(Container, "Container");
 
-	var FurmlySection = function (_Component) {
-		inherits(FurmlySection, _Component);
-		createClass(FurmlySection, [{
-			key: "render",
-			value: function render() {
-				try {
-					return this.__originalRenderMethod__();
-				} catch (e) {
-					return ReactSSRErrorHandler$4(e, this.constructor.name);
-				}
-			}
-		}]);
+  var FurmlySection = function (_Component) {
+    inherits(FurmlySection, _Component);
+    createClass(FurmlySection, [{
+      key: "render",
+      value: function render() {
+        try {
+          return this.__originalRenderMethod__();
+        } catch (e) {
+          return ReactSSRErrorHandler$5(e, this.constructor.name);
+        }
+      }
+    }]);
 
-		function FurmlySection(props) {
-			classCallCheck(this, FurmlySection);
-			return possibleConstructorReturn(this, (FurmlySection.__proto__ || Object.getPrototypeOf(FurmlySection)).call(this, props));
-		}
+    function FurmlySection(props) {
+      classCallCheck(this, FurmlySection);
+      return possibleConstructorReturn(this, (FurmlySection.__proto__ || Object.getPrototypeOf(FurmlySection)).call(this, props));
+    }
 
-		createClass(FurmlySection, [{
-			key: "__originalRenderMethod__",
-			value: function __originalRenderMethod__() {
-				/*jshint ignore:start*/
-				//get the container for retrieving
-				return React__default.createElement(
-					Layout,
-					null,
-					React__default.createElement(
-						Header,
-						{ description: this.props.description },
-						this.props.label
-					),
-					React__default.createElement(Container, {
-						elements: this.props.args.elements,
-						name: this.props.name,
-						value: this.props.value,
-						valueChanged: this.props.valueChanged,
-						validator: this.props.validator,
-						navigation: this.props.navigation,
-						currentProcess: this.props.currentProcess,
-						currentStep: this.props.currentStep
-					})
-				);
-				/*jshint ignore:end*/
-			}
-		}]);
-		return FurmlySection;
-	}(React.Component);
+    createClass(FurmlySection, [{
+      key: "__originalRenderMethod__",
+      value: function __originalRenderMethod__() {
+        /*jshint ignore:start*/
+        //get the container for retrieving
+        return React__default.createElement(
+          Layout,
+          null,
+          React__default.createElement(
+            Header,
+            { description: this.props.description },
+            this.props.label
+          ),
+          React__default.createElement(Container, {
+            elements: this.props.args.elements,
+            name: this.props.name,
+            value: this.props.value,
+            valueChanged: this.props.valueChanged,
+            validator: this.props.validator,
+            navigation: this.props.navigation,
+            currentProcess: this.props.currentProcess,
+            currentStep: this.props.currentStep
+          })
+        );
+        /*jshint ignore:end*/
+      }
+    }]);
+    return FurmlySection;
+  }(React.Component);
 
-	return FurmlySection;
+  return withLogger$1(FurmlySection);
 });
 
 function getTitleFromState(state) {
@@ -3039,881 +1719,852 @@ var view = {
 	getKey: getKey
 };
 
-var ReactSSRErrorHandler$5 = require("error_handler");
-
-var furmly_select = (function (ProgressIndicator, Layout, Container) {
-	if (invariants.validComponent(ProgressIndicator, "ProgressIndicator") && invariants.validComponent(Layout, "Layout") && !Container) throw new Error("Container cannot be null (furmly_select)");
-
-	var log = debug("furmly-client-components:select");
-
-	//map elements in FurmlyView props to elements in store.
-	var mapStateToProps = function mapStateToProps(_$$1, initialProps) {
-		return function (state, ownProps) {
-			if (ownProps.args.type == "PROCESSOR") {
-				var component_uid = getKey(state, ownProps.component_uid, ownProps);
-				var st = state.furmly.view[component_uid];
-				return {
-					items: st,
-					busy: !!state.furmly.view[getBusyKey(component_uid)],
-					error: !!state.furmly.view[getErrorKey(component_uid)],
-					component_uid: component_uid
-				};
-			}
-			//evaluate stuff in the parent container to retrieve the
-		};
-	};
-
-	var mapDispatchToProps = function mapDispatchToProps(dispatch) {
-		return {
-			fetch: function fetch(id, params, key) {
-				dispatch(runFurmlyProcessor(id, params, key));
-			}
-		};
-	};
-
-	var FurmlySelect = function (_Component) {
-		inherits(FurmlySelect, _Component);
-		createClass(FurmlySelect, [{
-			key: "render",
-			value: function render() {
-				try {
-					return this.__originalRenderMethod__();
-				} catch (e) {
-					return ReactSSRErrorHandler$5(e, this.constructor.name);
-				}
-			}
-		}]);
-
-		function FurmlySelect(props) {
-			classCallCheck(this, FurmlySelect);
-
-			var _this = possibleConstructorReturn(this, (FurmlySelect.__proto__ || Object.getPrototypeOf(FurmlySelect)).call(this, props));
-
-			_this.state = {};
-			_this.fetchItems = _this.fetchItems.bind(_this);
-			_this.onValueChanged = _this.onValueChanged.bind(_this);
-			_this.selectFirstItem = _this.selectFirstItem.bind(_this);
-			_this.getValueBasedOnMode = _this.getValueBasedOnMode.bind(_this);
-			_this.props.validator.validate = function () {
-				return _this.runValidators();
-			};
-			_this.isValidValue = _this.isValidValue.bind(_this);
-			_this.isObjectIdMode = _this.isObjectIdMode.bind(_this);
-			return _this;
-		}
-
-		createClass(FurmlySelect, [{
-			key: "hasValue",
-			value: function hasValue() {
-				return !!this.props.value || "is required";
-			}
-		}, {
-			key: "runValidators",
-			value: function runValidators() {
-				return new Validator(this).run();
-			}
-		}, {
-			key: "onValueChanged",
-			value: function onValueChanged(value) {
-				if (this._mounted) {
-					this.props.valueChanged(defineProperty({}, this.props.name, this.getValueBasedOnMode(value)));
-				}
-			}
-		}, {
-			key: "fetchItems",
-			value: function fetchItems(source, args, component_uid) {
-				if (this._mounted) {
-					if (!source || !component_uid) throw new Error("Something is wrong with our configuration");
-					this.props.fetch(source, JSON.parse(args || "{}"), component_uid);
-				}
-			}
-		}, {
-			key: "isValidValue",
-			value: function isValidValue() {
-				var items = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : this.props.items;
-				var value = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : this.props.value;
-
-				value = unwrapObjectValue(value);
-				return items && items.length && items.filter(function (x) {
-					return x._id == value;
-				}).length;
-			}
-		}, {
-			key: "getValueBasedOnMode",
-			value: function getValueBasedOnMode$$1(v) {
-				return this.props.args && this.props.args.mode && (typeof v === "undefined" ? "undefined" : _typeof(v)) !== "object" && this.props.args.mode == "ObjectId" && { $objectID: v } || v;
-			}
-		}, {
-			key: "componentWillReceiveProps",
-			value: function componentWillReceiveProps(next) {
-				if (!next.error && (next.args.config.value !== this.props.args.config.value || next.args.config.customArgs !== this.props.args.config.customArgs && !next.busy || next.component_uid !== this.props.component_uid || next.args.config.value && typeof next.items == "undefined" && !next.busy)) {
-					return this.fetchItems(next.args.config.value, next.args.config.customArgs, next.component_uid);
-				}
-
-				if (next.items && next.items.length == 1 && !next.value) {
-					return this.selectFirstItem(next.items[0]._id);
-				}
-
-				if (next.items && next.value && !this.isValidValue(next.items, next.value) || !next.items && !next.busy && !next.error) {
-					return this.onValueChanged(null);
-				}
-			}
-		}, {
-			key: "selectFirstItem",
-			value: function selectFirstItem(item) {
-				var _this2 = this;
-
-				setTimeout(function () {
-					_this2.onValueChanged(item);
-				}, 0);
-			}
-		}, {
-			key: "componentWillUnmount",
-			value: function componentWillUnmount() {
-				this._mounted = false;
-			}
-		}, {
-			key: "isObjectIdMode",
-			value: function isObjectIdMode$$1() {
-				return this.props.args && this.props.args.mode === "ObjectId";
-			}
-		}, {
-			key: "componentDidMount",
-			value: function componentDidMount() {
-				var _this3 = this;
-
-				this._mounted = true;
-				if (!this.props.items) {
-					log("fetching items in componentDidMount for current:" + this.props.name);
-					this.fetchItems(this.props.args.config.value, this.props.args.config.customArgs, this.props.component_uid);
-				}
-
-				if (this.props.items && this.props.items.length == 1 && !this.props.value) {
-					return this.selectFirstItem(this.props.items[0]._id);
-				}
-				if (this.isObjectIdMode() && this.props.value && _typeof(this.props.value) !== 'object') {
-					//update the form to indicate its an objectId.
-					return setTimeout(function () {
-						_this3.onValueChanged(_this3.props.value);
-					}, 0);
-				}
-			}
-		}, {
-			key: "isEmptyOrNull",
-			value: function isEmptyOrNull(v) {
-				return !v || !v.length;
-			}
-		}, {
-			key: "__originalRenderMethod__",
-			value: function __originalRenderMethod__() {
-				/*jshint ignore:start*/
-
-				log("rendering " + this.props.name);
-				if (this.isEmptyOrNull(this.props.items)) {
-					log(this.props.name + " is empty");
-					return React__default.createElement(ProgressIndicator, null);
-				}
-				return React__default.createElement(Layout, {
-					value: this.props.label,
-					inner: React__default.createElement(Container, {
-						disabled: !!this.props.args.disabled || this.props.items && this.props.items.length == 1,
-						errors: this.state.errors,
-						label: this.props.label,
-						items: this.props.items,
-						displayProperty: "displayLabel",
-						keyProperty: "_id",
-						value: unwrapObjectValue(this.props.value),
-						valueChanged: this.onValueChanged
-					})
-				});
-				/*jshint ignore:end*/
-			}
-		}]);
-		return FurmlySelect;
-	}(React.Component);
-
-	return connect(mapStateToProps, mapDispatchToProps)(FurmlySelect);
-});
-
 var ReactSSRErrorHandler$6 = require("error_handler");
 
-var FurmlyComponentBase = function (_React$Component) {
-	inherits(FurmlyComponentBase, _React$Component);
-	createClass(FurmlyComponentBase, [{
-		key: "render",
-		value: function render() {
-			try {
-				return this.__originalRenderMethod__();
-			} catch (e) {
-				return ReactSSRErrorHandler$6(e, this.constructor.name);
-			}
-		}
-	}]);
+var furmly_select = (function (ProgressIndicator, Layout, Container) {
+  if (invariants.validComponent(ProgressIndicator, "ProgressIndicator") && invariants.validComponent(Layout, "Layout") && !Container) throw new Error("Container cannot be null (furmly_select)");
 
-	function FurmlyComponentBase(props, log) {
-		classCallCheck(this, FurmlyComponentBase);
+  //map elements in FurmlyView props to elements in store.
+  var mapStateToProps = function mapStateToProps(_$$1, initialProps) {
+    return function (state, ownProps) {
+      if (ownProps.args.type == "PROCESSOR") {
+        var component_uid = getKey(state, ownProps.component_uid, ownProps);
+        var st = state.furmly.view[component_uid];
+        return {
+          items: st,
+          busy: !!state.furmly.view[getBusyKey(component_uid)],
+          error: !!state.furmly.view[getErrorKey(component_uid)],
+          component_uid: component_uid
+        };
+      }
+      //evaluate stuff in the parent container to retrieve the
+    };
+  };
 
-		var _this = possibleConstructorReturn(this, (FurmlyComponentBase.__proto__ || Object.getPrototypeOf(FurmlyComponentBase)).call(this, props));
+  var mapDispatchToProps = function mapDispatchToProps(dispatch) {
+    return {
+      fetch: function fetch(id, params, key) {
+        dispatch(runFurmlyProcessor(id, params, key));
+      }
+    };
+  };
 
-		_this.log = function (m) {
-			log(m + " for " + _this.props.name);
-		};
-		return _this;
-	}
+  var FurmlySelect = function (_Component) {
+    inherits(FurmlySelect, _Component);
+    createClass(FurmlySelect, [{
+      key: "render",
+      value: function render() {
+        try {
+          return this.__originalRenderMethod__();
+        } catch (e) {
+          return ReactSSRErrorHandler$6(e, this.constructor.name);
+        }
+      }
+    }]);
 
-	createClass(FurmlyComponentBase, [{
-		key: "__originalRenderMethod__",
-		value: function __originalRenderMethod__() {
-			return null;
-		}
-	}]);
-	return FurmlyComponentBase;
-}(React__default.Component);
+    function FurmlySelect(props) {
+      classCallCheck(this, FurmlySelect);
 
-var furmly_selectset = (function (Layout, Picker, ProgressBar, Container) {
-	//map elements in FurmlyView props to elements in store.
-	invariants.validComponent(Layout, "Layout");
-	invariants.validComponent(Picker, "Picker");
-	invariants.validComponent(Container, "Container");
-	var log = debug("furmly-client-components:selectset");
-	var noPath = "selectset_no_path";
-	var noItems = [];
-	var mapDispatchToProps = function mapDispatchToProps(dispatch) {
-		return {
-			getItems: function getItems(id, args, key, extra) {
-				return dispatch(runFurmlyProcessor(id, args, key, extra));
-			}
-		};
-	};
-	var mapStateToProps = function mapStateToProps(_$$1, initialProps) {
-		return function (state, ownProps) {
-			var component_uid = getKey(state, ownProps.component_uid, ownProps),
-			    items = state.furmly.view[component_uid] || ownProps.args.items;
-			return {
-				busy: !!state.furmly.view[getBusyKey(component_uid)],
-				error: !!state.furmly.view[getErrorKey(component_uid)],
-				items: items,
-				contentItems: getPickerItemsById(ownProps.value, items),
-				component_uid: component_uid
-			};
-		};
-	};
-	var getPickerItemsById = function getPickerItemsById(v, items) {
-		if (v && items && items.length) {
-			var z = unwrapObjectValue(v);
-			var r = items.filter(function (x) {
-				return x.id == z;
-			});
-			return r.length && r[0].elements || noItems;
-		}
+      var _this = possibleConstructorReturn(this, (FurmlySelect.__proto__ || Object.getPrototypeOf(FurmlySelect)).call(this, props));
 
-		return noItems;
-	};
+      _this.state = {};
+      _this.fetchItems = _this.fetchItems.bind(_this);
+      _this.onValueChanged = _this.onValueChanged.bind(_this);
+      _this.selectFirstItem = _this.selectFirstItem.bind(_this);
+      _this.getValueBasedOnMode = _this.getValueBasedOnMode.bind(_this);
+      _this.props.validator.validate = function () {
+        return _this.runValidators();
+      };
+      _this.isValidValue = _this.isValidValue.bind(_this);
+      _this.isObjectIdMode = _this.isObjectIdMode.bind(_this);
+      return _this;
+    }
 
-	var FurmlySelectSet = function (_FurmlyBase) {
-		inherits(FurmlySelectSet, _FurmlyBase);
+    createClass(FurmlySelect, [{
+      key: "hasValue",
+      value: function hasValue() {
+        return !!this.props.value || "is required";
+      }
+    }, {
+      key: "runValidators",
+      value: function runValidators() {
+        return new Validator(this).run();
+      }
+    }, {
+      key: "onValueChanged",
+      value: function onValueChanged(value) {
+        if (this._mounted) {
+          this.props.valueChanged(defineProperty({}, this.props.name, this.getValueBasedOnMode(value)));
+        }
+      }
+    }, {
+      key: "fetchItems",
+      value: function fetchItems(source, args, component_uid) {
+        if (this._mounted) {
+          if (!source || !component_uid) throw new Error("Something is wrong with our configuration");
+          this.props.fetch(source, JSON.parse(args || "{}"), component_uid);
+        }
+      }
+    }, {
+      key: "isValidValue",
+      value: function isValidValue() {
+        var items = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : this.props.items;
+        var value = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : this.props.value;
 
-		function FurmlySelectSet(props) {
-			classCallCheck(this, FurmlySelectSet);
+        value = unwrapObjectValue(value);
+        return items && items.length && items.filter(function (x) {
+          return x._id == value;
+        }).length;
+      }
+    }, {
+      key: "getValueBasedOnMode",
+      value: function getValueBasedOnMode$$1(v) {
+        return this.props.args && this.props.args.mode && (typeof v === "undefined" ? "undefined" : _typeof(v)) !== "object" && this.props.args.mode == "ObjectId" && { $objectID: v } || v;
+      }
+    }, {
+      key: "componentWillReceiveProps",
+      value: function componentWillReceiveProps(next) {
+        if (!next.error && (next.args.config.value !== this.props.args.config.value || next.args.config.customArgs !== this.props.args.config.customArgs && !next.busy || next.component_uid !== this.props.component_uid || next.args.config.value && typeof next.items == "undefined" && !next.busy)) {
+          return this.fetchItems(next.args.config.value, next.args.config.customArgs, next.component_uid);
+        }
 
-			var _this = possibleConstructorReturn(this, (FurmlySelectSet.__proto__ || Object.getPrototypeOf(FurmlySelectSet)).call(this, props, log));
+        if (next.items && next.items.length == 1 && !next.value) {
+          return this.selectFirstItem(next.items[0]._id);
+        }
 
-			_this.retryFetch = _this.retryFetch.bind(_this);
-			_this.onPickerValueChanged = _this.onPickerValueChanged.bind(_this);
-			_this.onContainerValueChanged = _this.onContainerValueChanged.bind(_this);
-			_this.getPickerValue = _this.getPickerValue.bind(_this);
-			_this.getContainerValue = _this.getContainerValue.bind(_this);
-			var containerValues = (props.contentItems || []).reduce(function (sum, x) {
-				if (_this.props.extra.hasOwnProperty(x.name)) sum[x.name] = _this.props.extra[x.name];
-				return sum;
-			}, {});
-			_this.state = {
-				containerValues: containerValues,
-				containerValidator: {}
-			};
-			_this.selectFirstItem = _this.selectFirstItem.bind(_this);
-			_this.respondToPickerValueChanged = _this.respondToPickerValueChanged.bind(_this);
-			_this.oneOption = _this.oneOption.bind(_this);
-			_this.props.validator.validate = function () {
-				return _this.runValidators();
-			};
-			_this.getValueBasedOnMode = _this.getValueBasedOnMode.bind(_this);
-			_this.isObjectIdMode = _this.isObjectIdMode.bind(_this);
-			return _this;
-		}
+        if (next.items && next.value && !this.isValidValue(next.items, next.value) || !next.items && !next.busy && !next.error) {
+          return this.onValueChanged(null);
+        }
+      }
+    }, {
+      key: "selectFirstItem",
+      value: function selectFirstItem(item) {
+        var _this2 = this;
 
-		createClass(FurmlySelectSet, [{
-			key: "hasValue",
-			value: function hasValue() {
-				return !!this.props.value || "is required";
-			}
-		}, {
-			key: "runValidators",
-			value: function runValidators() {
-				return Promise.all([new Validator(this).run(), this.state.containerValidator.validate()]);
-			}
-		}, {
-			key: "componentWillReceiveProps",
-			value: function componentWillReceiveProps(next) {
-				if (!next.error && (next.args.processor !== this.props.args.processor || next.component_uid !== this.props.component_uid && next.args.processor || typeof next.items == "undefined") && !next.busy) this.fetchItems(next.args.processor, next.args.processorArgs, next.component_uid);
+        setTimeout(function () {
+          _this2.onValueChanged(item);
+        }, 0);
+      }
+    }, {
+      key: "componentWillUnmount",
+      value: function componentWillUnmount() {
+        this._mounted = false;
+      }
+    }, {
+      key: "isObjectIdMode",
+      value: function isObjectIdMode$$1() {
+        return this.props.args && this.props.args.mode === "ObjectId";
+      }
+    }, {
+      key: "componentDidMount",
+      value: function componentDidMount() {
+        var _this3 = this;
 
-				if (next.items && next.items.length == 1 && !next.value) {
-					return this.selectFirstItem(next.items);
-				}
-			}
-		}, {
-			key: "retryFetch",
-			value: function retryFetch() {
-				this.log("retrying fetch");
-				this.fetchItems(this.props.args.processor, this.props.args.processorArgs, this.props.component_uid, { retry: true });
-			}
-		}, {
-			key: "fetchItems",
-			value: function fetchItems(source, args, component_uid) {
-				var _args = this._onContainerValueChanged.call(this, this.state.containerValues);
-				_args.shift();
-				this.log("fetching items");
-				this.props.getItems(source, Object.assign(JSON.parse(args || this.props.args.processorArgs || "{}"), {
-					_args: _args
-				}), component_uid || this.props.component_uid);
-			}
-		}, {
-			key: "componentWillUnmount",
-			value: function componentWillUnmount() {
-				this._mounted = false;
-			}
-		}, {
-			key: "componentDidMount",
-			value: function componentDidMount() {
-				var _this2 = this;
+        this._mounted = true;
+        if (!this.props.items) {
+          this.props.log("fetching items in componentDidMount for current:" + this.props.name);
+          this.fetchItems(this.props.args.config.value, this.props.args.config.customArgs, this.props.component_uid);
+        }
 
-				this._mounted = true;
-				if (this.props.args.processor && typeof this.props.items == "undefined") {
-					this.fetchItems(this.props.args.processor);
-				}
+        if (this.props.items && this.props.items.length == 1 && !this.props.value) {
+          return this.selectFirstItem(this.props.items[0]._id);
+        }
+        if (this.isObjectIdMode() && this.props.value && _typeof(this.props.value) !== "object") {
+          //update the form to indicate its an objectId.
+          return setTimeout(function () {
+            _this3.onValueChanged(_this3.props.value);
+          }, 0);
+        }
+      }
+    }, {
+      key: "isEmptyOrNull",
+      value: function isEmptyOrNull(v) {
+        return !v || !v.length;
+      }
+    }, {
+      key: "__originalRenderMethod__",
+      value: function __originalRenderMethod__() {
+        /*jshint ignore:start*/
 
-				if (this.props.items && this.props.items.length == 1 && !this.props.value) {
-					return setTimeout(function () {
-						_this2.selectFirstItem();
-					}, 0);
-				}
+        this.props.log("rendering " + this.props.name);
+        if (this.isEmptyOrNull(this.props.items)) {
+          this.props.log(this.props.name + " is empty");
+          return React__default.createElement(ProgressIndicator, null);
+        }
+        return React__default.createElement(Layout, {
+          value: this.props.label,
+          inner: React__default.createElement(Container, {
+            disabled: !!this.props.args.disabled || this.props.items && this.props.items.length == 1,
+            errors: this.state.errors,
+            label: this.props.label,
+            items: this.props.items,
+            displayProperty: "displayLabel",
+            keyProperty: "_id",
+            value: unwrapObjectValue(this.props.value),
+            valueChanged: this.onValueChanged
+          })
+        });
+        /*jshint ignore:end*/
+      }
+    }]);
+    return FurmlySelect;
+  }(React.Component);
 
-				if (this.isObjectIdMode() && this.props.value && _typeof(this.props.value) !== "object") {
-					//update the form to indicate its an objectId.
-					return setTimeout(function () {
-						_this2.onPickerValueChanged(_this2.props.value);
-					}, 0);
-				}
-			}
-		}, {
-			key: "isObjectIdMode",
-			value: function isObjectIdMode$$1() {
-				return this.props.args && this.props.args.mode === "ObjectId";
-			}
-		}, {
-			key: "oneOption",
-			value: function oneOption() {
-				return this.props.items && this.props.items.length == 1;
-			}
-		}, {
-			key: "getCurrentContainerValue",
-			value: function getCurrentContainerValue() {
-				return this.props.args.path && defineProperty({}, this.props.args.path, this.props.extra[this.props.args.path]) || this.state.containerValues;
-			}
-		}, {
-			key: "selectFirstItem",
-			value: function selectFirstItem() {
-				var items = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : this.props.items;
-
-				this.onPickerValueChanged(items[0].id);
-			}
-		}, {
-			key: "getPickerValue",
-			value: function getPickerValue() {
-				var value = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : this.props.value;
-
-				return defineProperty({}, this.props.name, this.getValueBasedOnMode(value));
-			}
-		}, {
-			key: "onContainerValueChanged",
-			value: function onContainerValueChanged(value, pickerValue) {
-				// this.log(
-				// 	`value changed ${JSON.stringify(
-				// 		value,
-				// 		null,
-				// 		" "
-				// 	)} pickerValue:${JSON.stringify(pickerValue, null, " ")}`
-				// );
-				var eve = this._onContainerValueChanged.call(this, value, pickerValue);
-				// this.log(`eventual params:${JSON.stringify(eve, null, " ")}`);
-
-				this.props.valueChanged.apply(this, eve);
-			}
-		}, {
-			key: "_shouldComponentUpdateComparer",
-			value: function _shouldComponentUpdateComparer(x, y, a, b, key) {
-				if (a == b) return true;
-				if (key == "extra") {
-					if (y.contentItems && y.contentItems.length) return _.isEqual(a[y.args.path], b[y.args.path]);
-
-					return true;
-				}
-			}
-			//potentially expensive.
-
-		}, {
-			key: "shouldComponentUpdate",
-			value: function shouldComponentUpdate(nextProps, nextState) {
-				if ((nextProps.args.path || !nextProps.args.path && !nextProps.contentItems.length) && _.isEqual(this.state.errors, nextState.errors) && _.isEqualWith(this.props, nextProps, this._shouldComponentUpdateComparer.bind(this, this.props, nextProps))) {
-					return false;
-				}
-
-				return true;
-			}
-		}, {
-			key: "_onContainerValueChanged",
-			value: function _onContainerValueChanged(value, pickerValue) {
-				var _this3 = this;
-
-				pickerValue = pickerValue || this.getPickerValue();
-				if (this.props.args.path) {
-					var _p = [pickerValue];
-					//push this to unset previous value
-					if (!value) _p.push(defineProperty({}, this.props.args.path, undefined));else _p.push(value);
-					return _p;
-				}
-
-				var superCancel = this.state.containerValues && Object.keys(this.state.containerValues).reduce(function (sum, x) {
-					return sum[x] = undefined, sum;
-				}, {});
-
-				//path is not defined so unpack the properties and send.
-				var result = [pickerValue].concat(toConsumableArray(Object.keys(value && value[noPath] || {}).map(function (x) {
-					return defineProperty({}, x, value[noPath][x]);
-				})));
-
-				if (superCancel && Object.keys(superCancel).length > 0) {
-					//insert this to remove previous values.
-					result.splice(1, 0, superCancel);
-				}
-				setTimeout(function () {
-					if (_this3._mounted) {
-						_this3.setState({
-							containerValues: value && value[noPath] || null
-						});
-					}
-				});
-				this.log("container values changed " + JSON.stringify(result));
-				return result;
-			}
-		}, {
-			key: "getValueBasedOnMode",
-			value: function getValueBasedOnMode$$1(v) {
-				return this.props.args && this.props.args.mode && (typeof v === "undefined" ? "undefined" : _typeof(v)) !== "object" && this.props.args.mode == "ObjectId" && { $objectID: v } || v;
-			}
-		}, {
-			key: "respondToPickerValueChanged",
-			value: function respondToPickerValueChanged(v) {
-				this.onContainerValueChanged(null, this.getPickerValue(v));
-			}
-		}, {
-			key: "onPickerValueChanged",
-			value: function onPickerValueChanged(v) {
-				this.onContainerValueChanged(this.getCurrentContainerValue(), this.getPickerValue(v));
-			}
-		}, {
-			key: "getContainerValue",
-			value: function getContainerValue() {
-				return this.props.args.path ? this.props.extra ? this.props.extra[this.props.args.path] : {} : this.props.extra;
-			}
-		}, {
-			key: "isEmptyOrNull",
-			value: function isEmptyOrNull(v) {
-				return !v || !v.length;
-			}
-		}, {
-			key: "render",
-			value: function render() {
-				this.log("rendering called");
-				/*jshint ignore:start*/
-				if (this.props.busy) {
-					this.log(this.props.name + " is busy");
-					return React__default.createElement(ProgressBar, { onClick: this.props.retryFetch });
-				}
-
-				return React__default.createElement(Layout, {
-					value: this.props.label,
-					inner: React__default.createElement(Picker, {
-						label: this.props.label,
-						disabled: !!this.props.args.disabled || this.oneOption(),
-						items: this.props.items,
-						errors: this.state.errors,
-						displayProperty: "displayLabel",
-						keyProperty: "id",
-						value: unwrapObjectValue(this.props.value),
-						valueChanged: this.respondToPickerValueChanged,
-						currentProcess: this.props.currentProcess,
-						currentStep: this.props.currentStep
-					}),
-					extraElements: React__default.createElement(Container, {
-						name: this.props.args.path || noPath,
-						value: this.getContainerValue(),
-						valueChanged: this.onContainerValueChanged,
-						elements: this.props.contentItems,
-						validator: this.state.containerValidator,
-						navigation: this.props.navigation,
-						currentProcess: this.props.currentProcess,
-						currentStep: this.props.currentStep
-					})
-				});
-				/*jshint ignore:end*/
-			}
-		}]);
-		return FurmlySelectSet;
-	}(FurmlyComponentBase);
-
-	FurmlySelectSet.notifyExtra = true;
-	return connect(mapStateToProps, mapDispatchToProps)(FurmlySelectSet);
+  return reactRedux.connect(mapStateToProps, mapDispatchToProps)(withLogger$1(FurmlySelect));
 });
 
 var ReactSSRErrorHandler$7 = require("error_handler");
 
-var furmly_list = (function (Layout, Button, List, Modal, ErrorText, ProgressBar, Container) {
-	invariants.validComponent(Layout, "Layout");
-	invariants.validComponent(Button, "Button");
-	invariants.validComponent(List, "List");
-	invariants.validComponent(Modal, "Modal");
-	invariants.validComponent(ErrorText, "ErrorText");
-	invariants.validComponent(Container, "Container");
-	var log = debug("furmly-client-components:list");
-	var EDIT = "EDIT",
-	    NEW = "NEW";
-	var mapStateToProps = function mapStateToProps(_$$1, initialProps) {
-		return function (state, ownProps) {
-			var component_uid = getKey(state, ownProps.component_uid, ownProps);
+var furmly_selectset = (function (Layout, Picker, ProgressBar, Container) {
+  //map elements in FurmlyView props to elements in store.
+  invariants.validComponent(Layout, "Layout");
+  invariants.validComponent(Picker, "Picker");
+  invariants.validComponent(Container, "Container");
+  var noPath = "selectset_no_path";
+  var noItems = [];
+  var mapDispatchToProps = function mapDispatchToProps(dispatch) {
+    return {
+      getItems: function getItems(id, args, key, extra) {
+        return dispatch(runFurmlyProcessor(id, args, key, extra));
+      }
+    };
+  };
+  var mapStateToProps = function mapStateToProps(_$$1, initialProps) {
+    return function (state, ownProps) {
+      var component_uid = getKey(state, ownProps.component_uid, ownProps),
+          items = state.furmly.view[component_uid] || ownProps.args.items;
+      return {
+        busy: !!state.furmly.view[getBusyKey(component_uid)],
+        error: !!state.furmly.view[getErrorKey(component_uid)],
+        items: items,
+        contentItems: getPickerItemsById(ownProps.value, items),
+        component_uid: component_uid
+      };
+    };
+  };
+  var getPickerItemsById = function getPickerItemsById(v, items) {
+    if (v && items && items.length) {
+      var z = unwrapObjectValue(v);
+      var r = items.filter(function (x) {
+        return x.id == z;
+      });
+      return r.length && r[0].elements || noItems;
+    }
 
-			return {
-				confirmation: state.app && state.app.confirmationResult && state.app.confirmationResult[component_uid],
-				templateCache: state.furmly.view.templateCache,
-				dataTemplate: state.furmly.view[component_uid],
-				component_uid: component_uid,
-				busy: state.furmly.view[component_uid + "-busy"],
-				items: ownProps.value
-			};
-		};
-	};
-	var equivalent = function equivalent(arr, arr2) {
-		if (!arr && !arr2 || arr && arr.length == 0 && arr2 && arr2.length == 0) return true;
+    return noItems;
+  };
 
-		if (arr && !arr2 || arr2 && !arr || arr.length !== arr2.length) return false;
+  var FurmlySelectSet = function (_React$Component) {
+    inherits(FurmlySelectSet, _React$Component);
+    createClass(FurmlySelectSet, [{
+      key: "render",
+      value: function render() {
+        try {
+          return this.__originalRenderMethod__();
+        } catch (e) {
+          return ReactSSRErrorHandler$7(e, this.constructor.name);
+        }
+      }
+    }]);
 
-		return _.isEqualWith(arr, arr2, function (objValue, otherValue) {
-			if (objValue === arr || otherValue === arr2) return;
-			if (typeof otherValue == "string") {
-				return !!_.findKey(objValue, function (v) {
-					return v == otherValue;
-				});
-			}
-			var r = _.isMatch(objValue, otherValue);
-			return r;
-		});
-	};
-	var mapDispatchToProps = function mapDispatchToProps(dispatch) {
-		return {
-			getListItemDataTemplate: function getListItemDataTemplate(id, args, key) {
-				return dispatch(runFurmlyProcessor(id, args, key));
-			},
-			openConfirmation: function openConfirmation$$1(id, message, params) {
-				return dispatch(openConfirmation(id, message, params));
-			},
-			clearElementData: function clearElementData$$1(key) {
-				return dispatch(clearElementData(key));
-			}
-		};
-	};
+    function FurmlySelectSet(props) {
+      classCallCheck(this, FurmlySelectSet);
 
-	var FurmlyList = function (_Component) {
-		inherits(FurmlyList, _Component);
-		createClass(FurmlyList, [{
-			key: "render",
-			value: function render() {
-				try {
-					return this.__originalRenderMethod__();
-				} catch (e) {
-					return ReactSSRErrorHandler$7(e, this.constructor.name);
-				}
-			}
-		}]);
+      var _this = possibleConstructorReturn(this, (FurmlySelectSet.__proto__ || Object.getPrototypeOf(FurmlySelectSet)).call(this, props, log));
 
-		function FurmlyList(props) {
-			classCallCheck(this, FurmlyList);
+      _this.retryFetch = _this.retryFetch.bind(_this);
+      _this.onPickerValueChanged = _this.onPickerValueChanged.bind(_this);
+      _this.onContainerValueChanged = _this.onContainerValueChanged.bind(_this);
+      _this.getPickerValue = _this.getPickerValue.bind(_this);
+      _this.getContainerValue = _this.getContainerValue.bind(_this);
+      var containerValues = (props.contentItems || []).reduce(function (sum, x) {
+        if (_this.props.extra.hasOwnProperty(x.name)) sum[x.name] = _this.props.extra[x.name];
+        return sum;
+      }, {});
+      _this.state = {
+        containerValues: containerValues,
+        containerValidator: {}
+      };
+      _this.selectFirstItem = _this.selectFirstItem.bind(_this);
+      _this.respondToPickerValueChanged = _this.respondToPickerValueChanged.bind(_this);
+      _this.oneOption = _this.oneOption.bind(_this);
+      _this.props.validator.validate = function () {
+        return _this.runValidators();
+      };
+      _this.getValueBasedOnMode = _this.getValueBasedOnMode.bind(_this);
+      _this.isObjectIdMode = _this.isObjectIdMode.bind(_this);
+      return _this;
+    }
 
-			var _this = possibleConstructorReturn(this, (FurmlyList.__proto__ || Object.getPrototypeOf(FurmlyList)).call(this, props));
+    createClass(FurmlySelectSet, [{
+      key: "hasValue",
+      value: function hasValue() {
+        return !!this.props.value || "is required";
+      }
+    }, {
+      key: "runValidators",
+      value: function runValidators() {
+        return Promise.all([new Validator(this).run(), this.state.containerValidator.validate()]);
+      }
+    }, {
+      key: "componentWillReceiveProps",
+      value: function componentWillReceiveProps(next) {
+        if (!next.error && (next.args.processor !== this.props.args.processor || next.component_uid !== this.props.component_uid && next.args.processor || typeof next.items == "undefined") && !next.busy) this.fetchItems(next.args.processor, next.args.processorArgs, next.component_uid);
 
-			_this.state = {
-				validator: {},
-				modalVisible: false
-			};
-			_this.showModal = _this.showModal.bind(_this);
-			_this.closeModal = _this.closeModal.bind(_this);
-			_this.valueChanged = _this.valueChanged.bind(_this);
-			_this.getItemTemplate = _this.getItemTemplate.bind(_this);
-			_this.edit = _this.edit.bind(_this);
-			_this.runValidators = _this.runValidators.bind(_this);
-			_this.isDisabled = _this.isDisabled.bind(_this);
-			_this.getListItemDataTemplate = _this.getListItemDataTemplate.bind(_this);
-			_this.props.validator.validate = function () {
-				return _this.runValidators();
-			};
-			_this.remove = _this.remove.bind(_this);
-			return _this;
-		}
+        if (next.items && next.items.length == 1 && !next.value) {
+          return this.selectFirstItem(next.items);
+        }
+      }
+    }, {
+      key: "retryFetch",
+      value: function retryFetch() {
+        this.props.log("retrying fetch");
+        this.fetchItems(this.props.args.processor, this.props.args.processorArgs, this.props.component_uid, { retry: true });
+      }
+    }, {
+      key: "fetchItems",
+      value: function fetchItems(source, args, component_uid) {
+        var _args = this._onContainerValueChanged.call(this, this.state.containerValues);
+        _args.shift();
+        this.props.log("fetching items");
+        this.props.getItems(source, Object.assign(JSON.parse(args || this.props.args.processorArgs || "{}"), {
+          _args: _args
+        }), component_uid || this.props.component_uid);
+      }
+    }, {
+      key: "componentWillUnmount",
+      value: function componentWillUnmount() {
+        this._mounted = false;
+      }
+    }, {
+      key: "componentDidMount",
+      value: function componentDidMount() {
+        var _this2 = this;
 
-		createClass(FurmlyList, [{
-			key: "componentWillReceiveProps",
-			value: function componentWillReceiveProps(next) {
-				if (next.confirmation !== this.props.confirmation && next.confirmation && next.confirmation.params && typeof next.confirmation.params.index !== "undefined" && this.props.items && this.props.items.length) {
-					var items = (this.props.items || []).slice();
-					return items.splice(next.confirmation.params.index, 1), this.props.valueChanged(defineProperty({}, this.props.name, items));
-				}
-				if (this.props.component_uid !== next.component_uid) {
-					if (this._mounted) {
-						this.getItemTemplate();
-						if ((!next.dataTemplate || next.dataTemplate.length) && !next.items && next.args && next.args.default && next.args.default.length) {
-							this.props.valueChanged(defineProperty({}, this.props.name, next.args.default.slice()));
-						}
-						this.setState({
-							edit: null,
-							modalVisible: false
-						});
-					}
-				}
-				if (next.args.listItemDataTemplateProcessor && next.items && next.items.length && next.items !== next.dataTemplate && next.dataTemplate == this.props.dataTemplate && !next.busy) {
-					this.getListItemDataTemplate(next.items, next);
-				}
+        this._mounted = true;
+        if (this.props.args.processor && typeof this.props.items == "undefined") {
+          this.fetchItems(this.props.args.processor);
+        }
 
-				if (next.dataTemplate && next.dataTemplate !== this.props.dataTemplate && !next.busy) {
-					if (this._mounted) {
-						this.props.valueChanged(defineProperty({}, this.props.name, next.dataTemplate));
-						return;
-					}
-				}
-			}
-		}, {
-			key: "componentWillUnmount",
-			value: function componentWillUnmount() {
-				this._mounted = false;
-				//need to cleanup the namespace.
-				this.props.clearElementData(this.props.component_uid);
-			}
-		}, {
-			key: "componentDidMount",
-			value: function componentDidMount() {
-				var _this2 = this;
+        if (this.props.items && this.props.items.length == 1 && !this.props.value) {
+          return setTimeout(function () {
+            _this2.selectFirstItem();
+          }, 0);
+        }
 
-				this._mounted = true;
-				//if its template is a reference then store it.
-				if (this.isTemplateRef()) {
-					this.props.templateCache[this.isTemplateRef()] = Array.prototype.isPrototypeOf(this.props.args.itemTemplate) ? this.props.args.itemTemplate : this.props.args.itemTemplate.template;
-				}
+        if (this.isObjectIdMode() && this.props.value && _typeof(this.props.value) !== "object") {
+          //update the form to indicate its an objectId.
+          return setTimeout(function () {
+            _this2.onPickerValueChanged(_this2.props.value);
+          }, 0);
+        }
+      }
+    }, {
+      key: "isObjectIdMode",
+      value: function isObjectIdMode$$1() {
+        return this.props.args && this.props.args.mode === "ObjectId";
+      }
+    }, {
+      key: "oneOption",
+      value: function oneOption() {
+        return this.props.items && this.props.items.length == 1;
+      }
+    }, {
+      key: "getCurrentContainerValue",
+      value: function getCurrentContainerValue() {
+        return this.props.args.path && defineProperty({}, this.props.args.path, this.props.extra[this.props.args.path]) || this.state.containerValues;
+      }
+    }, {
+      key: "selectFirstItem",
+      value: function selectFirstItem() {
+        var items = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : this.props.items;
 
-				var equal = equivalent(this.props.dataTemplate, this.props.items);
-				//if theres a data template processor then run it.
-				if (this.props.args.listItemDataTemplateProcessor && this.props.items && this.props.items.length && !equal) {
-					this.getListItemDataTemplate(this.props.items);
-				}
+        this.onPickerValueChanged(items[0].id);
+      }
+    }, {
+      key: "getPickerValue",
+      value: function getPickerValue() {
+        var value = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : this.props.value;
 
-				if (this.props.dataTemplate && this.props.dataTemplate.length && equal) {
-					setTimeout(function () {
-						_this2.props.valueChanged(defineProperty({}, _this2.props.name, _this2.props.dataTemplate));
-					}, 0);
-				}
+        return defineProperty({}, this.props.name, this.getValueBasedOnMode(value));
+      }
+    }, {
+      key: "onContainerValueChanged",
+      value: function onContainerValueChanged(value, pickerValue) {
+        // this.props.log(
+        // 	`value changed ${JSON.stringify(
+        // 		value,
+        // 		null,
+        // 		" "
+        // 	)} pickerValue:${JSON.stringify(pickerValue, null, " ")}`
+        // );
+        var eve = this._onContainerValueChanged.call(this, value, pickerValue);
+        // this.props.log(`eventual params:${JSON.stringify(eve, null, " ")}`);
 
-				if ((!this.props.dataTemplate || !this.props.dataTemplate.length) && !this.props.items && this.props.args && this.props.args.default && this.props.args.default.length) {
-					setTimeout(function () {
-						_this2.props.valueChanged(defineProperty({}, _this2.props.name, _this2.props.args.default.slice()));
-					});
-				}
+        this.props.valueChanged.apply(this, eve);
+      }
+    }, {
+      key: "_shouldComponentUpdateComparer",
+      value: function _shouldComponentUpdateComparer(x, y, a, b, key) {
+        if (a == b) return true;
+        if (key == "extra") {
+          if (y.contentItems && y.contentItems.length) return _.isEqual(a[y.args.path], b[y.args.path]);
 
-				this.getItemTemplate();
-			}
-		}, {
-			key: "getListItemDataTemplate",
-			value: function getListItemDataTemplate(i) {
-				var props = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : this.props;
+          return true;
+        }
+      }
+      //potentially expensive.
 
-				this.props.getListItemDataTemplate(props.args.listItemDataTemplateProcessor, i, props.component_uid);
-			}
-		}, {
-			key: "isTemplateRef",
-			value: function isTemplateRef() {
-				return this.props.args.itemTemplate && !Array.prototype.isPrototypeOf(this.props.args.itemTemplate) && this.props.args.itemTemplate.furmly_ref || this.props.args.behavior && this.props.args.behavior.furmly_ref && this.props.args.itemTemplate;
-			}
-		}, {
-			key: "runValidators",
-			value: function runValidators() {
-				return new Validator(this).run();
-			}
-		}, {
-			key: "isDisabled",
-			value: function isDisabled() {
-				return this.props.args && this.props.args.disabled;
-			}
-		}, {
-			key: "showModal",
-			value: function showModal() {
-				if (!this.isDisabled()) this.setState({ modalVisible: true, mode: NEW });
-			}
-		}, {
-			key: "hasValue",
-			value: function hasValue() {
-				return this.props.items && this.props.items.length || "Requires atleast one item to have been added to the list";
-			}
-		}, {
-			key: "isLessThanMaxLength",
-			value: function isLessThanMaxLength(element) {
-				return this.props.items && this.props.items.length && this.props.items.length <= element.args.max || element.error || "The maximum number of items is " + element.args.max;
-			}
-		}, {
-			key: "isGreaterThanMinLength",
-			value: function isGreaterThanMinLength(element) {
-				return this.props.items && this.props.items.length && this.props.items.length >= element.args.min || element.error || "The minimum number of items is " + element.args.min;
-			}
-		}, {
-			key: "closeModal",
-			value: function closeModal(result) {
-				var _this3 = this;
+    }, {
+      key: "shouldComponentUpdate",
+      value: function shouldComponentUpdate(nextProps, nextState) {
+        if ((nextProps.args.path || !nextProps.args.path && !nextProps.contentItems.length) && _.isEqual(this.state.errors, nextState.errors) && _.isEqualWith(this.props, nextProps, this._shouldComponentUpdateComparer.bind(this, this.props, nextProps))) {
+          return false;
+        }
 
-				//he/she clicked ok
-				if (result) {
-					this.state.validator.validate().then(function () {
-						var items = (_this3.props.items || []).slice();
+        return true;
+      }
+    }, {
+      key: "_onContainerValueChanged",
+      value: function _onContainerValueChanged(value, pickerValue) {
+        var _this3 = this;
 
-						if (_this3.state.mode == NEW) items.push(_this3.state.edit);else items.splice(_this3.state.existing, 1, _this3.state.edit);
-						_this3.props.valueChanged(defineProperty({}, _this3.props.name, items));
-						_this3.setState({
-							modalVisible: false,
-							edit: null,
-							existing: null
-						});
+        pickerValue = pickerValue || this.getPickerValue();
+        if (this.props.args.path) {
+          var _p = [pickerValue];
+          //push this to unset previous value
+          if (!value) _p.push(defineProperty({}, this.props.args.path, undefined));else _p.push(value);
+          return _p;
+        }
 
-						// if (this.props.args.listItemDataTemplateProcessor)
-						// 	this.getListItemDataTemplate(items);
-					}).catch(function (er) {
-						log(er);
-					});
-					return;
-				}
-				//canceled the modal box.
+        var superCancel = this.state.containerValues && Object.keys(this.state.containerValues).reduce(function (sum, x) {
+          return sum[x] = undefined, sum;
+        }, {});
 
-				this.setState({ modalVisible: false, edit: null });
-			}
-		}, {
-			key: "valueChanged",
-			value: function valueChanged$$1(v) {
-				//this.state.form = v && v[FurmlyList.modalName()];
-				this.setState({ edit: v && v[FurmlyList.modalName()] });
-			}
-		}, {
-			key: "remove",
-			value: function remove(index) {
-				this.props.openConfirmation(this.props.component_uid, "Are you sure you want to remove that item ?", { index: index });
-			}
-		}, {
-			key: "edit",
-			value: function edit(index) {
-				this.setState({
-					edit: JSON.parse(JSON.stringify(this.props.items[index])),
-					existing: index,
-					mode: EDIT,
-					modalVisible: true
-				});
-			}
-		}, {
-			key: "getItemTemplate",
-			value: function getItemTemplate$$1() {
-				var _this4 = this;
+        //path is not defined so unpack the properties and send.
+        var result = [pickerValue].concat(toConsumableArray(Object.keys(value && value[noPath] || {}).map(function (x) {
+          return defineProperty({}, x, value[noPath][x]);
+        })));
 
-				if (this.state.itemTemplate) return;
+        if (superCancel && Object.keys(superCancel).length > 0) {
+          //insert this to remove previous values.
+          result.splice(1, 0, superCancel);
+        }
+        setTimeout(function () {
+          if (_this3._mounted) {
+            _this3.setState({
+              containerValues: value && value[noPath] || null
+            });
+          }
+        });
+        this.props.log("container values changed " + JSON.stringify(result));
+        return result;
+      }
+    }, {
+      key: "getValueBasedOnMode",
+      value: function getValueBasedOnMode$$1(v) {
+        return this.props.args && this.props.args.mode && (typeof v === "undefined" ? "undefined" : _typeof(v)) !== "object" && this.props.args.mode == "ObjectId" && { $objectID: v } || v;
+      }
+    }, {
+      key: "respondToPickerValueChanged",
+      value: function respondToPickerValueChanged(v) {
+        this.onContainerValueChanged(null, this.getPickerValue(v));
+      }
+    }, {
+      key: "onPickerValueChanged",
+      value: function onPickerValueChanged(v) {
+        this.onContainerValueChanged(this.getCurrentContainerValue(), this.getPickerValue(v));
+      }
+    }, {
+      key: "getContainerValue",
+      value: function getContainerValue() {
+        return this.props.args.path ? this.props.extra ? this.props.extra[this.props.args.path] : {} : this.props.extra;
+      }
+    }, {
+      key: "isEmptyOrNull",
+      value: function isEmptyOrNull(v) {
+        return !v || !v.length;
+      }
+    }, {
+      key: "__originalRenderMethod__",
+      value: function __originalRenderMethod__() {
+        this.props.log("rendering called");
+        /*jshint ignore:start*/
+        if (this.props.busy) {
+          this.props.log(this.props.name + " is busy");
+          return React__default.createElement(ProgressBar, { onClick: this.props.retryFetch });
+        }
 
-				if (!this.props.args.itemTemplate) {
-					if ((!this.props.args.behavior || !this.props.args.behavior.template_ref) && !this.props.args.disabled) throw new Error("Empty List view item template");
+        return React__default.createElement(Layout, {
+          value: this.props.label,
+          inner: React__default.createElement(Picker, {
+            label: this.props.label,
+            disabled: !!this.props.args.disabled || this.oneOption(),
+            items: this.props.items,
+            errors: this.state.errors,
+            displayProperty: "displayLabel",
+            keyProperty: "id",
+            value: unwrapObjectValue(this.props.value),
+            valueChanged: this.respondToPickerValueChanged,
+            currentProcess: this.props.currentProcess,
+            currentStep: this.props.currentStep
+          }),
+          extraElements: React__default.createElement(Container, {
+            name: this.props.args.path || noPath,
+            value: this.getContainerValue(),
+            valueChanged: this.onContainerValueChanged,
+            elements: this.props.contentItems,
+            validator: this.state.containerValidator,
+            navigation: this.props.navigation,
+            currentProcess: this.props.currentProcess,
+            currentStep: this.props.currentStep
+          })
+        });
+        /*jshint ignore:end*/
+      }
+    }]);
+    return FurmlySelectSet;
+  }(React__default.Component);
 
-					this.props.args.itemTemplate = this.props.templateCache[this.props.args.behavior && this.props.args.behavior.template_ref] || [];
-				}
-
-				var itemTemplate = copy$1(this.isTemplateRef() && !Array.prototype.isPrototypeOf(this.props.args.itemTemplate) ? this.props.args.itemTemplate.template : this.props.args.itemTemplate);
-
-				if (this.props.args.behavior && this.props.args.behavior.extension && this.props.args.behavior.extension.length) this.props.args.behavior.extension.forEach(function (element, index) {
-					element.key = index;
-					itemTemplate.push(copy$1(element));
-				});
-
-				//this happens asynchronously;
-				setTimeout(function () {
-					if (_this4._mounted) _this4.setState({
-						itemTemplate: itemTemplate
-					});
-				}, 0);
-			}
-		}, {
-			key: "__originalRenderMethod__",
-			value: function __originalRenderMethod__() {
-				if (this.props.busy) {
-					return React__default.createElement(ProgressBar, null);
-				}
-				var //template = this.getItemTemplate(),
-				disabled = this.isDisabled();
-
-				return (
-					/*jshint ignore:start */
-					React__default.createElement(
-						Layout,
-						{
-							value: this.props.label,
-							description: this.props.description
-						},
-						React__default.createElement(Button, { disabled: disabled, click: this.showModal }),
-						React__default.createElement(List, {
-							items: this.props.items,
-							rowClicked: this.edit,
-							rowRemoved: this.remove,
-							rowTemplate: this.props.args.rowTemplate && JSON.parse(this.props.args.rowTemplate),
-							disabled: disabled
-						}),
-						React__default.createElement(ErrorText, { value: this.state.errors }),
-						React__default.createElement(Modal, {
-							template: React__default.createElement(Container, {
-								elements: this.state.itemTemplate,
-								value: this.state.edit,
-								name: FurmlyList.modalName(),
-								validator: this.state.validator,
-								valueChanged: this.valueChanged,
-								navigation: this.props.navigation,
-								currentProcess: this.props.currentProcess,
-								currentStep: this.props.currentStep
-							}),
-							visibility: this.state.modalVisible,
-							done: this.closeModal
-						})
-					)
-					/*jshint ignore:end */
-
-				);
-			}
-		}], [{
-			key: "modalName",
-			value: function modalName() {
-				return "_modal_";
-			}
-		}]);
-		return FurmlyList;
-	}(React.Component);
-
-	return connect(mapStateToProps, mapDispatchToProps)(FurmlyList);
+  FurmlySelectSet.notifyExtra = true;
+  return reactRedux.connect(mapStateToProps, mapDispatchToProps)(withLogger$1(FurmlySelectSet));
 });
 
 var ReactSSRErrorHandler$8 = require("error_handler");
+
+var furmly_list = (function (Layout, Button, List, Modal, ErrorText, ProgressBar, Container) {
+  invariants.validComponent(Layout, "Layout");
+  invariants.validComponent(Button, "Button");
+  invariants.validComponent(List, "List");
+  invariants.validComponent(Modal, "Modal");
+  invariants.validComponent(ErrorText, "ErrorText");
+  invariants.validComponent(Container, "Container");
+
+  var EDIT = "EDIT",
+      NEW = "NEW";
+  var mapStateToProps = function mapStateToProps(_$$1, initialProps) {
+    return function (state, ownProps) {
+      var component_uid = getKey(state, ownProps.component_uid, ownProps);
+
+      return {
+        confirmation: state.app && state.app.confirmationResult && state.app.confirmationResult[component_uid],
+        templateCache: state.furmly.view.templateCache,
+        dataTemplate: state.furmly.view[component_uid],
+        component_uid: component_uid,
+        busy: state.furmly.view[component_uid + "-busy"],
+        items: ownProps.value
+      };
+    };
+  };
+  var equivalent = function equivalent(arr, arr2) {
+    if (!arr && !arr2 || arr && arr.length == 0 && arr2 && arr2.length == 0) return true;
+
+    if (arr && !arr2 || arr2 && !arr || arr.length !== arr2.length) return false;
+
+    return _.isEqualWith(arr, arr2, function (objValue, otherValue) {
+      if (objValue === arr || otherValue === arr2) return;
+      if (typeof otherValue == "string") {
+        return !!_.findKey(objValue, function (v) {
+          return v == otherValue;
+        });
+      }
+      var r = _.isMatch(objValue, otherValue);
+      return r;
+    });
+  };
+  var mapDispatchToProps = function mapDispatchToProps(dispatch) {
+    return {
+      getListItemDataTemplate: function getListItemDataTemplate(id, args, key) {
+        return dispatch(runFurmlyProcessor(id, args, key));
+      },
+      openConfirmation: function openConfirmation$$1(id, message, params) {
+        return dispatch(openConfirmation(id, message, params));
+      },
+      clearElementData: function clearElementData$$1(key) {
+        return dispatch(clearElementData(key));
+      }
+    };
+  };
+
+  var FurmlyList = function (_Component) {
+    inherits(FurmlyList, _Component);
+    createClass(FurmlyList, [{
+      key: "render",
+      value: function render() {
+        try {
+          return this.__originalRenderMethod__();
+        } catch (e) {
+          return ReactSSRErrorHandler$8(e, this.constructor.name);
+        }
+      }
+    }]);
+
+    function FurmlyList(props) {
+      classCallCheck(this, FurmlyList);
+
+      var _this = possibleConstructorReturn(this, (FurmlyList.__proto__ || Object.getPrototypeOf(FurmlyList)).call(this, props));
+
+      _this.state = {
+        validator: {},
+        modalVisible: false
+      };
+      _this.showModal = _this.showModal.bind(_this);
+      _this.closeModal = _this.closeModal.bind(_this);
+      _this.valueChanged = _this.valueChanged.bind(_this);
+      _this.getItemTemplate = _this.getItemTemplate.bind(_this);
+      _this.edit = _this.edit.bind(_this);
+      _this.runValidators = _this.runValidators.bind(_this);
+      _this.isDisabled = _this.isDisabled.bind(_this);
+      _this.getListItemDataTemplate = _this.getListItemDataTemplate.bind(_this);
+      _this.props.validator.validate = function () {
+        return _this.runValidators();
+      };
+      _this.remove = _this.remove.bind(_this);
+      return _this;
+    }
+
+    createClass(FurmlyList, [{
+      key: "componentWillReceiveProps",
+      value: function componentWillReceiveProps(next) {
+        if (next.confirmation !== this.props.confirmation && next.confirmation && next.confirmation.params && typeof next.confirmation.params.index !== "undefined" && this.props.items && this.props.items.length) {
+          var items = (this.props.items || []).slice();
+          return items.splice(next.confirmation.params.index, 1), this.props.valueChanged(defineProperty({}, this.props.name, items));
+        }
+        if (this.props.component_uid !== next.component_uid) {
+          if (this._mounted) {
+            this.getItemTemplate();
+            if ((!next.dataTemplate || next.dataTemplate.length) && !next.items && next.args && next.args.default && next.args.default.length) {
+              this.props.valueChanged(defineProperty({}, this.props.name, next.args.default.slice()));
+            }
+            this.setState({
+              edit: null,
+              modalVisible: false
+            });
+          }
+        }
+        if (next.args.listItemDataTemplateProcessor && next.items && next.items.length && next.items !== next.dataTemplate && next.dataTemplate == this.props.dataTemplate && !next.busy) {
+          this.getListItemDataTemplate(next.items, next);
+        }
+
+        if (next.dataTemplate && next.dataTemplate !== this.props.dataTemplate && !next.busy) {
+          if (this._mounted) {
+            this.props.valueChanged(defineProperty({}, this.props.name, next.dataTemplate));
+            return;
+          }
+        }
+      }
+    }, {
+      key: "componentWillUnmount",
+      value: function componentWillUnmount() {
+        this._mounted = false;
+        //need to cleanup the namespace.
+        this.props.clearElementData(this.props.component_uid);
+      }
+    }, {
+      key: "componentDidMount",
+      value: function componentDidMount() {
+        var _this2 = this;
+
+        this._mounted = true;
+        //if its template is a reference then store it.
+        if (this.isTemplateRef()) {
+          this.props.templateCache[this.isTemplateRef()] = Array.prototype.isPrototypeOf(this.props.args.itemTemplate) ? this.props.args.itemTemplate : this.props.args.itemTemplate.template;
+        }
+
+        var equal = equivalent(this.props.dataTemplate, this.props.items);
+        //if theres a data template processor then run it.
+        if (this.props.args.listItemDataTemplateProcessor && this.props.items && this.props.items.length && !equal) {
+          this.getListItemDataTemplate(this.props.items);
+        }
+
+        if (this.props.dataTemplate && this.props.dataTemplate.length && equal) {
+          setTimeout(function () {
+            _this2.props.valueChanged(defineProperty({}, _this2.props.name, _this2.props.dataTemplate));
+          }, 0);
+        }
+
+        if ((!this.props.dataTemplate || !this.props.dataTemplate.length) && !this.props.items && this.props.args && this.props.args.default && this.props.args.default.length) {
+          setTimeout(function () {
+            _this2.props.valueChanged(defineProperty({}, _this2.props.name, _this2.props.args.default.slice()));
+          });
+        }
+
+        this.getItemTemplate();
+      }
+    }, {
+      key: "getListItemDataTemplate",
+      value: function getListItemDataTemplate(i) {
+        var props = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : this.props;
+
+        this.props.getListItemDataTemplate(props.args.listItemDataTemplateProcessor, i, props.component_uid);
+      }
+    }, {
+      key: "isTemplateRef",
+      value: function isTemplateRef() {
+        return this.props.args.itemTemplate && !Array.prototype.isPrototypeOf(this.props.args.itemTemplate) && this.props.args.itemTemplate.furmly_ref || this.props.args.behavior && this.props.args.behavior.furmly_ref && this.props.args.itemTemplate;
+      }
+    }, {
+      key: "runValidators",
+      value: function runValidators() {
+        return new Validator(this).run();
+      }
+    }, {
+      key: "isDisabled",
+      value: function isDisabled() {
+        return this.props.args && this.props.args.disabled;
+      }
+    }, {
+      key: "showModal",
+      value: function showModal() {
+        if (!this.isDisabled()) this.setState({ modalVisible: true, mode: NEW });
+      }
+    }, {
+      key: "hasValue",
+      value: function hasValue() {
+        return this.props.items && this.props.items.length || "Requires atleast one item to have been added to the list";
+      }
+    }, {
+      key: "isLessThanMaxLength",
+      value: function isLessThanMaxLength(element) {
+        return this.props.items && this.props.items.length && this.props.items.length <= element.args.max || element.error || "The maximum number of items is " + element.args.max;
+      }
+    }, {
+      key: "isGreaterThanMinLength",
+      value: function isGreaterThanMinLength(element) {
+        return this.props.items && this.props.items.length && this.props.items.length >= element.args.min || element.error || "The minimum number of items is " + element.args.min;
+      }
+    }, {
+      key: "closeModal",
+      value: function closeModal(result) {
+        var _this3 = this;
+
+        //he/she clicked ok
+        if (result) {
+          this.state.validator.validate().then(function () {
+            var items = (_this3.props.items || []).slice();
+
+            if (_this3.state.mode == NEW) items.push(_this3.state.edit);else items.splice(_this3.state.existing, 1, _this3.state.edit);
+            _this3.props.valueChanged(defineProperty({}, _this3.props.name, items));
+            _this3.setState({
+              modalVisible: false,
+              edit: null,
+              existing: null
+            });
+
+            // if (this.props.args.listItemDataTemplateProcessor)
+            // 	this.getListItemDataTemplate(items);
+          }).catch(function (er) {
+            _this3.props.log(er);
+          });
+          return;
+        }
+        //canceled the modal box.
+
+        this.setState({ modalVisible: false, edit: null });
+      }
+    }, {
+      key: "valueChanged",
+      value: function valueChanged$$1(v) {
+        //this.state.form = v && v[FurmlyList.modalName()];
+        this.setState({ edit: v && v[FurmlyList.modalName()] });
+      }
+    }, {
+      key: "remove",
+      value: function remove(index) {
+        this.props.openConfirmation(this.props.component_uid, "Are you sure you want to remove that item ?", { index: index });
+      }
+    }, {
+      key: "edit",
+      value: function edit(index) {
+        this.setState({
+          edit: JSON.parse(JSON.stringify(this.props.items[index])),
+          existing: index,
+          mode: EDIT,
+          modalVisible: true
+        });
+      }
+    }, {
+      key: "getItemTemplate",
+      value: function getItemTemplate$$1() {
+        var _this4 = this;
+
+        if (this.state.itemTemplate) return;
+
+        if (!this.props.args.itemTemplate) {
+          if ((!this.props.args.behavior || !this.props.args.behavior.template_ref) && !this.props.args.disabled) throw new Error("Empty List view item template");
+
+          this.props.args.itemTemplate = this.props.templateCache[this.props.args.behavior && this.props.args.behavior.template_ref] || [];
+        }
+
+        var itemTemplate = copy$1(this.isTemplateRef() && !Array.prototype.isPrototypeOf(this.props.args.itemTemplate) ? this.props.args.itemTemplate.template : this.props.args.itemTemplate);
+
+        if (this.props.args.behavior && this.props.args.behavior.extension && this.props.args.behavior.extension.length) this.props.args.behavior.extension.forEach(function (element, index) {
+          element.key = index;
+          itemTemplate.push(copy$1(element));
+        });
+
+        //this happens asynchronously;
+        setTimeout(function () {
+          if (_this4._mounted) _this4.setState({
+            itemTemplate: itemTemplate
+          });
+        }, 0);
+      }
+    }, {
+      key: "__originalRenderMethod__",
+      value: function __originalRenderMethod__() {
+        if (this.props.busy) {
+          return React__default.createElement(ProgressBar, null);
+        }
+        var //template = this.getItemTemplate(),
+        disabled = this.isDisabled();
+
+        return (
+          /*jshint ignore:start */
+          React__default.createElement(
+            Layout,
+            { value: this.props.label, description: this.props.description },
+            React__default.createElement(Button, { disabled: disabled, click: this.showModal }),
+            React__default.createElement(List, {
+              items: this.props.items,
+              rowClicked: this.edit,
+              rowRemoved: this.remove,
+              rowTemplate: this.props.args.rowTemplate && JSON.parse(this.props.args.rowTemplate),
+              disabled: disabled
+            }),
+            React__default.createElement(ErrorText, { value: this.state.errors }),
+            React__default.createElement(Modal, {
+              template: React__default.createElement(Container, {
+                elements: this.state.itemTemplate,
+                value: this.state.edit,
+                name: FurmlyList.modalName(),
+                validator: this.state.validator,
+                valueChanged: this.valueChanged,
+                navigation: this.props.navigation,
+                currentProcess: this.props.currentProcess,
+                currentStep: this.props.currentStep
+              }),
+              visibility: this.state.modalVisible,
+              done: this.closeModal
+            })
+          )
+          /*jshint ignore:end */
+
+        );
+      }
+    }], [{
+      key: "modalName",
+      value: function modalName() {
+        return "_modal_";
+      }
+    }]);
+    return FurmlyList;
+  }(React.Component);
+
+  return reactRedux.connect(mapStateToProps, mapDispatchToProps)(withLogger$1(FurmlyList));
+});
+
+var ReactSSRErrorHandler$9 = require("error_handler");
 
 var FurmlyHidden = function (_React$Component) {
 	inherits(FurmlyHidden, _React$Component);
@@ -3923,7 +2574,7 @@ var FurmlyHidden = function (_React$Component) {
 			try {
 				return this.__originalRenderMethod__();
 			} catch (e) {
-				return ReactSSRErrorHandler$8(e, this.constructor.name);
+				return ReactSSRErrorHandler$9(e, this.constructor.name);
 			}
 		}
 	}]);
@@ -3967,654 +2618,665 @@ var FurmlyHidden = function (_React$Component) {
 	return FurmlyHidden;
 }(React__default.Component);
 
-var ReactSSRErrorHandler$9 = require("error_handler");
-
-var furmly_nav = (function (Link, NavigationActions) {
-	if (invariants.validComponent(Link, "Link") && !NavigationActions) throw new Error("NavigationActions cannot be null (furmly_nav)");
-	var log = debug("furmly-client-components:nav");
-	var mapDispatchToState = function mapDispatchToState(dispatch) {
-		return {
-			dispatch: dispatch
-		};
-	};
-
-	var mapStateToProps = function mapStateToProps(_$$1, initialProps) {
-		return function (state) {
-			return {
-				context: state && state.furmly.view && state.furmly.view.navigationContext
-			};
-		};
-	};
-
-	//{text:"link text",type:"FURMLY or CLIENT",config:{value:""}}
-
-	var FurmlyNav = function (_Component) {
-		inherits(FurmlyNav, _Component);
-		createClass(FurmlyNav, [{
-			key: "render",
-			value: function render() {
-				try {
-					return this.__originalRenderMethod__();
-				} catch (e) {
-					return ReactSSRErrorHandler$9(e, this.constructor.name);
-				}
-			}
-		}]);
-
-		function FurmlyNav(props) {
-			classCallCheck(this, FurmlyNav);
-
-			var _this = possibleConstructorReturn(this, (FurmlyNav.__proto__ || Object.getPrototypeOf(FurmlyNav)).call(this, props));
-
-			_this.go = _this.go.bind(_this);
-			_this.state = { link: _this.props.value };
-			return _this;
-		}
-
-		createClass(FurmlyNav, [{
-			key: "go",
-			value: function go() {
-				var params = null;
-				var link = this.state.link || this.props.args.config && this.props.args.config.value;
-				if (link) {
-					var linkAndParams = FurmlyNav.getParams(true, link);
-					if (this.props.args.params) {
-						var paramsOnly = FurmlyNav.getParams(false, this.props.args.params);
-						Object.assign(linkAndParams.params, paramsOnly.params);
-					}
-
-					link = linkAndParams.link;
-					params = linkAndParams.params;
-					switch (this.props.args.type) {
-						case FurmlyNav.NAV_TYPE.CLIENT:
-							//this.props.dispatch(
-							NavigationActions.navigate({
-								key: link,
-								params: params
-							}, this.props.context, this.props.navigation);
-							//);
-							break;
-
-						case FurmlyNav.NAV_TYPE.FURMLY:
-							//const setParamsAction =
-							NavigationActions.setParams({
-								params: { id: link, fetchParams: params },
-								key: "Furmly"
-							}, this.props.context, this.props.navigation);
-						//this.props.dispatch(setParamsAction);
-					}
-				}
-			}
-		}, {
-			key: "__originalRenderMethod__",
-			value: function __originalRenderMethod__() {
-				return (
-					/*jshint ignore:start */
-					React__default.createElement(Link, {
-						text: this.props.args.text,
-						disabled: this.props.args.disabled,
-						go: this.go
-					})
-					/*jshint ignore:end */
-
-				);
-			}
-		}], [{
-			key: "getParams",
-			value: function getParams(firstItemIsLink, link) {
-				var key_value = link.split("|");
-				if (firstItemIsLink) link = key_value.shift();
-				var params = key_value.reduce(function (sum, x) {
-					var sp = x.split("=");
-					return sum[sp[0]] = decodeURIComponent(sp[1]), sum;
-				}, {}),
-				    result = { params: params };
-				if (firstItemIsLink || !key_value.length) result.link = link;
-				return result;
-			}
-		}]);
-		return FurmlyNav;
-	}(React.Component);
-
-	FurmlyNav.NAV_TYPE = { CLIENT: "CLIENT", FURMLY: "FURMLY" };
-	return connect(mapStateToProps, mapDispatchToState)(FurmlyNav);
-});
-
 var ReactSSRErrorHandler$10 = require("error_handler");
 
-var furmly_image = (function (Image) {
-	invariants.validComponent(Image, "Image");
-	var log = debug("furmly-client-components:image");
-	return function (props) {
-		try {
-			var _value = props.value,
-			    _args = props.args,
-			    _rest = objectWithoutProperties(props, ["value", "args"]);
+var furmly_nav = (function (Link, NavigationActions) {
+  if (invariants.validComponent(Link, "Link") && !NavigationActions) throw new Error("NavigationActions cannot be null (furmly_nav)");
 
-			if (_value && props.args.type == "URL") {
-				var data = props.args.config.data.replace(new RegExp("{" + props.name + "}", "g"), _value),
-				    _args2 = Object.assign({}, props.args);
-				_args2.config = { data: data };
-				return React__default.createElement(Image, _extends$4({ args: _args2 }, _rest));
-			}
-			return React__default.createElement(Image, props);
-		} catch (e) {
-			return ReactSSRErrorHandler$10(e);
-		}
-	};
-});
+  var mapDispatchToState = function mapDispatchToState(dispatch) {
+    return {
+      dispatch: dispatch
+    };
+  };
 
-var GRID_MODES = {
-	CRUD: "CRUD",
-	EDITONLY: "EDITONLY"
-};
-var ITEM_MODES = {
-	NEW: "NEW",
-	EDIT: "EDIT"
-};
+  var mapStateToProps = function mapStateToProps(_$$1, initialProps) {
+    return function (state) {
+      return {
+        context: state && state.furmly.view && state.furmly.view.navigationContext
+      };
+    };
+  };
 
-var furmly_grid = (function (Layout, List, ItemView, Header, ProgressBar, CommandsView, NavigationActions, CommandResultView, Container) {
-	if (invariants.validComponent(Layout, "Layout") && invariants.validComponent(Header, "Header") && invariants.validComponent(List, "List") && invariants.validComponent(ItemView, "ItemView") && invariants.validComponent(ProgressBar, "ProgressBar") && invariants.validComponent(CommandsView, "CommandsView") && invariants.validComponent(Container, "Container") && invariants.validComponent(CommandResultView, "CommandResultView") && !NavigationActions) throw new Error("NavigationActions cannot be null (furmly_grid)");
-	var log = debug("furmly-client-components:grid");
-	var mapDispatchToProps = function mapDispatchToProps(dispatch) {
-		return {
-			run: function run(id, args, key) {
-				return dispatch(runFurmlyProcessor(id, args, key, {
-					disableCache: true,
-					disableRetry: true
-				}));
-			},
-			more: function more(id, args, key) {
-				return dispatch(getMoreForGrid(id, args, key));
-			},
-			go: function go(value) {
-				return dispatch(NavigationActions.setParams({
-					params: { id: value },
-					key: "Furmly"
-				}));
-			},
-			getSingleItem: function getSingleItem(id, args, key) {
-				return dispatch(getSingleItemForGrid(id, args, key));
-			},
-			getItemTemplate: function getItemTemplate$$1(id, args, key) {
-				return dispatch(getItemTemplate(id, args, key));
-			},
-			getFilterTemplate: function getFilterTemplate$$1(id, args, key) {
-				return dispatch(getFilterTemplate(id, args, key));
-			},
-			filterGrid: function filterGrid$$1(id, args, key) {
-				return dispatch(filterGrid(id, args, key));
-			},
-			showMessage: function showMessage$$1(message) {
-				return dispatch(showMessage$1(message));
-			}
-		};
-	};
-	var mapStateToProps = function mapStateToProps(_$$1, initialProps) {
-		return function (state, ownProps) {
-			var component_uid = getKey(state, ownProps.component_uid, ownProps);
-			var result = state.furmly.view[component_uid];
-			return {
-				component_uid: component_uid,
+  //{text:"link text",type:"FURMLY or CLIENT",config:{value:""}}
 
-				items: result && result.data ? result.data.items : null,
-				total: result && result.data ? result.data.total : 0,
-				busy: result && !!result.fetchingGrid,
-				error: result && !!result.failedToFetchGrid,
-				filterTemplate: result && result.filterTemplate || ownProps.args && ownProps.args.filter || null,
-				filter: result && result.filter,
-				singleItem: result && result.singleItem,
-				itemTemplate: result && result.itemTemplate,
-				fetchingSingleItem: result && result.fetchingSingleItem,
-				fetchingFilterTemplate: result && result.gettingFilterTemplate,
-				fetchingItemTemplate: result && result.gettingTemplate,
-				itemTemplateError: result && result[getErrorKey("gettingTemplate")],
-				filterTemplateError: result && result[getErrorKey("gettingFilterTemplate")],
-				singleItemError: result && result[getErrorKey("fetchingSingleItem")],
-				commandProcessed: state.furmly.view[component_uid + FurmlyGrid.commandResultViewName()],
-				commandProcessing: state.furmly.view[component_uid + FurmlyGrid.commandResultViewName() + "-busy"],
-				processed: state.furmly.view[component_uid + FurmlyGrid.itemViewName()]
-			};
-		};
-	};
+  var FurmlyNav = function (_Component) {
+    inherits(FurmlyNav, _Component);
+    createClass(FurmlyNav, [{
+      key: "render",
+      value: function render() {
+        try {
+          return this.__originalRenderMethod__();
+        } catch (e) {
+          return ReactSSRErrorHandler$10(e, this.constructor.name);
+        }
+      }
+    }]);
 
-	var FurmlyGrid = function (_FurmlyBase) {
-		inherits(FurmlyGrid, _FurmlyBase);
+    function FurmlyNav(props) {
+      classCallCheck(this, FurmlyNav);
 
-		function FurmlyGrid(props) {
-			classCallCheck(this, FurmlyGrid);
+      var _this = possibleConstructorReturn(this, (FurmlyNav.__proto__ || Object.getPrototypeOf(FurmlyNav)).call(this, props));
 
-			var _this = possibleConstructorReturn(this, (FurmlyGrid.__proto__ || Object.getPrototypeOf(FurmlyGrid)).call(this, props, log));
+      _this.go = _this.go.bind(_this);
+      _this.state = { link: _this.props.value };
+      return _this;
+    }
 
-			_this.state = {
-				form: null,
-				validator: {},
-				_filterValidator: {},
-				showItemView: false,
-				count: _this.props.args.pageCount || 5,
-				showCommandResultView: false
-			};
-			_this.itemValueChanged = _this.itemValueChanged.bind(_this);
-			_this.showItemView = _this.showItemView.bind(_this);
-			_this.cancel = _this.cancel.bind(_this);
-			_this.showItemView = _this.showItemView.bind(_this);
-			_this.isCRUD = _this.isCRUD.bind(_this);
-			_this.isEDITONLY = _this.isEDITONLY.bind(_this);
-			_this.valueChanged = _this.valueChanged.bind(_this);
-			_this.getItemsFromSource = _this.getItemsFromSource.bind(_this);
-			_this.done = _this.done.bind(_this);
-			_this.filter = _this.filter.bind(_this);
-			_this.getFilterValue = _this.getFilterValue.bind(_this);
-			_this.getItemValue = _this.getItemValue.bind(_this);
-			_this.more = _this.more.bind(_this);
-			_this.finished = _this.finished.bind(_this);
-			_this.openCommandMenu = _this.openCommandMenu.bind(_this);
-			_this.closeCommandView = _this.closeCommandView.bind(_this);
-			_this.execCommand = _this.execCommand.bind(_this);
-			_this.showCommandResult = _this.showCommandResult.bind(_this);
-			_this.closeCommandResult = _this.closeCommandResult.bind(_this);
-			_this.fetchFilterTemplate = _this.fetchFilterTemplate.bind(_this);
-			if ((_this.isCRUD() || _this.isEDITONLY()) && (!_this.props.args.commands || !_this.props.args.commands.filter(function (x) {
-				return x.commandType == "$EDIT";
-			}).length)) {
-				var cmd = {
-					commandText: "Edit",
-					command: { value: "" },
-					commandType: "$EDIT",
-					commandIcon: "mode-edit"
-				};
-				if (!_this.props.args.commands) _this.props.args.commands = [];
-				_this.props.args.commands.unshift(cmd);
-			}
-			return _this;
-		}
+    createClass(FurmlyNav, [{
+      key: "go",
+      value: function go() {
+        var params = null;
+        var link = this.state.link || this.props.args.config && this.props.args.config.value;
+        if (link) {
+          var linkAndParams = FurmlyNav.getParams(true, link);
+          if (this.props.args.params) {
+            var paramsOnly = FurmlyNav.getParams(false, this.props.args.params);
+            Object.assign(linkAndParams.params, paramsOnly.params);
+          }
 
-		createClass(FurmlyGrid, [{
-			key: "componentDidMount",
-			value: function componentDidMount() {
-				this._mounted = true;
-				this.fetchFilterTemplate();
-			}
-		}, {
-			key: "componentWillUnmount",
-			value: function componentWillUnmount() {
-				this._mounted = false;
-			}
-		}, {
-			key: "fetchFilterTemplate",
-			value: function fetchFilterTemplate() {
-				var props = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : this.props;
-				var other = arguments[1];
+          link = linkAndParams.link;
+          params = linkAndParams.params;
+          switch (this.props.args.type) {
+            case FurmlyNav.NAV_TYPE.CLIENT:
+              //this.props.dispatch(
+              NavigationActions.navigate({
+                key: link,
+                params: params
+              }, this.props.context, this.props.navigation);
+              //);
+              break;
 
-				if (!props.filterTemplateError && props.args.filterProcessor && !props.fetchingFilterTemplate && !props.filterTemplate && (!other || other && props.filterTemplate !== other)) {
-					this.props.getFilterTemplate(props.args.filterProcessor, JSON.parse(props.args.gridArgs || "{}"), props.component_uid);
-				}
-			}
-		}, {
-			key: "showCommandResult",
-			value: function showCommandResult() {
-				var props = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : this.props;
+            case FurmlyNav.NAV_TYPE.FURMLY:
+              //const setParamsAction =
+              NavigationActions.setParams({
+                params: { id: link, fetchParams: params },
+                key: "Furmly"
+              }, this.props.context, this.props.navigation);
+            //this.props.dispatch(setParamsAction);
+          }
+        }
+      }
+    }, {
+      key: "__originalRenderMethod__",
+      value: function __originalRenderMethod__() {
+        return (
+          /*jshint ignore:start */
+          React__default.createElement(Link, {
+            text: this.props.args.text,
+            disabled: this.props.args.disabled,
+            go: this.go
+          })
+          /*jshint ignore:end */
 
-				this.setState({
-					showCommandsView: false,
-					showCommandResultView: true,
-					commandResult: props.commandProcessed
-				});
-			}
-		}, {
-			key: "closeCommandResult",
-			value: function closeCommandResult() {
-				this.setState({
-					showCommandResultView: false,
-					result: null
-				});
-			}
-		}, {
-			key: "componentWillReceiveProps",
-			value: function componentWillReceiveProps(next) {
-				if (next.processed !== this.props.processed) {
-					this.getItemsFromSource(null, "filterGrid");
-				}
+        );
+      }
+    }], [{
+      key: "getParams",
+      value: function getParams(firstItemIsLink, link) {
+        var key_value = link.split("|");
+        if (firstItemIsLink) link = key_value.shift();
+        var params = key_value.reduce(function (sum, x) {
+          var sp = x.split("=");
+          return sum[sp[0]] = decodeURIComponent(sp[1]), sum;
+        }, {}),
+            result = { params: params };
+        if (firstItemIsLink || !key_value.length) result.link = link;
+        return result;
+      }
+    }]);
+    return FurmlyNav;
+  }(React.Component);
 
-				if (next.commandProcessed !== this.props.commandProcessed) {
-					this.showCommandResult(next);
-				}
-
-				if (next.singleItem && next.singleItem !== this.props.singleItem && next.itemTemplate && next.itemTemplate !== this.props.itemTemplate) {
-					return this.showItemView(ITEM_MODES.EDIT, next.singleItem, true, next.itemTemplate);
-				}
-
-				if (next.singleItem && next.singleItem !== this.props.singleItem && !next.fetchingItemTemplate) {
-					return this.showItemView(ITEM_MODES.EDIT, next.singleItem, true);
-				}
-
-				if (next.itemTemplate && next.itemTemplate !== this.props.itemTemplate) {
-					return this.showItemView(this.state.mode, this.getItemValue() || this.props.singleItem, true, next.itemTemplate);
-				}
-
-				this.fetchFilterTemplate(next, this.props.filterTemplate);
-			}
-		}, {
-			key: "getItemsFromSource",
-			value: function getItemsFromSource() {
-				var filter = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : getFilterValue();
-				var methodName = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : "run";
-				var extra = arguments[2];
-
-				this.props[methodName](this.props.args.source, Object.assign({}, JSON.parse(this.props.args.gridArgs || "{}"), { count: this.state.count, full: true }, filter ? { query: filter } : {}, extra || {}), this.props.component_uid);
-			}
-		}, {
-			key: "getItemValue",
-			value: function getItemValue() {
-				return this.state.form;
-			}
-		}, {
-			key: "getFilterValue",
-			value: function getFilterValue() {
-				return this.props.value && this.props.value[FurmlyGrid.filterViewName()] || null;
-			}
-		}, {
-			key: "filter",
-			value: function filter() {
-				var _this2 = this;
-
-				this.state._filterValidator.validate().then(function () {
-					_this2.getItemsFromSource(_this2.getFilterValue(), "filterGrid");
-				}, function () {
-					log("a field in filter is invalid");
-				});
-			}
-		}, {
-			key: "valueChanged",
-			value: function valueChanged$$1(value) {
-				this.props.valueChanged(defineProperty({}, this.props.name, Object.assign({}, this.props.value || {}, value || {})));
-			}
-		}, {
-			key: "done",
-			value: function done(submitted) {
-				var _this3 = this;
-
-				if (!submitted) return this.cancel();
-
-				this.state.validator.validate().then(function () {
-					var id = void 0;
-					switch (_this3.state.mode) {
-						case ITEM_MODES.NEW:
-							id = _this3.props.args.extra.createProcessor;
-							break;
-						case ITEM_MODES.EDIT:
-							id = _this3.props.args.extra.editProcessor || _this3.props.args.extra.createProcessor;
-							break;
-					}
-					if (!id) {
-						return _this3.log("done  was called on a grid view in " + _this3.props.args.mode + " and it does not have a processor for it. \n" + JSON.stringify(_this3.props, null, " "));
-					}
-
-					_this3.props.run(id, Object.assign(JSON.parse(_this3.props.args.gridArgs || "{}"), {
-						entity: _this3.getItemValue()
-					}), _this3.props.component_uid + FurmlyGrid.itemViewName());
-
-					_this3.cancel();
-				}, function () {
-					_this3.log("some modal fields are invalid");
-				});
-			}
-		}, {
-			key: "showItemView",
-			value: function showItemView(mode, args, skipFetch, _itemTemplate) {
-				var template = _itemTemplate,
-				    gettingItemTemplate = false,
-				    existingValue = void 0;
-				if (this.props.args.extra) switch (mode) {
-					case ITEM_MODES.NEW:
-						template = _itemTemplate || (this.props.args.extra.createTemplate && this.props.args.extra.createTemplate.length && this.props.args.extra.createTemplate || this.props.itemTemplate || []).slice();
-						break;
-					case ITEM_MODES.EDIT:
-						template = _itemTemplate || (this.props.args.extra.editTemplate && this.props.args.extra.editTemplate.length && this.props.args.extra.editTemplate || this.props.args.extra.createTemplate && this.props.args.extra.createTemplate.length && this.props.args.extra.createTemplate || this.props.itemTemplate || []).slice();
-						existingValue = args;
-						if (this.props.args.extra.fetchSingleItemProcessor && !this.props.fetchingSingleItem && !this.props.singleItemError && !skipFetch) {
-							template = [];
-							existingValue = null;
-							this.props.getSingleItem(this.props.args.extra.fetchSingleItemProcessor, args, this.props.component_uid);
-						}
-
-						break;
-				}
-
-				if ((!template || !Array.prototype.isPrototypeOf(template)) && !this.props.args.extra.fetchTemplateProcessor) {
-					return this.log("showItemTemplate was called on a grid view in " + this.props.args.mode + " and it does not have a template. \n" + JSON.stringify(this.props, null, " "));
-				}
-				if ((!template || !template.length) && !this.props.fetchingItemTemplate && !this.props.itemTemplateError && this.props.args.extra.fetchTemplateProcessor && !skipFetch) {
-					gettingItemTemplate = true;
-					this.props.getItemTemplate(this.props.args.extra.fetchTemplateProcessor, args, this.props.component_uid);
-				}
-				var update = {
-					validator: {},
-					showItemView: true,
-					mode: mode,
-					showCommandsView: false,
-					itemViewElements: template
-				};
-				if (!gettingItemTemplate) update.form = existingValue ? copy$1(existingValue) : existingValue;
-				this.setState(update);
-			}
-		}, {
-			key: "more",
-			value: function more() {
-				if (!this.finished() && !this.props.busy && !this.props.error) {
-					//log("more fired getItemsFromSource");
-					var query = {
-						count: this.state.count
-					};
-					if (this.props.items && this.props.items[this.props.items.length - 1]) {
-						query._id = this.props.items[this.props.items.length - 1]._id;
-						this.log("most recent id:" + query._id);
-					}
-
-					this.getItemsFromSource(this.getFilterValue(), "more", query);
-				}
-			}
-		}, {
-			key: "finished",
-			value: function finished() {
-				return this.props.items && this.props.total == this.props.items.length;
-			}
-		}, {
-			key: "cancel",
-			value: function cancel() {
-				this.setState({
-					mode: null,
-					showItemView: false,
-					itemViewElements: null,
-					showCommandsView: false,
-					form: null
-				});
-			}
-		}, {
-			key: "closeCommandView",
-			value: function closeCommandView() {
-				this.setState({ showCommandsView: false });
-			}
-		}, {
-			key: "itemValueChanged",
-			value: function itemValueChanged(value) {
-				this.setState({
-					form: Object.assign({}, this.state.form || {}, value && value[FurmlyGrid.itemViewName()] || {})
-				});
-			}
-		}, {
-			key: "openCommandMenu",
-			value: function openCommandMenu(item) {
-				this.setState({ item: item, showCommandsView: true });
-			}
-		}, {
-			key: "execCommand",
-			value: function execCommand(command) {
-				var item = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : this.state.item;
-
-				switch (command.commandType) {
-					case "NAV":
-						this.props.go(command.command.value, {
-							fetchParams: { _id: item._id }
-						});
-						break;
-					case "$EDIT":
-						this.showItemView(ITEM_MODES.EDIT, item);
-						break;
-					case "PROCESSOR":
-						this.props.run(command.command.value, Object.assign({}, JSON.parse(this.props.args.gridArgs || "{}"), item), this.props.component_uid + FurmlyGrid.commandResultViewName());
-						break;
-				}
-			}
-		}, {
-			key: "isCRUD",
-			value: function isCRUD() {
-				return this.props.args.mode == GRID_MODES.CRUD;
-			}
-		}, {
-			key: "isEDITONLY",
-			value: function isEDITONLY() {
-				return this.props.args.mode == GRID_MODES.EDITONLY;
-			}
-		}, {
-			key: "render",
-			value: function render() {
-				var _this4 = this;
-
-				this.log("rendering..");
-
-				var args = this.props.args,
-				    header = this.props.filterTemplate ? React__default.createElement(
-					Header,
-					{ filter: function filter() {
-							return _this4.filter();
-						} },
-					React__default.createElement(Container, {
-						elements: this.props.filterTemplate,
-						value: this.getFilterValue(),
-						valueChanged: this.valueChanged,
-						name: FurmlyGrid.filterViewName(),
-						validator: this.state._filterValidator,
-						navigation: this.props.navigation,
-						currentProcess: this.props.currentProcess,
-						currentStep: this.props.currentStep
-					})
-				) : this.props.fetchingFilterTemplate ? React__default.createElement(ProgressBar, null) : null,
-				    footer = !this.finished() && this.props.busy ? React__default.createElement(ProgressBar, null) : null;
-
-				return React__default.createElement(
-					Layout,
-					null,
-					React__default.createElement(List, {
-						title: this.props.label,
-						canAddOrEdit: this.isCRUD(),
-						header: header,
-						footer: footer,
-						total: this.props.total,
-						showItemView: this.showItemView,
-						items: this.props.items,
-						templateConfig: this.props.args.templateConfig ? JSON.parse(this.props.args.templateConfig) : null,
-						more: this.more,
-						autoFetch: !this.props.args.dontAutoFetchFromSource,
-						commands: this.props.args.commands,
-						execCommand: this.execCommand,
-						openCommandMenu: this.openCommandMenu,
-						busy: !this.finished() && this.props.busy
-					}),
-					React__default.createElement(ItemView, {
-						visibility: (this.isCRUD() || this.isEDITONLY()) && this.state.showItemView,
-						done: this.done,
-						busy: this.props.fetchingSingleItem || this.props.fetchingItemTemplate,
-						template: React__default.createElement(Container, {
-							elements: this.state.itemViewElements,
-							value: this.getItemValue(),
-							name: FurmlyGrid.itemViewName(),
-							validator: this.state.validator,
-							valueChanged: this.itemValueChanged,
-							navigation: this.props.navigation,
-							currentProcess: this.props.currentProcess,
-							currentStep: this.props.currentStep
-						})
-					}),
-					React__default.createElement(CommandsView, {
-						visibility: this.state.showCommandsView,
-						close: this.closeCommandView,
-						commands: this.props.args.commands,
-						execCommand: this.execCommand
-					}),
-					React__default.createElement(CommandResultView, {
-						visibility: this.state.showCommandResultView,
-						done: this.closeCommandResult,
-						template: React__default.createElement(Container, {
-							elements: this.state.commandResult,
-							name: FurmlyGrid.commandResultViewName(),
-							validator: {},
-							navigation: this.props.navigation,
-							currentProcess: this.props.currentProcess,
-							currentStep: this.props.currentStep
-						}),
-						title: "",
-						busy: this.props.commandProcessing
-					})
-				);
-			}
-		}], [{
-			key: "itemViewName",
-			value: function itemViewName() {
-				return "_itemView_";
-			}
-		}, {
-			key: "filterViewName",
-			value: function filterViewName() {
-				return "_filterView_";
-			}
-		}, {
-			key: "commandResultViewName",
-			value: function commandResultViewName() {
-				return "_commandResultView_";
-			}
-		}]);
-		return FurmlyGrid;
-	}(FurmlyComponentBase);
-
-	return connect(mapStateToProps, mapDispatchToProps)(FurmlyGrid);
+  FurmlyNav.NAV_TYPE = { CLIENT: "CLIENT", FURMLY: "FURMLY" };
+  return reactRedux.connect(mapStateToProps, mapDispatchToState)(withLogger$1(FurmlyNav));
 });
 
 var ReactSSRErrorHandler$11 = require("error_handler");
 
-var furmly_htmlview = (function (PlatformComponent) {
-	var log = debug("furmly-client-components:html-view");
-	return function (_Component) {
-		inherits(FurmlyHTMLViewer, _Component);
-		createClass(FurmlyHTMLViewer, [{
-			key: "render",
-			value: function render() {
-				try {
-					return this.__originalRenderMethod__();
-				} catch (e) {
-					return ReactSSRErrorHandler$11(e, this.constructor.name);
-				}
-			}
-		}]);
+var furmly_image = (function (Image) {
+  invariants.validComponent(Image, "Image");
 
-		function FurmlyHTMLViewer(props) {
-			classCallCheck(this, FurmlyHTMLViewer);
-			return possibleConstructorReturn(this, (FurmlyHTMLViewer.__proto__ || Object.getPrototypeOf(FurmlyHTMLViewer)).call(this, props));
-		}
+  return withLogger(function (props) {
+    try {
+      var _value = props.value,
+          _args = props.args,
+          _rest = objectWithoutProperties(props, ["value", "args"]);
 
-		createClass(FurmlyHTMLViewer, [{
-			key: "__originalRenderMethod__",
-			value: function __originalRenderMethod__() {
-				return React__default.createElement(PlatformComponent, _extends$4({
-					html: this.props.value || this.props.args && this.props.args.html || "<h3 style='padding:16px'>Something doesnt add up. Please contact system admin if this happens frequently.</h3>"
-				}, this.props));
-			}
-		}]);
-		return FurmlyHTMLViewer;
-	}(React.Component);
+      if (_value && props.args.type == "URL") {
+        var data = props.args.config.data.replace(new RegExp("{" + props.name + "}", "g"), _value),
+            _args2 = Object.assign({}, props.args);
+        _args2.config = { data: data };
+        return React__default.createElement(Image, _extends({ args: _args2 }, _rest));
+      }
+      return React__default.createElement(Image, props);
+    } catch (e) {
+      return ReactSSRErrorHandler$11(e);
+    }
+  }, "Image");
 });
 
 var ReactSSRErrorHandler$12 = require("error_handler");
+
+var GRID_MODES = {
+  CRUD: "CRUD",
+  EDITONLY: "EDITONLY"
+};
+var ITEM_MODES = {
+  NEW: "NEW",
+  EDIT: "EDIT"
+};
+
+var furmly_grid = (function (Layout, List, ItemView, Header, ProgressBar, CommandsView, NavigationActions, CommandResultView, Container) {
+  if (invariants.validComponent(Layout, "Layout") && invariants.validComponent(Header, "Header") && invariants.validComponent(List, "List") && invariants.validComponent(ItemView, "ItemView") && invariants.validComponent(ProgressBar, "ProgressBar") && invariants.validComponent(CommandsView, "CommandsView") && invariants.validComponent(Container, "Container") && invariants.validComponent(CommandResultView, "CommandResultView") && !NavigationActions) throw new Error("NavigationActions cannot be null (furmly_grid)");
+
+  var mapDispatchToProps = function mapDispatchToProps(dispatch) {
+    return {
+      run: function run(id, args, key) {
+        return dispatch(runFurmlyProcessor(id, args, key, {
+          disableCache: true,
+          disableRetry: true
+        }));
+      },
+      more: function more(id, args, key) {
+        return dispatch(getMoreForGrid(id, args, key));
+      },
+      go: function go(value) {
+        return dispatch(NavigationActions.setParams({
+          params: { id: value },
+          key: "Furmly"
+        }));
+      },
+      getSingleItem: function getSingleItem(id, args, key) {
+        return dispatch(getSingleItemForGrid(id, args, key));
+      },
+      getItemTemplate: function getItemTemplate$$1(id, args, key) {
+        return dispatch(getItemTemplate(id, args, key));
+      },
+      getFilterTemplate: function getFilterTemplate$$1(id, args, key) {
+        return dispatch(getFilterTemplate(id, args, key));
+      },
+      filterGrid: function filterGrid$$1(id, args, key) {
+        return dispatch(filterGrid(id, args, key));
+      },
+      showMessage: function showMessage$$1(message) {
+        return dispatch(showMessage$1(message));
+      }
+    };
+  };
+  var mapStateToProps = function mapStateToProps(_$$1, initialProps) {
+    return function (state, ownProps) {
+      var component_uid = getKey(state, ownProps.component_uid, ownProps);
+      var result = state.furmly.view[component_uid];
+      return {
+        component_uid: component_uid,
+
+        items: result && result.data ? result.data.items : null,
+        total: result && result.data ? result.data.total : 0,
+        busy: result && !!result.fetchingGrid,
+        error: result && !!result.failedToFetchGrid,
+        filterTemplate: result && result.filterTemplate || ownProps.args && ownProps.args.filter || null,
+        filter: result && result.filter,
+        singleItem: result && result.singleItem,
+        itemTemplate: result && result.itemTemplate,
+        fetchingSingleItem: result && result.fetchingSingleItem,
+        fetchingFilterTemplate: result && result.gettingFilterTemplate,
+        fetchingItemTemplate: result && result.gettingTemplate,
+        itemTemplateError: result && result[getErrorKey("gettingTemplate")],
+        filterTemplateError: result && result[getErrorKey("gettingFilterTemplate")],
+        singleItemError: result && result[getErrorKey("fetchingSingleItem")],
+        commandProcessed: state.furmly.view[component_uid + FurmlyGrid.commandResultViewName()],
+        commandProcessing: state.furmly.view[component_uid + FurmlyGrid.commandResultViewName() + "-busy"],
+        processed: state.furmly.view[component_uid + FurmlyGrid.itemViewName()]
+      };
+    };
+  };
+
+  var FurmlyGrid = function (_React$Component) {
+    inherits(FurmlyGrid, _React$Component);
+    createClass(FurmlyGrid, [{
+      key: "render",
+      value: function render() {
+        try {
+          return this.__originalRenderMethod__();
+        } catch (e) {
+          return ReactSSRErrorHandler$12(e, this.constructor.name);
+        }
+      }
+    }]);
+
+    function FurmlyGrid(props) {
+      classCallCheck(this, FurmlyGrid);
+
+      var _this = possibleConstructorReturn(this, (FurmlyGrid.__proto__ || Object.getPrototypeOf(FurmlyGrid)).call(this, props));
+
+      _this.state = {
+        form: null,
+        validator: {},
+        _filterValidator: {},
+        showItemView: false,
+        count: _this.props.args.pageCount || 5,
+        showCommandResultView: false
+      };
+      _this.itemValueChanged = _this.itemValueChanged.bind(_this);
+      _this.showItemView = _this.showItemView.bind(_this);
+      _this.cancel = _this.cancel.bind(_this);
+      _this.showItemView = _this.showItemView.bind(_this);
+      _this.isCRUD = _this.isCRUD.bind(_this);
+      _this.isEDITONLY = _this.isEDITONLY.bind(_this);
+      _this.valueChanged = _this.valueChanged.bind(_this);
+      _this.getItemsFromSource = _this.getItemsFromSource.bind(_this);
+      _this.done = _this.done.bind(_this);
+      _this.filter = _this.filter.bind(_this);
+      _this.getFilterValue = _this.getFilterValue.bind(_this);
+      _this.getItemValue = _this.getItemValue.bind(_this);
+      _this.more = _this.more.bind(_this);
+      _this.finished = _this.finished.bind(_this);
+      _this.openCommandMenu = _this.openCommandMenu.bind(_this);
+      _this.closeCommandView = _this.closeCommandView.bind(_this);
+      _this.execCommand = _this.execCommand.bind(_this);
+      _this.showCommandResult = _this.showCommandResult.bind(_this);
+      _this.closeCommandResult = _this.closeCommandResult.bind(_this);
+      _this.fetchFilterTemplate = _this.fetchFilterTemplate.bind(_this);
+      if ((_this.isCRUD() || _this.isEDITONLY()) && (!_this.props.args.commands || !_this.props.args.commands.filter(function (x) {
+        return x.commandType == "$EDIT";
+      }).length)) {
+        var cmd = {
+          commandText: "Edit",
+          command: { value: "" },
+          commandType: "$EDIT",
+          commandIcon: "mode-edit"
+        };
+        if (!_this.props.args.commands) _this.props.args.commands = [];
+        _this.props.args.commands.unshift(cmd);
+      }
+      return _this;
+    }
+
+    createClass(FurmlyGrid, [{
+      key: "componentDidMount",
+      value: function componentDidMount() {
+        this._mounted = true;
+        this.fetchFilterTemplate();
+      }
+    }, {
+      key: "componentWillUnmount",
+      value: function componentWillUnmount() {
+        this._mounted = false;
+      }
+    }, {
+      key: "fetchFilterTemplate",
+      value: function fetchFilterTemplate() {
+        var props = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : this.props;
+        var other = arguments[1];
+
+        if (!props.filterTemplateError && props.args.filterProcessor && !props.fetchingFilterTemplate && !props.filterTemplate && (!other || other && props.filterTemplate !== other)) {
+          this.props.getFilterTemplate(props.args.filterProcessor, JSON.parse(props.args.gridArgs || "{}"), props.component_uid);
+        }
+      }
+    }, {
+      key: "showCommandResult",
+      value: function showCommandResult() {
+        var props = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : this.props;
+
+        this.setState({
+          showCommandsView: false,
+          showCommandResultView: true,
+          commandResult: props.commandProcessed
+        });
+      }
+    }, {
+      key: "closeCommandResult",
+      value: function closeCommandResult() {
+        this.setState({
+          showCommandResultView: false,
+          result: null
+        });
+      }
+    }, {
+      key: "componentWillReceiveProps",
+      value: function componentWillReceiveProps(next) {
+        if (next.processed !== this.props.processed) {
+          this.getItemsFromSource(null, "filterGrid");
+        }
+
+        if (next.commandProcessed !== this.props.commandProcessed) {
+          this.showCommandResult(next);
+        }
+
+        if (next.singleItem && next.singleItem !== this.props.singleItem && next.itemTemplate && next.itemTemplate !== this.props.itemTemplate) {
+          return this.showItemView(ITEM_MODES.EDIT, next.singleItem, true, next.itemTemplate);
+        }
+
+        if (next.singleItem && next.singleItem !== this.props.singleItem && !next.fetchingItemTemplate) {
+          return this.showItemView(ITEM_MODES.EDIT, next.singleItem, true);
+        }
+
+        if (next.itemTemplate && next.itemTemplate !== this.props.itemTemplate) {
+          return this.showItemView(this.state.mode, this.getItemValue() || this.props.singleItem, true, next.itemTemplate);
+        }
+
+        this.fetchFilterTemplate(next, this.props.filterTemplate);
+      }
+    }, {
+      key: "getItemsFromSource",
+      value: function getItemsFromSource() {
+        var filter = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : getFilterValue();
+        var methodName = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : "run";
+        var extra = arguments[2];
+
+        this.props[methodName](this.props.args.source, Object.assign({}, JSON.parse(this.props.args.gridArgs || "{}"), { count: this.state.count, full: true }, filter ? { query: filter } : {}, extra || {}), this.props.component_uid);
+      }
+    }, {
+      key: "getItemValue",
+      value: function getItemValue() {
+        return this.state.form;
+      }
+    }, {
+      key: "getFilterValue",
+      value: function getFilterValue() {
+        return this.props.value && this.props.value[FurmlyGrid.filterViewName()] || null;
+      }
+    }, {
+      key: "filter",
+      value: function filter() {
+        var _this2 = this;
+
+        this.state._filterValidator.validate().then(function () {
+          _this2.getItemsFromSource(_this2.getFilterValue(), "filterGrid");
+        }, function () {
+          _this2.props.log("a field in filter is invalid");
+        });
+      }
+    }, {
+      key: "valueChanged",
+      value: function valueChanged$$1(value) {
+        this.props.valueChanged(defineProperty({}, this.props.name, Object.assign({}, this.props.value || {}, value || {})));
+      }
+    }, {
+      key: "done",
+      value: function done(submitted) {
+        var _this3 = this;
+
+        if (!submitted) return this.cancel();
+
+        this.state.validator.validate().then(function () {
+          var id = void 0;
+          switch (_this3.state.mode) {
+            case ITEM_MODES.NEW:
+              id = _this3.props.args.extra.createProcessor;
+              break;
+            case ITEM_MODES.EDIT:
+              id = _this3.props.args.extra.editProcessor || _this3.props.args.extra.createProcessor;
+              break;
+          }
+          if (!id) {
+            return _this3.props.log("done  was called on a grid view in " + _this3.props.args.mode + " and it does not have a processor for it. \n" + JSON.stringify(_this3.props, null, " "));
+          }
+
+          _this3.props.run(id, Object.assign(JSON.parse(_this3.props.args.gridArgs || "{}"), {
+            entity: _this3.getItemValue()
+          }), _this3.props.component_uid + FurmlyGrid.itemViewName());
+
+          _this3.cancel();
+        }, function () {
+          _this3.props.log("some modal fields are invalid");
+        });
+      }
+    }, {
+      key: "showItemView",
+      value: function showItemView(mode, args, skipFetch, _itemTemplate) {
+        var template = _itemTemplate,
+            gettingItemTemplate = false,
+            existingValue = void 0;
+        if (this.props.args.extra) switch (mode) {
+          case ITEM_MODES.NEW:
+            template = _itemTemplate || (this.props.args.extra.createTemplate && this.props.args.extra.createTemplate.length && this.props.args.extra.createTemplate || this.props.itemTemplate || []).slice();
+            break;
+          case ITEM_MODES.EDIT:
+            template = _itemTemplate || (this.props.args.extra.editTemplate && this.props.args.extra.editTemplate.length && this.props.args.extra.editTemplate || this.props.args.extra.createTemplate && this.props.args.extra.createTemplate.length && this.props.args.extra.createTemplate || this.props.itemTemplate || []).slice();
+            existingValue = args;
+            if (this.props.args.extra.fetchSingleItemProcessor && !this.props.fetchingSingleItem && !this.props.singleItemError && !skipFetch) {
+              template = [];
+              existingValue = null;
+              this.props.getSingleItem(this.props.args.extra.fetchSingleItemProcessor, args, this.props.component_uid);
+            }
+
+            break;
+        }
+
+        if ((!template || !Array.prototype.isPrototypeOf(template)) && !this.props.args.extra.fetchTemplateProcessor) {
+          return this.props.log("showItemTemplate was called on a grid view in " + this.props.args.mode + " and it does not have a template. \n" + JSON.stringify(this.props, null, " "));
+        }
+        if ((!template || !template.length) && !this.props.fetchingItemTemplate && !this.props.itemTemplateError && this.props.args.extra.fetchTemplateProcessor && !skipFetch) {
+          gettingItemTemplate = true;
+          this.props.getItemTemplate(this.props.args.extra.fetchTemplateProcessor, args, this.props.component_uid);
+        }
+        var update = {
+          validator: {},
+          showItemView: true,
+          mode: mode,
+          showCommandsView: false,
+          itemViewElements: template
+        };
+        if (!gettingItemTemplate) update.form = existingValue ? copy$1(existingValue) : existingValue;
+        this.setState(update);
+      }
+    }, {
+      key: "more",
+      value: function more() {
+        if (!this.finished() && !this.props.busy && !this.props.error) {
+          //log("more fired getItemsFromSource");
+          var query = {
+            count: this.state.count
+          };
+          if (this.props.items && this.props.items[this.props.items.length - 1]) {
+            query._id = this.props.items[this.props.items.length - 1]._id;
+            this.props.log("most recent id:" + query._id);
+          }
+
+          this.getItemsFromSource(this.getFilterValue(), "more", query);
+        }
+      }
+    }, {
+      key: "finished",
+      value: function finished() {
+        return this.props.items && this.props.total == this.props.items.length;
+      }
+    }, {
+      key: "cancel",
+      value: function cancel() {
+        this.setState({
+          mode: null,
+          showItemView: false,
+          itemViewElements: null,
+          showCommandsView: false,
+          form: null
+        });
+      }
+    }, {
+      key: "closeCommandView",
+      value: function closeCommandView() {
+        this.setState({ showCommandsView: false });
+      }
+    }, {
+      key: "itemValueChanged",
+      value: function itemValueChanged(value) {
+        this.setState({
+          form: Object.assign({}, this.state.form || {}, value && value[FurmlyGrid.itemViewName()] || {})
+        });
+      }
+    }, {
+      key: "openCommandMenu",
+      value: function openCommandMenu(item) {
+        this.setState({ item: item, showCommandsView: true });
+      }
+    }, {
+      key: "execCommand",
+      value: function execCommand(command) {
+        var item = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : this.state.item;
+
+        switch (command.commandType) {
+          case "NAV":
+            this.props.go(command.command.value, {
+              fetchParams: { _id: item._id }
+            });
+            break;
+          case "$EDIT":
+            this.showItemView(ITEM_MODES.EDIT, item);
+            break;
+          case "PROCESSOR":
+            this.props.run(command.command.value, Object.assign({}, JSON.parse(this.props.args.gridArgs || "{}"), item), this.props.component_uid + FurmlyGrid.commandResultViewName());
+            break;
+        }
+      }
+    }, {
+      key: "isCRUD",
+      value: function isCRUD() {
+        return this.props.args.mode == GRID_MODES.CRUD;
+      }
+    }, {
+      key: "isEDITONLY",
+      value: function isEDITONLY() {
+        return this.props.args.mode == GRID_MODES.EDITONLY;
+      }
+    }, {
+      key: "__originalRenderMethod__",
+      value: function __originalRenderMethod__() {
+        var _this4 = this;
+
+        this.props.log("rendering..");
+
+        var args = this.props.args,
+            header = this.props.filterTemplate ? React__default.createElement(
+          Header,
+          { filter: function filter() {
+              return _this4.filter();
+            } },
+          React__default.createElement(Container, {
+            elements: this.props.filterTemplate,
+            value: this.getFilterValue(),
+            valueChanged: this.valueChanged,
+            name: FurmlyGrid.filterViewName(),
+            validator: this.state._filterValidator,
+            navigation: this.props.navigation,
+            currentProcess: this.props.currentProcess,
+            currentStep: this.props.currentStep
+          })
+        ) : this.props.fetchingFilterTemplate ? React__default.createElement(ProgressBar, null) : null,
+            footer = !this.finished() && this.props.busy ? React__default.createElement(ProgressBar, null) : null;
+
+        return React__default.createElement(
+          Layout,
+          null,
+          React__default.createElement(List, {
+            title: this.props.label,
+            canAddOrEdit: this.isCRUD(),
+            header: header,
+            footer: footer,
+            total: this.props.total,
+            showItemView: this.showItemView,
+            items: this.props.items,
+            templateConfig: this.props.args.templateConfig ? JSON.parse(this.props.args.templateConfig) : null,
+            more: this.more,
+            autoFetch: !this.props.args.dontAutoFetchFromSource,
+            commands: this.props.args.commands,
+            execCommand: this.execCommand,
+            openCommandMenu: this.openCommandMenu,
+            busy: !this.finished() && this.props.busy
+          }),
+          React__default.createElement(ItemView, {
+            visibility: (this.isCRUD() || this.isEDITONLY()) && this.state.showItemView,
+            done: this.done,
+            busy: this.props.fetchingSingleItem || this.props.fetchingItemTemplate,
+            template: React__default.createElement(Container, {
+              elements: this.state.itemViewElements,
+              value: this.getItemValue(),
+              name: FurmlyGrid.itemViewName(),
+              validator: this.state.validator,
+              valueChanged: this.itemValueChanged,
+              navigation: this.props.navigation,
+              currentProcess: this.props.currentProcess,
+              currentStep: this.props.currentStep
+            })
+          }),
+          React__default.createElement(CommandsView, {
+            visibility: this.state.showCommandsView,
+            close: this.closeCommandView,
+            commands: this.props.args.commands,
+            execCommand: this.execCommand
+          }),
+          React__default.createElement(CommandResultView, {
+            visibility: this.state.showCommandResultView,
+            done: this.closeCommandResult,
+            template: React__default.createElement(Container, {
+              elements: this.state.commandResult,
+              name: FurmlyGrid.commandResultViewName(),
+              validator: {},
+              navigation: this.props.navigation,
+              currentProcess: this.props.currentProcess,
+              currentStep: this.props.currentStep
+            }),
+            title: "",
+            busy: this.props.commandProcessing
+          })
+        );
+      }
+    }], [{
+      key: "itemViewName",
+      value: function itemViewName() {
+        return "_itemView_";
+      }
+    }, {
+      key: "filterViewName",
+      value: function filterViewName() {
+        return "_filterView_";
+      }
+    }, {
+      key: "commandResultViewName",
+      value: function commandResultViewName() {
+        return "_commandResultView_";
+      }
+    }]);
+    return FurmlyGrid;
+  }(React__default.Component);
+
+  return reactRedux.connect(mapStateToProps, mapDispatchToProps)(withLogger(FurmlyGrid));
+});
+
+var ReactSSRErrorHandler$13 = require("error_handler");
+
+var furmly_htmlview = (function (PlatformComponent) {
+  return withLogger$1(function (_Component) {
+    inherits(FurmlyHTMLViewer, _Component);
+    createClass(FurmlyHTMLViewer, [{
+      key: "render",
+      value: function render() {
+        try {
+          return this.__originalRenderMethod__();
+        } catch (e) {
+          return ReactSSRErrorHandler$13(e, this.constructor.name);
+        }
+      }
+    }]);
+
+    function FurmlyHTMLViewer(props) {
+      classCallCheck(this, FurmlyHTMLViewer);
+      return possibleConstructorReturn(this, (FurmlyHTMLViewer.__proto__ || Object.getPrototypeOf(FurmlyHTMLViewer)).call(this, props));
+    }
+
+    createClass(FurmlyHTMLViewer, [{
+      key: "__originalRenderMethod__",
+      value: function __originalRenderMethod__() {
+        return React__default.createElement(PlatformComponent, _extends({
+          html: this.props.value || this.props.args && this.props.args.html || "<h3 style='padding:16px'>Something doesn't add up. Please contact system admin if this happens frequently.</h3>"
+        }, this.props));
+      }
+    }]);
+    return FurmlyHTMLViewer;
+  }(React.Component));
+});
+
+var ReactSSRErrorHandler$14 = require("error_handler");
 
 /**
  * This component should render a file uploader
@@ -4624,302 +3286,313 @@ var ReactSSRErrorHandler$12 = require("error_handler");
  */
 
 var furmly_fileupload = (function (Uploader, ProgressBar, Text) {
-	var previews = arguments.length > 3 && arguments[3] !== undefined ? arguments[3] : [];
+  var previews = arguments.length > 3 && arguments[3] !== undefined ? arguments[3] : [];
 
-	invariants.validComponent(Uploader, "Uploader");
-	invariants.validComponent(ProgressBar, "ProgressBar");
-	invariants.validComponent(Text, "Text");
-	var log = debug("furmly-client-components:fileupload");
+  invariants.validComponent(Uploader, "Uploader");
+  invariants.validComponent(ProgressBar, "ProgressBar");
+  invariants.validComponent(Text, "Text");
 
-	var FurmlyFileUpload = function (_Component) {
-		inherits(FurmlyFileUpload, _Component);
-		createClass(FurmlyFileUpload, [{
-			key: "render",
-			value: function render() {
-				try {
-					return this.__originalRenderMethod__();
-				} catch (e) {
-					return ReactSSRErrorHandler$12(e, this.constructor.name);
-				}
-			}
-		}]);
+  var FurmlyFileUpload = function (_Component) {
+    inherits(FurmlyFileUpload, _Component);
+    createClass(FurmlyFileUpload, [{
+      key: "render",
+      value: function render() {
+        try {
+          return this.__originalRenderMethod__();
+        } catch (e) {
+          return ReactSSRErrorHandler$14(e, this.constructor.name);
+        }
+      }
+    }]);
 
-		function FurmlyFileUpload(props) {
-			classCallCheck(this, FurmlyFileUpload);
+    function FurmlyFileUpload(props) {
+      classCallCheck(this, FurmlyFileUpload);
 
-			var _this = possibleConstructorReturn(this, (FurmlyFileUpload.__proto__ || Object.getPrototypeOf(FurmlyFileUpload)).call(this, props));
+      var _this = possibleConstructorReturn(this, (FurmlyFileUpload.__proto__ || Object.getPrototypeOf(FurmlyFileUpload)).call(this, props));
 
-			_this.state = {};
-			_this._previewType = _this.getPreviewType.call(_this);
-			_this._supported = _this.isSupported();
-			_this._getPreview = _this._getPreview.bind(_this);
-			_this._query = _this.getPreviewQuery();
-			_this.props.validator.validate = function () {
-				return _this.runValidators();
-			};
-			_this.upload = _this.upload.bind(_this);
-			return _this;
-		}
+      _this.state = {};
+      _this._previewType = _this.getPreviewType.call(_this);
+      _this._supported = _this.isSupported();
+      _this._getPreview = _this._getPreview.bind(_this);
+      _this._query = _this.getPreviewQuery();
+      _this.props.validator.validate = function () {
+        return _this.runValidators();
+      };
+      _this.upload = _this.upload.bind(_this);
+      return _this;
+    }
 
-		createClass(FurmlyFileUpload, [{
-			key: "runValidators",
-			value: function runValidators() {
-				return new Validator(this).run();
-			}
-		}, {
-			key: "hasValue",
-			value: function hasValue() {
-				return !!this.props.uploadedId || "is required";
-			}
-		}, {
-			key: "getPreviewQuery",
-			value: function getPreviewQuery() {
-				return Uploader.getPreviewQuery(this.props.args.fileType);
-			}
-		}, {
-			key: "getPreviewType",
-			value: function getPreviewType() {
-				for (var i = 0; i < previews.length; i++) {
-					if (previews[i].id.test(this.props.args.fileType)) {
-						return previews[i];
-					}
-				}
-			}
-		}, {
-			key: "isSupported",
-			value: function isSupported() {
-				return Uploader.supports(this.props.args.fileType);
-			}
-		}, {
-			key: "componentDidMount",
-			value: function componentDidMount() {
-				var _this2 = this;
+    createClass(FurmlyFileUpload, [{
+      key: "runValidators",
+      value: function runValidators() {
+        return new Validator(this).run();
+      }
+    }, {
+      key: "hasValue",
+      value: function hasValue() {
+        return !!this.props.uploadedId || "is required";
+      }
+    }, {
+      key: "getPreviewQuery",
+      value: function getPreviewQuery() {
+        return Uploader.getPreviewQuery(this.props.args.fileType);
+      }
+    }, {
+      key: "getPreviewType",
+      value: function getPreviewType() {
+        for (var i = 0; i < previews.length; i++) {
+          if (previews[i].id.test(this.props.args.fileType)) {
+            return previews[i];
+          }
+        }
+      }
+    }, {
+      key: "isSupported",
+      value: function isSupported() {
+        return Uploader.supports(this.props.args.fileType);
+      }
+    }, {
+      key: "componentDidMount",
+      value: function componentDidMount() {
+        var _this2 = this;
 
-				this._mounted = true;
-				if (this.props.uploadedId && !this.props.preview) {
-					this._getPreview(this.props.uploadedId);
-				}
-				if (this.props.uploadedId !== this.props.value) {
-					//update the form incase the preview came with the fileupload
-					setTimeout(function () {
-						if (_this2._mounted) _this2.props.valueChanged(defineProperty({}, _this2.props.name, _this2.props.uploadedId));
-					}, 0);
-				}
-			}
-		}, {
-			key: "componentWillUnmount",
-			value: function componentWillUnmount() {
-				this._mounted = false;
-			}
-		}, {
-			key: "_getPreview",
-			value: function _getPreview(id) {
-				this.props.getPreview(id, this.props.component_uid, this.props.args.fileType, this._query);
-			}
-		}, {
-			key: "componentWillReceiveProps",
-			value: function componentWillReceiveProps(next) {
-				if (next.uploadedId !== this.props.uploadedId || next.component_uid !== this.props.component_uid || next.uploadedId !== next.value) {
-					if (next.uploadedId && (!next.preview || next.uploadedId !== this.props.uploadedId)) this._getPreview(next.uploadedId);
-					this.props.valueChanged(defineProperty({}, this.props.name, next.uploadedId));
-				}
-			}
-		}, {
-			key: "upload",
-			value: function upload(file) {
-				this.props.upload(file, this.props.component_uid);
-			}
-		}, {
-			key: "__originalRenderMethod__",
-			value: function __originalRenderMethod__() {
-				log("render called for " + this.props.name);
-				if (this.props.busy) return React__default.createElement(ProgressBar, null);
-				if (!this._supported) return React__default.createElement(Text, { message: "unsupported file upload type" });
-				return React__default.createElement(Uploader, {
-					key: this.props.component_uid,
-					title: this.props.label,
-					description: this.props.description,
-					upload: this.upload,
-					component_uid: this.props.component_uid,
-					allowed: this.props.args.fileType,
-					previewType: this._previewType,
-					preview: this.props.preview,
-					errors: this.state.errors,
-					disabled: this.props.disabled
-				});
-			}
-		}]);
-		return FurmlyFileUpload;
-	}(React.Component);
+        this._mounted = true;
+        if (this.props.uploadedId && !this.props.preview) {
+          this._getPreview(this.props.uploadedId);
+        }
+        if (this.props.uploadedId !== this.props.value) {
+          //update the form incase the preview came with the fileupload
+          setTimeout(function () {
+            if (_this2._mounted) _this2.props.valueChanged(defineProperty({}, _this2.props.name, _this2.props.uploadedId));
+          }, 0);
+        }
+      }
+    }, {
+      key: "componentWillUnmount",
+      value: function componentWillUnmount() {
+        this._mounted = false;
+      }
+    }, {
+      key: "_getPreview",
+      value: function _getPreview(id) {
+        this.props.getPreview(id, this.props.component_uid, this.props.args.fileType, this._query);
+      }
+    }, {
+      key: "componentWillReceiveProps",
+      value: function componentWillReceiveProps(next) {
+        if (next.uploadedId !== this.props.uploadedId || next.component_uid !== this.props.component_uid || next.uploadedId !== next.value) {
+          if (next.uploadedId && (!next.preview || next.uploadedId !== this.props.uploadedId)) this._getPreview(next.uploadedId);
+          this.props.valueChanged(defineProperty({}, this.props.name, next.uploadedId));
+        }
+      }
+    }, {
+      key: "upload",
+      value: function upload(file) {
+        this.props.upload(file, this.props.component_uid);
+      }
+    }, {
+      key: "__originalRenderMethod__",
+      value: function __originalRenderMethod__() {
+        this.props.log("render called for " + this.props.name);
+        if (this.props.busy) return React__default.createElement(ProgressBar, null);
+        if (!this._supported) return React__default.createElement(Text, { message: "unsupported file upload type" });
+        return React__default.createElement(Uploader, {
+          key: this.props.component_uid,
+          title: this.props.label,
+          description: this.props.description,
+          upload: this.upload,
+          component_uid: this.props.component_uid,
+          allowed: this.props.args.fileType,
+          previewType: this._previewType,
+          preview: this.props.preview,
+          errors: this.state.errors,
+          disabled: this.props.disabled
+        });
+      }
+    }]);
+    return FurmlyFileUpload;
+  }(React.Component);
 
-	var mapStateToProps = function mapStateToProps(_$$1, initialProps) {
-		return function (state, ownProps) {
-			var component_uid = getKey(state, ownProps.component_uid, ownProps);
-			var st = state.furmly.view[component_uid] || {};
-			return {
-				component_uid: component_uid,
-				preview: st.preview,
-				busy: st.busy,
-				disabled: ownProps.args && ownProps.args.disabled,
-				uploadedId: st.uploadedId || ownProps.value
-			};
-		};
-	};
-	var mapDispatchToProps = function mapDispatchToProps(dispatch) {
-		return {
-			upload: function upload(file, key) {
-				return dispatch(uploadFurmlyFile(file, key));
-			},
-			getPreview: function getPreview(id, key, fileType, query) {
-				return dispatch(getFurmlyFilePreview(id, key, fileType, query));
-			}
-		};
-	};
+  var mapStateToProps = function mapStateToProps(_$$1, initialProps) {
+    return function (state, ownProps) {
+      var component_uid = getKey(state, ownProps.component_uid, ownProps);
+      var st = state.furmly.view[component_uid] || {};
+      return {
+        component_uid: component_uid,
+        preview: st.preview,
+        busy: st.busy,
+        disabled: ownProps.args && ownProps.args.disabled,
+        uploadedId: st.uploadedId || ownProps.value
+      };
+    };
+  };
+  var mapDispatchToProps = function mapDispatchToProps(dispatch) {
+    return {
+      upload: function upload(file, key) {
+        return dispatch(uploadFurmlyFile(file, key));
+      },
+      getPreview: function getPreview(id, key, fileType, query) {
+        return dispatch(getFurmlyFilePreview(id, key, fileType, query));
+      }
+    };
+  };
 
-	return connect(mapStateToProps, mapDispatchToProps)(FurmlyFileUpload);
+  return reactRedux.connect(mapStateToProps, mapDispatchToProps)(withLogger$1(FurmlyFileUpload));
 });
+
+var ReactSSRErrorHandler$15 = require("error_handler");
 
 var furmly_actionview = (function (Layout, ProgressBar, Filter, FilterContainer, ContentContainer) {
-	invariants.validComponent(Filter, "Filter");
-	invariants.validComponent(FilterContainer, "FilterContainer");
-	invariants.validComponent(ContentContainer, "ContentContainer");
-	invariants.validComponent(ProgressBar, "ProgressBar");
-	invariants.validComponent(Layout, "Layout");
-	var log = debug("furmly-client-components:actionview");
-	var mapDispatchToProps = function mapDispatchToProps(dispatch) {
-		return {
-			run: function run(id, args, key) {
-				return dispatch(runFurmlyProcessor(id, args, key, { disableCache: true }));
-			},
-			showMessage: function (_showMessage) {
-				function showMessage(_x) {
-					return _showMessage.apply(this, arguments);
-				}
+  invariants.validComponent(Filter, "Filter");
+  invariants.validComponent(FilterContainer, "FilterContainer");
+  invariants.validComponent(ContentContainer, "ContentContainer");
+  invariants.validComponent(ProgressBar, "ProgressBar");
+  invariants.validComponent(Layout, "Layout");
 
-				showMessage.toString = function () {
-					return _showMessage.toString();
-				};
+  var mapDispatchToProps = function mapDispatchToProps(dispatch) {
+    return {
+      run: function run(id, args, key) {
+        return dispatch(runFurmlyProcessor(id, args, key, { disableCache: true }));
+      },
+      showMessage: function (_showMessage) {
+        function showMessage(_x) {
+          return _showMessage.apply(this, arguments);
+        }
 
-				return showMessage;
-			}(function (message) {
-				return dispatch(showMessage(message));
-			})
-		};
-	};
-	var mapStateToProps = function mapStateToProps(_$$1, initialProps) {
-		return function (state, ownProps) {
-			var component_uid = getKey(state, ownProps.component_uid, ownProps),
-			    _actionState = state.furmly.view[component_uid];
-			return {
-				resultUI: _actionState && (_actionState.ui || _actionState),
-				resultData: _actionState && _actionState.data,
-				busy: !!state.furmly.view[component_uid + "-busy"],
-				component_uid: component_uid
-			};
-		};
-	};
-	var itemViewName = "_item_view";
-	var contentViewName = "_content_view";
+        showMessage.toString = function () {
+          return _showMessage.toString();
+        };
 
-	var FurmlyActionView = function (_FurmlyBase) {
-		inherits(FurmlyActionView, _FurmlyBase);
+        return showMessage;
+      }(function (message) {
+        return dispatch(showMessage(message));
+      })
+    };
+  };
+  var mapStateToProps = function mapStateToProps(_$$1, initialProps) {
+    return function (state, ownProps) {
+      var component_uid = getKey(state, ownProps.component_uid, ownProps),
+          _actionState = state.furmly.view[component_uid];
+      return {
+        resultUI: _actionState && (_actionState.ui || _actionState),
+        resultData: _actionState && _actionState.data,
+        busy: !!state.furmly.view[component_uid + "-busy"],
+        component_uid: component_uid
+      };
+    };
+  };
+  var itemViewName = "_item_view";
+  var contentViewName = "_content_view";
 
-		function FurmlyActionView(props) {
-			classCallCheck(this, FurmlyActionView);
+  var FurmlyActionView = function (_React$Component) {
+    inherits(FurmlyActionView, _React$Component);
+    createClass(FurmlyActionView, [{
+      key: "render",
+      value: function render() {
+        try {
+          return this.__originalRenderMethod__();
+        } catch (e) {
+          return ReactSSRErrorHandler$15(e, this.constructor.name);
+        }
+      }
+    }]);
 
-			var _this = possibleConstructorReturn(this, (FurmlyActionView.__proto__ || Object.getPrototypeOf(FurmlyActionView)).call(this, props, log));
+    function FurmlyActionView(props) {
+      classCallCheck(this, FurmlyActionView);
 
-			_this.state = { _filterValidator: {}, validator: {} };
-			_this.filter = _this.filter.bind(_this);
-			_this.valueChanged = _this.valueChanged.bind(_this);
-			_this.filterValueChanged = _this.filterValueChanged.bind(_this);
-			return _this;
-		}
+      var _this = possibleConstructorReturn(this, (FurmlyActionView.__proto__ || Object.getPrototypeOf(FurmlyActionView)).call(this, props));
 
-		createClass(FurmlyActionView, [{
-			key: "componentWillReceiveProps",
-			value: function componentWillReceiveProps(next) {
-				if (!_.isEqual(next.resultData, this.props.resultData)) {
-					this.valueChanged(defineProperty({}, contentViewName, next.resultData));
-				}
-			}
-		}, {
-			key: "filter",
-			value: function filter() {
-				var _this2 = this;
+      _this.state = { _filterValidator: {}, validator: {} };
+      _this.filter = _this.filter.bind(_this);
+      _this.valueChanged = _this.valueChanged.bind(_this);
+      _this.filterValueChanged = _this.filterValueChanged.bind(_this);
+      return _this;
+    }
 
-				this.state._filterValidator.validate().then(function () {
-					var _ref = _this2.props.value || {},
-					    contentValue = _ref[contentViewName],
-					    rest = objectWithoutProperties(_ref, [contentViewName]);
+    createClass(FurmlyActionView, [{
+      key: "componentWillReceiveProps",
+      value: function componentWillReceiveProps(next) {
+        if (!_.isEqual(next.resultData, this.props.resultData)) {
+          this.valueChanged(defineProperty({}, contentViewName, next.resultData));
+        }
+      }
+    }, {
+      key: "filter",
+      value: function filter() {
+        var _this2 = this;
 
-					_this2.props.run(_this2.props.args.action, rest, _this2.props.component_uid);
-				}, function () {
-					_this2.log("a field in filter is invalid");
-				});
-			}
-		}, {
-			key: "filterValueChanged",
-			value: function filterValueChanged(value) {
-				this.valueChanged(value && value[itemViewName]);
-			}
-		}, {
-			key: "valueChanged",
-			value: function valueChanged$$1(value) {
-				this.log("value changed in action view " + value);
-				this.props.valueChanged(defineProperty({}, this.props.name, Object.assign({}, this.props.value || {}, value || {})));
-			}
-		}, {
-			key: "render",
-			value: function render() {
-				this.log("rendering");
-				if (this.props.busy) return React__default.createElement(ProgressBar, null);
+        this.state._filterValidator.validate().then(function () {
+          var _ref = _this2.props.value || {},
+              contentValue = _ref[contentViewName],
+              rest = objectWithoutProperties(_ref, [contentViewName]);
 
-				var _ref2 = this.props.value || {},
-				    _ref2$contentViewName = _ref2[contentViewName],
-				    contentValue = _ref2$contentViewName === undefined ? {} : _ref2$contentViewName,
-				    rest = objectWithoutProperties(_ref2, [contentViewName]);
+          _this2.props.run(_this2.props.args.action, rest, _this2.props.component_uid);
+        }, function () {
+          _this2.props.log("a field in filter is invalid");
+        });
+      }
+    }, {
+      key: "filterValueChanged",
+      value: function filterValueChanged(value) {
+        this.valueChanged(value && value[itemViewName]);
+      }
+    }, {
+      key: "valueChanged",
+      value: function valueChanged$$1(value) {
+        this.props.log("value changed in action view " + value);
+        this.props.valueChanged(defineProperty({}, this.props.name, Object.assign({}, this.props.value || {}, value || {})));
+      }
+    }, {
+      key: "__originalRenderMethod__",
+      value: function __originalRenderMethod__() {
+        this.props.log("rendering");
+        if (this.props.busy) return React__default.createElement(ProgressBar, null);
 
-				return React__default.createElement(
-					Layout,
-					null,
-					React__default.createElement(
-						Filter,
-						{
-							actionLabel: this.props.args.commandText,
-							filter: this.filter
-						},
-						React__default.createElement(FilterContainer, {
-							elements: this.props.args.elements,
-							value: rest,
-							name: itemViewName,
-							validator: this.state._filterValidator,
-							valueChanged: this.filterValueChanged,
-							navigation: this.props.navigation,
-							currentProcess: this.props.currentProcess,
-							currentStep: this.props.currentStep
-						})
-					),
-					React__default.createElement(ContentContainer, {
-						name: contentViewName,
-						elements: this.props.resultUI,
-						value: contentValue,
-						validator: this.state.validator,
-						valueChanged: this.valueChanged,
-						navigation: this.props.navigation,
-						currentProcess: this.props.currentProcess,
-						currentStep: this.props.currentStep
-					})
-				);
-			}
-		}]);
-		return FurmlyActionView;
-	}(FurmlyComponentBase);
+        var _ref2 = this.props.value || {},
+            _ref2$contentViewName = _ref2[contentViewName],
+            contentValue = _ref2$contentViewName === undefined ? {} : _ref2$contentViewName,
+            rest = objectWithoutProperties(_ref2, [contentViewName]);
 
-	return connect(mapStateToProps, mapDispatchToProps)(FurmlyActionView);
+        return React__default.createElement(
+          Layout,
+          null,
+          React__default.createElement(
+            Filter,
+            {
+              actionLabel: this.props.args.commandText,
+              filter: this.filter
+            },
+            React__default.createElement(FilterContainer, {
+              elements: this.props.args.elements,
+              value: rest,
+              name: itemViewName,
+              validator: this.state._filterValidator,
+              valueChanged: this.filterValueChanged,
+              navigation: this.props.navigation,
+              currentProcess: this.props.currentProcess,
+              currentStep: this.props.currentStep
+            })
+          ),
+          React__default.createElement(ContentContainer, {
+            name: contentViewName,
+            elements: this.props.resultUI,
+            value: contentValue,
+            validator: this.state.validator,
+            valueChanged: this.valueChanged,
+            navigation: this.props.navigation,
+            currentProcess: this.props.currentProcess,
+            currentStep: this.props.currentStep
+          })
+        );
+      }
+    }]);
+    return FurmlyActionView;
+  }(React__default.Component);
+
+  return reactRedux.connect(mapStateToProps, mapDispatchToProps)(withLogger$1(FurmlyActionView));
 });
 
-var ReactSSRErrorHandler$13 = require("error_handler");
+var ReactSSRErrorHandler$16 = require("error_handler");
 
 var furmly_label = (function (Label) {
 	invariants.validComponent(Label, "Label");
@@ -4930,477 +3603,137 @@ var furmly_label = (function (Label) {
 			    _rest = objectWithoutProperties(props, ["value", "description"]);
 
 			if (_value) {
-				return React__default.createElement(Label, _extends$4({ description: _value }, _rest));
+				return React__default.createElement(Label, _extends({ description: _value }, _rest));
 			}
 			return React__default.createElement(Label, props);
 		} catch (e) {
-			return ReactSSRErrorHandler$13(e);
+			return ReactSSRErrorHandler$16(e);
 		}
 	};
 });
 
-var ReactSSRErrorHandler$14 = require("error_handler");
+var ReactSSRErrorHandler$17 = require("error_handler");
 
 var furmly_webview = (function (WebView, Text) {
-	var log = debug("furmly-client-components:webview");
-	return function (_Component) {
-		inherits(FurmlyWebView, _Component);
-		createClass(FurmlyWebView, [{
-			key: "render",
-			value: function render() {
-				try {
-					return this.__originalRenderMethod__();
-				} catch (e) {
-					return ReactSSRErrorHandler$14(e, this.constructor.name);
-				}
-			}
-		}]);
+  return function (_PureComponent) {
+    inherits(FurmlyWebView, _PureComponent);
+    createClass(FurmlyWebView, [{
+      key: "render",
+      value: function render() {
+        try {
+          return this.__originalRenderMethod__();
+        } catch (e) {
+          return ReactSSRErrorHandler$17(e, this.constructor.name);
+        }
+      }
+    }]);
 
-		function FurmlyWebView(props) {
-			classCallCheck(this, FurmlyWebView);
-			return possibleConstructorReturn(this, (FurmlyWebView.__proto__ || Object.getPrototypeOf(FurmlyWebView)).call(this, props));
-		}
+    function FurmlyWebView(props) {
+      classCallCheck(this, FurmlyWebView);
+      return possibleConstructorReturn(this, (FurmlyWebView.__proto__ || Object.getPrototypeOf(FurmlyWebView)).call(this, props));
+    }
 
-		createClass(FurmlyWebView, [{
-			key: "__originalRenderMethod__",
-			value: function __originalRenderMethod__() {
-				if (this.props.args && this.props.args.url) {
-					return React__default.createElement(WebView, { url: this.props.args.url });
-				} else {
-					return React__default.createElement(
-						Text,
-						null,
-						"Missing url"
-					);
-				}
-			}
-		}]);
-		return FurmlyWebView;
-	}(React.Component);
+    createClass(FurmlyWebView, [{
+      key: "__originalRenderMethod__",
+      value: function __originalRenderMethod__() {
+        if (this.props.args && this.props.args.url) {
+          return React__default.createElement(WebView, { url: this.props.args.url });
+        } else {
+          return React__default.createElement(
+            Text,
+            null,
+            "Missing url"
+          );
+        }
+      }
+    }]);
+    return FurmlyWebView;
+  }(React.PureComponent);
 });
 
-var ReactSSRErrorHandler$15 = require("error_handler");
-
-var furmly_messenger = (function (Layout, Pane, OpenChats, Editor, ContextMenu, NewChatButton, OpenChatsLayout, Modal, ProgressBar, Login, ContactList, ChatHistory, AddNewContact, PendingInvites, ChatLayout) {
-	invariants.validComponent(Layout, "Layout");
-	invariants.validComponent(Pane, "Pane");
-	invariants.validComponent(Editor, "Editor");
-	invariants.validComponent(ContextMenu, "ContextMenu");
-	invariants.validComponent(OpenChats, "OpenChats");
-	invariants.validComponent(NewChatButton, "NewChatButton");
-	invariants.validComponent(ContactList, "ContactList");
-	invariants.validComponent(ChatHistory, "ChatHistory");
-	invariants.validComponent(OpenChatsLayout, "OpenChatsLayout");
-	invariants.validComponent(Modal, "Modal");
-	invariants.validComponent(ProgressBar, "ProgressBar");
-	invariants.validComponent(Login, "Login");
-	invariants.validComponent(AddNewContact, "AddNewContact");
-	invariants.validComponent(PendingInvites, "PendingInvites");
-	invariants.validComponent(ChatLayout, "ChatLayout");
-	var log = debug("furmly-client-components:messenger");
-	var mapStateToProps = function mapStateToProps(state) {
-		var _state = state.furmly.chat;
-		return {
-			chat: _state.chat,
-			contacts: _state.contacts,
-			openChats: _state.openChats,
-			newMessage: _state.newMessage,
-			handle: _state.chatHandle,
-			username: state.authentication.username,
-			messageSent: _state.chatMessageSent,
-			loggingIn: _state.busyWithChatLogin,
-			searchResult: _state.searchResult,
-			busyWithInvite: _state.busyWithInvite,
-			busyWithInvites: _state.busyWithInvites,
-			busyWithContacts: _state.busyWithContacts,
-			invites: _state.invites,
-			messageDelivered: _state.messageDelivered
-		};
-	};
-	var mapDispatchToProps = function mapDispatchToProps(dispatch) {
-		return {
-			send: function send(type, msg) {
-				return dispatch(sendMessage(type, msg));
-			},
-			createGroup: function createGroup$$1(msg) {
-				return dispatch(createGroup(msg));
-			},
-			login: function login(credentials) {
-				return dispatch(loginChat(credentials));
-			},
-			sendFriendRequest: function sendFriendRequest$$1(handle) {
-				return dispatch(sendFriendRequest(handle));
-			},
-			acceptInvite: function acceptInvite$$1(handle) {
-				return dispatch(acceptInvite(handle));
-			},
-			rejectInvite: function rejectInvite$$1(handle) {
-				return dispatch(rejectInvite(handle));
-			},
-			search: function search(query) {
-				return dispatch(searchForHandle(query));
-			},
-			fetchInvites: function fetchInvites$$1() {
-				return dispatch(fetchInvites());
-			},
-			getContacts: function getContacts$$1() {
-				return dispatch(getContacts());
-			},
-			addToOpenChats: function addToOpenChats$$1(chat) {
-				return dispatch(addToOpenChats(chat));
-			},
-			openChat: function openChat$$1(chat) {
-				return dispatch(openChat(chat));
-			},
-			closeChat: function closeChat$$1() {
-				return dispatch(closeChat());
-			}
-		};
-	};
-
-	var FurmlyMessenger = function (_Component) {
-		inherits(FurmlyMessenger, _Component);
-		createClass(FurmlyMessenger, [{
-			key: "render",
-			value: function render() {
-				try {
-					return this.__originalRenderMethod__();
-				} catch (e) {
-					return ReactSSRErrorHandler$15(e, this.constructor.name);
-				}
-			}
-		}]);
-
-		function FurmlyMessenger(props) {
-			classCallCheck(this, FurmlyMessenger);
-
-			var _this = possibleConstructorReturn(this, (FurmlyMessenger.__proto__ || Object.getPrototypeOf(FurmlyMessenger)).call(this, props));
-
-			_this.renderChat = _this.renderChat.bind(_this);
-			_this.renderPendingInvites = _this.renderPendingInvites.bind(_this);
-			_this.sendMessage = _this.sendMessage.bind(_this);
-			_this.openSelectContact = _this.openSelectContact.bind(_this);
-			_this.getMessageLayout = _this.getMessageLayout.bind(_this);
-			_this.selectedPaneChanged = _this.selectedPaneChanged.bind(_this);
-			_this.hideModal = _this.hideModal.bind(_this);
-			_this.openAddNewContact = _this.openAddNewContact.bind(_this);
-			_this.openChatModal = _this.openChatModal.bind(_this);
-			_this.state = {
-				selectedPane: 0,
-				modalTemplate: null,
-				showModal: false,
-				_panes: [{
-					title: "Chat",
-					icon: "comment-multiple-outline",
-					render: _this.renderChat
-				}, {
-					title: "Pending Invites",
-					icon: "account-plus",
-					render: _this.renderPendingInvites
-				}]
-			};
-			_this._chatLayoutCommands = [{ title: "New Group", uid: "NEW_GROUP" }];
-			_this._chatCommands = [{ title: "Delete Chat", uid: "DELETE_CHAT" }];
-			return _this;
-		}
-
-		createClass(FurmlyMessenger, [{
-			key: "sendMessage",
-			value: function sendMessage$$1(contact, message) {
-				this.props.send(contact.type !== "group" ? "msg" : "grpmsg", {
-					to: contact.handle,
-					message: message
-				});
-			}
-		}, {
-			key: "componentWillReceiveProps",
-			value: function componentWillReceiveProps(next) {
-				if (next.chat && next.chat !== this.props.chat) {
-					this.openChatModal(next.chat);
-				}
-			}
-		}, {
-			key: "openChatModal",
-			value: function openChatModal() {
-				var _this2 = this;
-
-				var chat = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : this.props.chat;
-
-				this.setState({
-					modalTemplate: function modalTemplate() {
-						return _this2.getMessageLayout(chat);
-					},
-					showModal: true
-				});
-			}
-		}, {
-			key: "componentDidMount",
-			value: function componentDidMount() {
-				var _this3 = this;
-
-				log("logging in...");
-				this.props.login({ username: this.props.username });
-
-				if (this.props.chat) {
-					setTimeout(function () {
-						_this3.openChatModal(_this3.props.openChats[_this3.props.chat.contact.handle]);
-					}, 0);
-				}
-			}
-		}, {
-			key: "renderPendingInvites",
-			value: function renderPendingInvites() {
-				if (this.props.busyWithInvites) {
-					return React__default.createElement(ProgressBar, null);
-				}
-
-				return React__default.createElement(PendingInvites, {
-					getInvites: this.props.fetchInvites,
-					invites: this.props.invites,
-					acceptInvite: this.props.acceptInvite,
-					rejectInvite: this.props.rejectInvite
-				});
-			}
-		}, {
-			key: "renderChat",
-			value: function renderChat() {
-				var _this4 = this;
-
-				var chats = Object.keys(this.props.openChats || {}).map(function (x) {
-					return {
-						handle: x,
-						messages: _this4.props.openChats[x].messages
-					};
-				});
-				return React__default.createElement(
-					OpenChatsLayout,
-					null,
-					React__default.createElement(ContextMenu, { commands: this._chatLayoutCommands }),
-					this.props.fetchingContacts ? React__default.createElement(ProgressBar, null) : React__default.createElement(OpenChats, {
-						open: function open(handle) {
-							_this4.props.openChat(_this4.props.openChats[handle]);
-						},
-						newMessage: this.props.newMessage,
-						chats: chats
-					}),
-					React__default.createElement(NewChatButton, { onClick: this.openSelectContact })
-				);
-			}
-		}, {
-			key: "getMessageLayout",
-			value: function getMessageLayout(chat) {
-				var _this5 = this;
-
-				return React__default.createElement(
-					ChatLayout,
-					{ info: chat.contact.handle },
-					React__default.createElement(ContextMenu, { commands: this._chatCommands }),
-					React__default.createElement(ChatHistory, {
-						messages: chat.messages,
-						me: this.props.handle
-					}),
-					React__default.createElement(Editor, {
-						messageDelivered: this.props.messageDelivered,
-						send: function send(message) {
-							return _this5.sendMessage(chat.contact, message);
-						}
-					})
-				);
-			}
-		}, {
-			key: "openChat",
-			value: function openChat$$1(chat) {
-				this.props.openChat(chat);
-			}
-		}, {
-			key: "openSelectContact",
-			value: function openSelectContact() {
-				var _this6 = this;
-
-				if (!this.props.busyWithContacts && !this.props.contacts) {
-					this.props.getContacts();
-				}
-
-				this.setState({
-					modalTemplate: function modalTemplate() {
-						return _this6.props.busyWithContacts ? React__default.createElement(ProgressBar, null) : React__default.createElement(ContactList, {
-							contacts: _this6.props.contacts,
-							openAddNewContact: _this6.openAddNewContact,
-							contactSelected: function contactSelected(contact) {
-								//add chat to history.
-								var chat = (_this6.props.openChats || {})[contact.handle];
-								if (!chat) _this6.props.addToOpenChats(chat = { contact: contact, messages: [] });
-								_this6.openChat(chat);
-							}
-						});
-					},
-					showModal: true
-				});
-			}
-		}, {
-			key: "openAddNewContact",
-			value: function openAddNewContact() {
-				var _this7 = this;
-
-				this.setState({
-					modalTemplate: function modalTemplate() {
-						return React__default.createElement(AddNewContact, {
-							search: function search(query) {
-								return _this7.props.search(query);
-							},
-							searchResult: _this7.props.searchResult,
-							sendFriendRequest: function sendFriendRequest$$1(handle) {
-								return _this7.props.sendFriendRequest(handle);
-							}
-						});
-					},
-					showModal: true
-				});
-			}
-		}, {
-			key: "hideModal",
-			value: function hideModal() {
-				this.setState({ showModal: false });
-				//this will cause a useless rerender. need to change this later.
-				this.props.closeChat();
-			}
-		}, {
-			key: "selectedPaneChanged",
-			value: function selectedPaneChanged(selectedPane) {
-				this.setState({ selectedPane: selectedPane });
-			}
-		}, {
-			key: "__originalRenderMethod__",
-			value: function __originalRenderMethod__() {
-				var _this8 = this;
-
-				if (this.props.loggingIn) {
-					return React__default.createElement(ProgressBar, null);
-				}
-				if (!this.props.handle) {
-					return React__default.createElement(Login, {
-						firstTimer: this.props.firstTimer,
-						welcomeMessage: this.props.args && this.props.args.welcomeMessage || "Please enter the name with which you want to be known. Please note once saved it cannot be changed",
-						submit: function submit(handle) {
-							return _this8.props.login({
-								username: _this8.props.username,
-								handle: handle
-							});
-						}
-					});
-				}
-				return React__default.createElement(
-					Layout,
-					{
-						selectedPane: this.state.selectedPane,
-						selectedPaneChanged: this.selectedPaneChanged,
-						panes: this.state._panes.map(function (x) {
-							return {
-								title: x.title,
-								icon: x.icon
-							};
-						})
-					},
-					React__default.createElement(Modal, {
-						template: this.state.modalTemplate && this.state.modalTemplate() || null,
-						hideDone: true,
-						done: this.hideModal,
-						visibility: this.state.showModal
-					}),
-					this.state._panes[this.state.selectedPane].render()
-				);
-			}
-		}]);
-		return FurmlyMessenger;
-	}(React.Component);
-
-	return connect(mapStateToProps, mapDispatchToProps)(FurmlyMessenger);
-});
-
-var ReactSSRErrorHandler$16 = require("error_handler");
+var ReactSSRErrorHandler$18 = require("error_handler");
 
 var furmly_command = (function (Link, customDownloadCommand) {
-	invariants.validComponent(Link, "Link");
+  invariants.validComponent(Link, "Link");
 
-	var mapDispatchToState = function mapDispatchToState(dispatch) {
-		return {
-			dispatch: dispatch
-		};
-	};
-	var log = debug("furmly-client-components:command");
+  var mapDispatchToState = function mapDispatchToState(dispatch) {
+    return {
+      dispatch: dispatch
+    };
+  };
 
-	var FurmlyCommand = function (_Component) {
-		inherits(FurmlyCommand, _Component);
-		createClass(FurmlyCommand, [{
-			key: "render",
-			value: function render() {
-				try {
-					return this.__originalRenderMethod__();
-				} catch (e) {
-					return ReactSSRErrorHandler$16(e, this.constructor.name);
-				}
-			}
-		}]);
+  var FurmlyCommand = function (_Component) {
+    inherits(FurmlyCommand, _Component);
+    createClass(FurmlyCommand, [{
+      key: "render",
+      value: function render() {
+        try {
+          return this.__originalRenderMethod__();
+        } catch (e) {
+          return ReactSSRErrorHandler$18(e, this.constructor.name);
+        }
+      }
+    }]);
 
-		function FurmlyCommand(props) {
-			classCallCheck(this, FurmlyCommand);
+    function FurmlyCommand(props) {
+      classCallCheck(this, FurmlyCommand);
 
-			var _this = possibleConstructorReturn(this, (FurmlyCommand.__proto__ || Object.getPrototypeOf(FurmlyCommand)).call(this, props));
+      var _this = possibleConstructorReturn(this, (FurmlyCommand.__proto__ || Object.getPrototypeOf(FurmlyCommand)).call(this, props));
 
-			_this.go = _this.go.bind(_this);
-			_this.run = _this.run.bind(_this);
-			return _this;
-		}
+      _this.go = _this.go.bind(_this);
+      _this.run = _this.run.bind(_this);
+      return _this;
+    }
 
-		createClass(FurmlyCommand, [{
-			key: "run",
-			value: function run() {
-				this.props.dispatch(runFurmlyProcessor(this.props.args.commandProcessor, this.props.args.commandProcessorArgs && JSON.parse(this.props.args.commandProcessorArgs) || {}, this.props.component_uid));
-			}
-		}, {
-			key: "go",
-			value: function go() {
-				switch (this.props.args.commandType) {
-					case FurmlyCommand.COMMAND_TYPE.DOWNLOAD:
-						if (!this.props.args.commandProcessorArgs) {
-							throw new Error("Download is not properly setup.");
-						}
-						var url = void 0;
-						try {
-							var config$$1 = JSON.parse(this.props.args.commandProcessorArgs);
-							url = furmlyDownloadUrl.replace(":id", config$$1.id);
-							if (config$$1.access_token) url += "?_t0=" + config$$1.access_token;
-							if (config$$1.isProcessor) url += (url.indexOf("?") == -1 ? "?" : "&") + "_t1=true";
-						} catch (e) {
-							throw new Error("Download is not properly setup.");
-						}
-						this.props.dispatch(customDownloadCommand(this.props.args, url));
-						break;
-					default:
-						this.run();
-						break;
-				}
-			}
-		}, {
-			key: "__originalRenderMethod__",
-			value: function __originalRenderMethod__() {
-				return (
-					/*jshint ignore:start */
-					React__default.createElement(Link, {
-						text: this.props.args.commandText,
-						icon: this.props.args.commandIcon,
-						go: this.go
-					})
-					/*jshint ignore:end */
+    createClass(FurmlyCommand, [{
+      key: "run",
+      value: function run() {
+        this.props.dispatch(runFurmlyProcessor(this.props.args.commandProcessor, this.props.args.commandProcessorArgs && JSON.parse(this.props.args.commandProcessorArgs) || {}, this.props.component_uid));
+      }
+    }, {
+      key: "go",
+      value: function go() {
+        switch (this.props.args.commandType) {
+          case FurmlyCommand.COMMAND_TYPE.DOWNLOAD:
+            if (!this.props.args.commandProcessorArgs) {
+              throw new Error("Download is not properly setup.");
+            }
+            var url = void 0;
+            try {
+              var config$$1 = JSON.parse(this.props.args.commandProcessorArgs);
+              url = furmlyDownloadUrl.replace(":id", config$$1.id);
+              if (config$$1.access_token) url += "?_t0=" + config$$1.access_token;
+              if (config$$1.isProcessor) url += (url.indexOf("?") == -1 ? "?" : "&") + "_t1=true";
+            } catch (e) {
+              throw new Error("Download is not properly setup.");
+            }
+            this.props.dispatch(customDownloadCommand(this.props.args, url));
+            break;
+          default:
+            this.run();
+            break;
+        }
+      }
+    }, {
+      key: "__originalRenderMethod__",
+      value: function __originalRenderMethod__() {
+        return (
+          /*jshint ignore:start */
+          React__default.createElement(Link, {
+            text: this.props.args.commandText,
+            icon: this.props.args.commandIcon,
+            go: this.go
+          })
+          /*jshint ignore:end */
 
-				);
-			}
-		}]);
-		return FurmlyCommand;
-	}(React.Component);
+        );
+      }
+    }]);
+    return FurmlyCommand;
+  }(React.Component);
 
-	FurmlyCommand.COMMAND_TYPE = { DEFAULT: "DEFAULT", DOWNLOAD: "DOWNLOAD" };
-	return connect(null, mapDispatchToState)(FurmlyCommand);
+  FurmlyCommand.COMMAND_TYPE = { DEFAULT: "DEFAULT", DOWNLOAD: "DOWNLOAD" };
+  return reactRedux.connect(null, mapDispatchToState)(withLogger$1(FurmlyCommand));
 });
 
 var components = {
@@ -5421,7 +3754,6 @@ var components = {
 	furmly_htmlview: furmly_htmlview,
 	furmly_label: furmly_label,
 	furmly_webview: furmly_webview,
-	furmly_messenger: furmly_messenger,
 	furmly_command: furmly_command
 };
 
@@ -5491,133 +3823,6 @@ var defaultMap = {
 		return this;
 	}
 };
-
-function chat () {
-	var state = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : {};
-	var action = arguments[1];
-
-	switch (action.type) {
-		case ACTIONS.LOGIN_CHAT:
-			return Object.assign({}, state, {
-				busyWithChatLogin: true,
-				chatHandle: null
-			});
-		case ACTIONS.LOGGED_IN_CHAT:
-			return Object.assign({}, state, {
-				busyWithChatLogin: false,
-				chatHandle: action.payload.handle || action.meta.handle
-			});
-		case ACTIONS.FAILED_TO_LOGIN_CHAT:
-			return Object.assign({}, state, { busyWithChatLogin: false });
-		case ACTIONS.SEND_FRIEND_REQUEST:
-			return Object.assign({}, state, {
-				sentFriendRequest: false,
-				busyWithFriendRequest: true
-			});
-		case ACTIONS.SENT_FRIEND_REQUEST:
-			return Object.assign({}, state, {
-				sentFriendRequest: true,
-				busyWithFriendRequest: false
-			});
-		case ACTIONS.FAILED_TO_SEND_FRIEND_REQUEST:
-			return Object.assign({}, state, {
-				busyWithFriendRequest: false,
-				sentFriendRequest: false
-			});
-
-		case ACTIONS.SEARCH:
-			return Object.assign({}, state, {
-				busyWithSearch: true,
-				searchResult: []
-			});
-		case ACTIONS.FOUND:
-			return Object.assign({}, state, {
-				busyWithSearch: false,
-				searchResult: action.payload
-			});
-		case ACTIONS.NOT_FOUND:
-			return Object.assign({}, state, { busyWithSearch: false });
-
-		case ACTIONS.ACCEPT_FRIEND_REQUEST:
-		case ACTIONS.REJECT_FRIEND_REQUEST:
-			return Object.assign({}, state, { busyWithInvite: true });
-		case ACTIONS.ACCEPTED_FRIEND_REQUEST:
-		case ACTIONS.REJECTED_FRIEND_REQUEST:
-			if (state.invites) {
-				var req = state.invites.filter(function (x) {
-					return x.handle == action.payload;
-				})[0];
-				state.invites.splice(state.invites.indexOf(req), 1);
-			}
-			return Object.assign({}, state, {
-				busyWithInvite: false,
-				pendingInvites: state.invites && state.invites.slice() || null
-			});
-		case ACTIONS.FAILED_TO_ACCEPT_FRIEND_REQUEST:
-		case ACTIONS.FAILED_TO_REJECT_FRIEND_REQUEST:
-			return Object.assign({}, state, { busyWithInvite: false });
-
-		case ACTIONS.GET_INVITES:
-			return Object.assign({}, state, { busyWithInvites: true });
-		case ACTIONS.GOT_INVITES:
-			return Object.assign({}, state, {
-				busyWithInvites: false,
-				invites: action.payload
-			});
-		case ACTIONS.FAILED_TO_GET_INVITES:
-			return Object.assign({}, state, { busyWithInvites: false });
-		case ACTIONS.GET_CONTACTS:
-			return Object.assign({}, state, { busyWithContacts: true });
-		case ACTIONS.GOT_CONTACTS:
-			return Object.assign({}, state, {
-				busyWithContacts: false,
-				contacts: action.payload
-			});
-		case ACTIONS.FAILED_TO_GET_CONTACTS:
-			return Object.assign({}, state, { busyWithContacts: false });
-		case ACTIONS.ADD_TO_OPEN_CHATS:
-			var chat = action.payload,
-			    open = state.openChats || {};
-			open[chat.contact.handle] = chat;
-			return Object.assign({}, state, { openChats: open });
-		case ACTIONS.NEW_MESSAGE:
-		case ACTIONS.NEW_GROUP_MESSAGE:
-			var openChats = state.openChats || {},
-			    msg = action.payload;
-			if (!openChats[msg.from]) {
-				openChats[msg.from] = {
-					contact: {
-						handle: msg.from,
-						type: action.type == ACTIONS.NEW_GROUP_MESSAGE && "group"
-					},
-					messages: []
-				};
-			}
-			msg.id = uuid$1();
-			openChats[msg.from].messages.push(msg);
-			return Object.assign({}, state, { openChats: openChats, newMessage: msg });
-		case ACTIONS.OPEN_CHAT:
-			return Object.assign({}, state, {
-				chat: action.payload,
-				newMessage: state.newMessage && state.newMessage.from == action.payload.contact.handle ? null : state.newMessage
-			});
-		case ACTIONS.CLOSE_CHAT:
-			return Object.assign({}, state, { chat: null });
-		case ACTIONS.SEND_CHAT:
-			return Object.assign({}, state, { messageDelivered: false });
-		case ACTIONS.SENT_CHAT:
-			var _openChats = state.openChats,
-			    _msg = action.meta;
-			_openChats[_msg.to].messages.push(Object.assign({}, _msg, { from: state.chatHandle, id: uuid$1() }));
-			_openChats[_msg.to].messages = _openChats[_msg.to].messages.slice();
-			return Object.assign({}, state, {
-				openChats: Object.assign({}, _openChats),
-				messageDelivered: true
-			});
-		default:
-			return state;
-	}
-}
 
 function view$1 () {
 	var _Object$assign7, _Object$assign16, _Object$assign19, _Object$assign20, _Object$assign21, _Object$assign22, _Object$assign23, _Object$assign24;
@@ -5921,7 +4126,7 @@ function errorWhileGettingSingleItemForGrid() {
 	}, getErrorKey("fetchingSingleItem"), !!action.error));
 }
 
-var reducers = [{ name: "chat", run: chat }, { name: "navigation", run: navigation }, { name: "view", run: view$1 }];
+var reducers = [{ name: "navigation", run: navigation }, { name: "view", run: view$1 }];
 function index$1 () {
 	var state = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : {};
 	var action = arguments[1];
@@ -5930,7 +4135,7 @@ function index$1 () {
 		var incoming = action.payload.furmly;
 		if (incoming) {
 			toggleAllBusyIndicators(incoming);
-			state = _extends$4({}, state, incoming);
+			state = _extends({}, state, incoming);
 		}
 	}
 	var changes = false,
@@ -5978,7 +4183,6 @@ exports.reducers = index$1;
 exports.toggleAllBusyIndicators = toggleAllBusyIndicators;
 exports.actionEnhancers = index;
 exports.utils = index$2;
-exports.startChatServer = startReceivingMessages;
 exports.addNavigationContext = addNavigationContext;
 exports.removeNavigationContext = removeNavigationContext;
 exports.setParams = setParams;

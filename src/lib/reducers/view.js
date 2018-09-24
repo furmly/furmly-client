@@ -1,5 +1,4 @@
 import _ from "lodash";
-import uuid from "uuid/v4";
 import { default as ACTIONS } from "../actions/constants";
 import config from "client_config";
 import { isValidKey, getBusyKey, getErrorKey } from "../utils/view";

@@ -1,6 +1,5 @@
 import config from "client_config";
 import CALL_API from "call_api";
-import openSocket from "socket.io-client";
 import MemCache from "../utils/memcache";
 import { CHECK_FOR_EXISTING_SCREEN } from "../action-enhancers";
 import debug from "debug";
@@ -10,12 +9,9 @@ const log = debug("furmly-actions");
 const preDispatch = config.preDispatch,
   preRefreshToken = config.preRefreshToken,
   BASE_URL = global.BASE_URL || config.baseUrl,
-  CHAT_URL = global.CHAT_URL || config.chatUrl,
-  preLogin = config.preLogin,
   throttled = {},
   cache = new MemCache({ ttl: config.processorsCacheTimeout });
 
-let socket;
 
 export const displayMessage = text => {
   return {
@@ -502,140 +498,3 @@ export function uploadFurmlyFile(file, key) {
   };
 }
 
-export function loginChat(credentials, extra) {
-  return (dispatch, getState) => {
-    dispatch({ type: ACTIONS.LOGIN_CHAT });
-    socket.emit("login", preLogin(credentials, getState()), msg => {
-      if (msg.error) {
-        if (!msg.isSignedUp && credentials.handle) {
-          dispatch(
-            showMessage(
-              "An error occurred while contacting the chat server. Please retry"
-            )
-          );
-        }
-        return dispatch({ type: ACTIONS.FAILED_TO_LOGIN_CHAT, payload: msg });
-      }
-      if (extra) {
-        extra();
-      }
-      return dispatch({
-        type: ACTIONS.LOGGED_IN_CHAT,
-        payload: msg.message,
-        meta: credentials
-      });
-    });
-  };
-}
-
-export function sendMessage(type, msg) {
-  return emit(type, msg, {
-    requestType: ACTIONS.SEND_CHAT,
-    resultType: ACTIONS.SENT_CHAT,
-    errorType: ACTIONS.FAILED_TO_SEND_CHAT
-  });
-}
-export function createGroup(msg) {
-  return emit("create group", msg, {
-    requestType: ACTIONS.CREATE_GROUP,
-    resultType: ACTIONS.CREATED_GROUP
-  });
-}
-
-export function sendFriendRequest(handle) {
-  return emit("friend request", handle, {
-    requestType: ACTIONS.SEND_FRIEND_REQUEST,
-    resultType: ACTIONS.SENT_FRIEND_REQUEST,
-    errorType: ACTIONS.FAILED_TO_SEND_FRIEND_REQUEST
-  });
-}
-export function getContacts() {
-  return emit("friends", null, {
-    requestType: ACTIONS.GET_CONTACTS,
-    resultType: ACTIONS.GOT_CONTACTS,
-    errorType: ACTIONS.FAILED_TO_GET_CONTACTS
-  });
-}
-
-export function fetchInvites() {
-  return emit("pending friend requests", null, {
-    requestType: ACTIONS.GET_INVITES,
-    resultType: ACTIONS.GOT_INVITES,
-    errorType: ACTIONS.FAILED_TO_GET_INVITES
-  });
-}
-
-export function acceptInvite(handle) {
-  return emit("approve friend request", handle, {
-    requestType: ACTIONS.ACCEPT_FRIEND_REQUEST,
-    resultType: ACTIONS.ACCEPTED_FRIEND_REQUEST,
-    errorType: ACTIONS.FAILED_TO_ACCEPT_FRIEND_REQUEST
-  });
-}
-export function rejectInvite(handle) {
-  return emit("reject friend request", handle, {
-    requestType: ACTIONS.REJECT_FRIEND_REQUEST,
-    resultType: ACTIONS.REJECTED_FRIEND_REQUEST,
-    errorType: ACTIONS.FAILED_TO_REJECT_FRIEND_REQUEST
-  });
-}
-export function searchForHandle(handle) {
-  return emit("search for handle", handle, {
-    requestType: ACTIONS.SEARCH,
-    resultType: ACTIONS.FOUND,
-    errorType: ACTIONS.NOT_FOUND
-  });
-}
-
-function emit(type, message, { requestType, resultType, errorType }) {
-  let args = Array.prototype.slice.call(arguments);
-  return (dispatch, getState) => {
-    dispatch({ type: requestType });
-    socket.emit(type, message, result => {
-      if (result.error) {
-        if (result.message == "Unauthorized") {
-          let state = getState();
-          if (state.authentication.username) {
-            return dispatch(
-              loginChat({ username: state.authentication.username }, () => {
-                dispatch(emit.apply(null, args));
-              })
-            );
-          }
-        }
-
-        return (
-          dispatch(showMessage(result.message)),
-          errorType && dispatch({ type: errorType, payload: result })
-        );
-      }
-      dispatch({
-        type: resultType,
-        payload: result && result.message,
-        meta: message
-      });
-    });
-  };
-}
-
-export function addToOpenChats(chat) {
-  return { type: ACTIONS.ADD_TO_OPEN_CHATS, payload: chat };
-}
-export function openChat(chat) {
-  return { type: ACTIONS.OPEN_CHAT, payload: chat };
-}
-export function closeChat() {
-  return { type: ACTIONS.CLOSE_CHAT };
-}
-
-export function startReceivingMessages(store) {
-  socket = openSocket(CHAT_URL);
-  socket.on("msg", function(message, fn) {
-    store.dispatch({ type: ACTIONS.NEW_MESSAGE, payload: message });
-    fn();
-  });
-  socket.on("grpmsg", function(message, fn) {
-    store.dispatch({ type: ACTIONS.NEW_GROUP_MESSAGE, payload: message });
-    fn();
-  });
-}

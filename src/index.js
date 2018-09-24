@@ -6,7 +6,6 @@ export { default as actionEnhancers } from "./lib/action-enhancers";
 export { default as utils } from "./lib/utils";
 // export { default as furmlyNavigation } from "./lib/reducers/navigation";
 export {
-	startReceivingMessages as startChatServer,
 	addNavigationContext,
 	removeNavigationContext,
 	setParams,
