@@ -55,16 +55,16 @@ export default (Page, Warning, Container) => {
         .validate()
         .then(
           () => {
-this.props.log("currentStep:" + (this.props.currentStep || "0"));
+            this.props.log("currentStep:" + (this.props.currentStep || "0"));
             this.props.submit(this.props.value);
           },
           () => {
-this.props.log("the form is invalid");
+            this.props.log("the form is invalid");
           }
         )
         .catch(er => {
-this.props.log("an error occurred while validating form ");
-this.props.log(er);
+          this.props.log("an error occurred while validating form ");
+          this.props.log(er);
         });
     }
     render() {
@@ -98,8 +98,14 @@ this.props.log(er);
     }
   }
 
-  return connect(
+  return {
+    getComponent: () =>
+      connect(
+        mapStateToProps,
+        mapDispatchToProps
+      )(withLogger(FurmlyView)),
     mapStateToProps,
-    mapDispatchToProps
-  )(withLogger(FurmlyView));
+    mapDispatchToProps,
+    FurmlyView
+  };
 };

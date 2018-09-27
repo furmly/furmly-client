@@ -13,25 +13,29 @@ export default (Layout, Header, Container) => {
       /*jshint ignore:start*/
       //get the container for retrieving
       return (
-        <Layout>
-          <Header description={this.props.description}>
-            {this.props.label}
-          </Header>
-          <Container
-            elements={this.props.args.elements}
-            name={this.props.name}
-            value={this.props.value}
-            valueChanged={this.props.valueChanged}
-            validator={this.props.validator}
-            navigation={this.props.navigation}
-            currentProcess={this.props.currentProcess}
-            currentStep={this.props.currentStep}
-          />
-        </Layout>
+        <Layout
+          header={
+            <Header description={this.props.description}>
+              {this.props.label}
+            </Header>
+          }
+          content={
+            <Container
+              elements={this.props.args.elements}
+              name={this.props.name}
+              value={this.props.value}
+              valueChanged={this.props.valueChanged}
+              validator={this.props.validator}
+              navigation={this.props.navigation}
+              currentProcess={this.props.currentProcess}
+              currentStep={this.props.currentStep}
+            />
+          }
+        />
       );
       /*jshint ignore:end*/
     }
   }
 
-  return withLogger(FurmlySection);
+  return { getComponent: () => withLogger(FurmlySection), FurmlySection };
 };

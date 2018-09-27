@@ -332,8 +332,14 @@ export default (Layout, Picker, ProgressBar, Container) => {
   }
 
   FurmlySelectSet.notifyExtra = true;
-  return connect(
+  return {
+    getComponent: () =>
+      connect(
+        mapStateToProps,
+        mapDispatchToProps
+      )(withLogger(FurmlySelectSet)),
+    FurmlySelectSet,
     mapStateToProps,
     mapDispatchToProps
-  )(withLogger(FurmlySelectSet));
+  };
 };

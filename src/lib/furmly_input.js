@@ -214,5 +214,5 @@ export default (LabelWrapper, Input, DatePicker, Checkbox) => {
   FurmlyInput.propTypes = {
     valueChanged: PropTypes.func
   };
-  return withLogger(FurmlyInput);
+  return { getComponent: () => withLogger(FurmlyInput), FurmlyInput };
 };

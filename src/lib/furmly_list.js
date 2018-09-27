@@ -276,7 +276,7 @@ export default (
             // 	this.getListItemDataTemplate(items);
           })
           .catch(er => {
-this.props.log(er);
+            this.props.log(er);
           });
         return;
       }
@@ -359,43 +359,55 @@ this.props.log(er);
 
       return (
         /*jshint ignore:start */
-        <Layout value={this.props.label} description={this.props.description}>
-          <Button disabled={disabled} click={this.showModal} />
-          <List
-            items={this.props.items}
-            rowClicked={this.edit}
-            rowRemoved={this.remove}
-            rowTemplate={
-              this.props.args.rowTemplate &&
-              JSON.parse(this.props.args.rowTemplate)
-            }
-            disabled={disabled}
-          />
-          <ErrorText value={this.state.errors} />
-          <Modal
-            template={
-              <Container
-                elements={this.state.itemTemplate}
-                value={this.state.edit}
-                name={FurmlyList.modalName()}
-                validator={this.state.validator}
-                valueChanged={this.valueChanged}
-                navigation={this.props.navigation}
-                currentProcess={this.props.currentProcess}
-                currentStep={this.props.currentStep}
-              />
-            }
-            visibility={this.state.modalVisible}
-            done={this.closeModal}
-          />
-        </Layout>
+        <Layout
+          value={this.props.label}
+          description={this.props.description}
+          addButton={<Button disabled={disabled} click={this.showModal} />}
+          list={
+            <List
+              items={this.props.items}
+              rowClicked={this.edit}
+              rowRemoved={this.remove}
+              rowTemplate={
+                this.props.args.rowTemplate &&
+                JSON.parse(this.props.args.rowTemplate)
+              }
+              disabled={disabled}
+            />
+          }
+          errorText={<ErrorText value={this.state.errors} />}
+          modal={
+            <Modal
+              template={
+                <Container
+                  elements={this.state.itemTemplate}
+                  value={this.state.edit}
+                  name={FurmlyList.modalName()}
+                  validator={this.state.validator}
+                  valueChanged={this.valueChanged}
+                  navigation={this.props.navigation}
+                  currentProcess={this.props.currentProcess}
+                  currentStep={this.props.currentStep}
+                />
+              }
+              visibility={this.state.modalVisible}
+              done={this.closeModal}
+            />
+          }
+        />
         /*jshint ignore:end */
       );
     }
   }
 
-  return connect(
+  return {
+    getComponent: () =>
+      connect(
+        mapStateToProps,
+        mapDispatchToProps
+      )(withLogger(FurmlyList)),
     mapStateToProps,
-    mapDispatchToProps
-  )(withLogger(FurmlyList));
+    mapDispatchToProps,
+    FurmlyList
+  };
 };

@@ -134,7 +134,7 @@ export default (ProgressIndicator, Layout, Container) => {
     componentDidMount() {
       this._mounted = true;
       if (!this.props.items) {
-this.props.log(
+        this.props.log(
           "fetching items in componentDidMount for current:" + this.props.name
         );
         this.fetchItems(
@@ -168,9 +168,9 @@ this.props.log(
     render() {
       /*jshint ignore:start*/
 
-this.props.log(`rendering ${this.props.name}`);
+      this.props.log(`rendering ${this.props.name}`);
       if (this.isEmptyOrNull(this.props.items)) {
-this.props.log(`${this.props.name} is empty`);
+        this.props.log(`${this.props.name} is empty`);
         return <ProgressIndicator />;
       }
       return (
@@ -197,8 +197,14 @@ this.props.log(`${this.props.name} is empty`);
     }
   }
 
-  return connect(
+  return {
+    getComponent: () =>
+      connect(
+        mapStateToProps,
+        mapDispatchToProps
+      )(withLogger(FurmlySelect)),
+    FurmlySelect,
     mapStateToProps,
     mapDispatchToProps
-  )(withLogger(FurmlySelect));
+  };
 };

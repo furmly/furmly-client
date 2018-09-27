@@ -4,7 +4,7 @@ import invariants from "./utils/invariants";
 export default Image => {
   invariants.validComponent(Image, "Image");
 
-  return withLogger(props => {
+  const FurmlyImage = props => {
     let { value, args, ...rest } = props;
     if (value && props.args.type == "URL") {
       let data = props.args.config.data.replace(
@@ -16,5 +16,6 @@ export default Image => {
       return <Image args={args} {...rest} />;
     }
     return <Image {...props} />;
-  }, "Image");
+  };
+  return { getComponent: () => withLogger(FurmlyImage), FurmlyImage };
 };

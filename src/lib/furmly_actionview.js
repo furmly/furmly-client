@@ -85,39 +85,49 @@ export default (
       let { [contentViewName]: contentValue = {}, ...rest } =
         this.props.value || {};
       return (
-        <Layout>
-          <Filter
-            actionLabel={this.props.args.commandText}
-            filter={this.filter}
-          >
-            <FilterContainer
-              elements={this.props.args.elements}
-              value={rest}
-              name={itemViewName}
-              validator={this.state._filterValidator}
-              valueChanged={this.filterValueChanged}
+        <Layout
+          filter={
+            <Filter
+              actionLabel={this.props.args.commandText}
+              filter={this.filter}
+            >
+              <FilterContainer
+                elements={this.props.args.elements}
+                value={rest}
+                name={itemViewName}
+                validator={this.state._filterValidator}
+                valueChanged={this.filterValueChanged}
+                navigation={this.props.navigation}
+                currentProcess={this.props.currentProcess}
+                currentStep={this.props.currentStep}
+              />
+            </Filter>
+          }
+          content={
+            <ContentContainer
+              name={contentViewName}
+              elements={this.props.resultUI}
+              value={contentValue}
+              validator={this.state.validator}
+              valueChanged={this.valueChanged}
               navigation={this.props.navigation}
               currentProcess={this.props.currentProcess}
               currentStep={this.props.currentStep}
             />
-          </Filter>
-          <ContentContainer
-            name={contentViewName}
-            elements={this.props.resultUI}
-            value={contentValue}
-            validator={this.state.validator}
-            valueChanged={this.valueChanged}
-            navigation={this.props.navigation}
-            currentProcess={this.props.currentProcess}
-            currentStep={this.props.currentStep}
-          />
-        </Layout>
+          }
+        />
       );
     }
   }
 
-  return connect(
-    mapStateToProps,
-    mapDispatchToProps
-  )(withLogger(FurmlyActionView));
+  return {
+    getComponent: () =>
+      connect(
+        mapStateToProps,
+        mapDispatchToProps
+      )(withLogger(FurmlyActionView)),
+    FurmlyActionView,
+    mapDispatchToProps,
+    mapStateToProps
+  };
 };

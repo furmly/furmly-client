@@ -97,7 +97,7 @@ export default (Uploader, ProgressBar, Text, previews = []) => {
       this.props.upload(file, this.props.component_uid);
     }
     render() {
-this.props.log(`render called for ${this.props.name}`);
+      this.props.log(`render called for ${this.props.name}`);
       if (this.props.busy) return <ProgressBar />;
       if (!this._supported)
         return <Text message={"unsupported file upload type"} />;
@@ -137,8 +137,14 @@ this.props.log(`render called for ${this.props.name}`);
     };
   };
 
-  return connect(
-    mapStateToProps,
-    mapDispatchToProps
-  )(withLogger(FurmlyFileUpload));
+  return {
+    getComponent: () =>
+      connect(
+        mapStateToProps,
+        mapDispatchToProps
+      )(withLogger(FurmlyFileUpload)),
+    mapDispatchToProps,
+    mapDispatchToProps,
+    FurmlyFileUpload
+  };
 };

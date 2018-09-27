@@ -78,7 +78,6 @@ export default (
     var result = state.furmly.view[component_uid];
     return {
       component_uid,
-
       items: result && result.data ? result.data.items : null,
       total: result && result.data ? result.data.total : 0,
       busy: result && !!result.fetchingGrid,
@@ -260,7 +259,7 @@ export default (
           this.getItemsFromSource(this.getFilterValue(), "filterGrid");
         },
         () => {
-this.props.log("a field in filter is invalid");
+          this.props.log("a field in filter is invalid");
         }
       );
     }
@@ -482,8 +481,7 @@ this.props.log("a field in filter is invalid");
     render() {
       this.props.log("rendering..");
 
-      let args = this.props.args,
-        header = this.props.filterTemplate ? (
+      let header = this.props.filterTemplate ? (
           <Header filter={() => this.filter()}>
             <Container
               elements={this.props.filterTemplate}
@@ -502,77 +500,91 @@ this.props.log("a field in filter is invalid");
         footer = !this.finished() && this.props.busy ? <ProgressBar /> : null;
 
       return (
-        <Layout>
-          <List
-            title={this.props.label}
-            canAddOrEdit={this.isCRUD()}
-            header={header}
-            footer={footer}
-            total={this.props.total}
-            showItemView={this.showItemView}
-            items={this.props.items}
-            templateConfig={
-              this.props.args.templateConfig
-                ? JSON.parse(this.props.args.templateConfig)
-                : null
-            }
-            more={this.more}
-            autoFetch={!this.props.args.dontAutoFetchFromSource}
-            commands={this.props.args.commands}
-            execCommand={this.execCommand}
-            openCommandMenu={this.openCommandMenu}
-            busy={!this.finished() && this.props.busy}
-          />
-          <ItemView
-            visibility={
-              (this.isCRUD() || this.isEDITONLY()) && this.state.showItemView
-            }
-            done={this.done}
-            busy={
-              this.props.fetchingSingleItem || this.props.fetchingItemTemplate
-            }
-            template={
-              <Container
-                elements={this.state.itemViewElements}
-                value={this.getItemValue()}
-                name={FurmlyGrid.itemViewName()}
-                validator={this.state.validator}
-                valueChanged={this.itemValueChanged}
-                navigation={this.props.navigation}
-                currentProcess={this.props.currentProcess}
-                currentStep={this.props.currentStep}
-              />
-            }
-          />
-          <CommandsView
-            visibility={this.state.showCommandsView}
-            close={this.closeCommandView}
-            commands={this.props.args.commands}
-            execCommand={this.execCommand}
-          />
-          <CommandResultView
-            visibility={this.state.showCommandResultView}
-            done={this.closeCommandResult}
-            template={
-              <Container
-                elements={this.state.commandResult}
-                name={FurmlyGrid.commandResultViewName()}
-                validator={{}}
-                navigation={this.props.navigation}
-                currentProcess={this.props.currentProcess}
-                currentStep={this.props.currentStep}
-              />
-            }
-            title={""}
-            busy={this.props.commandProcessing}
-          />
-        </Layout>
+        <Layout
+          list={
+            <List
+              title={this.props.label}
+              canAddOrEdit={this.isCRUD()}
+              header={header}
+              footer={footer}
+              total={this.props.total}
+              showItemView={this.showItemView}
+              items={this.props.items}
+              templateConfig={
+                this.props.args.templateConfig
+                  ? JSON.parse(this.props.args.templateConfig)
+                  : null
+              }
+              more={this.more}
+              autoFetch={!this.props.args.dontAutoFetchFromSource}
+              commands={this.props.args.commands}
+              execCommand={this.execCommand}
+              openCommandMenu={this.openCommandMenu}
+              busy={!this.finished() && this.props.busy}
+            />
+          }
+          itemView={
+            <ItemView
+              visibility={
+                (this.isCRUD() || this.isEDITONLY()) && this.state.showItemView
+              }
+              done={this.done}
+              busy={
+                this.props.fetchingSingleItem || this.props.fetchingItemTemplate
+              }
+              template={
+                <Container
+                  elements={this.state.itemViewElements}
+                  value={this.getItemValue()}
+                  name={FurmlyGrid.itemViewName()}
+                  validator={this.state.validator}
+                  valueChanged={this.itemValueChanged}
+                  navigation={this.props.navigation}
+                  currentProcess={this.props.currentProcess}
+                  currentStep={this.props.currentStep}
+                />
+              }
+            />
+          }
+          commandsView={
+            <CommandsView
+              visibility={this.state.showCommandsView}
+              close={this.closeCommandView}
+              commands={this.props.args.commands}
+              execCommand={this.execCommand}
+            />
+          }
+          commandResultView={
+            <CommandResultView
+              visibility={this.state.showCommandResultView}
+              done={this.closeCommandResult}
+              template={
+                <Container
+                  elements={this.state.commandResult}
+                  name={FurmlyGrid.commandResultViewName()}
+                  validator={{}}
+                  navigation={this.props.navigation}
+                  currentProcess={this.props.currentProcess}
+                  currentStep={this.props.currentStep}
+                />
+              }
+              title={""}
+              busy={this.props.commandProcessing}
+            />
+          }
+        />
       );
     }
   }
 
-  return connect(
+  return {
+    getComponent: () =>
+      connect(
+        mapStateToProps,
+        mapDispatchToProps
+      )(withLogger(FurmlyGrid)),
+    FurmlyGrid,
     mapStateToProps,
     mapDispatchToProps
-  )(withLogger(FurmlyGrid));
+  };
 };

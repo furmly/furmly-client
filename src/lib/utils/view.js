@@ -4,7 +4,7 @@ export function getTitleFromState(state) {
 		state.furmly.navigation.stack[state.furmly.navigation.stack.length - 1]
 			.params.id;
 
-	if (!id) return "School Manager";
+	if (!id) return "Furmly";
 	return (
 		(state.furmly.view[id] &&
 			state.furmly.view[`${id}-busy`] &&
@@ -17,7 +17,7 @@ export function getTitleFromState(state) {
 		(state.furmly.view[id] &&
 			state.furmly.view[id].description &&
 			state.furmly.view[id].description.title) ||
-		"School Manager"
+		"Furmly"
 	);
 }
 
@@ -74,7 +74,6 @@ export function isValidKey(key) {
 export function runThroughObj(conditions, data, result = {}, parent = null) {
 	if (data)
 		Object.keys(data).forEach(key => {
-			let send = false;
 			for (var v = 0; v < conditions.length; v++) {
 				if (conditions[v](key, data, result, parent)) return result;
 			}

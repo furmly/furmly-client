@@ -65,8 +65,13 @@ export default (Link, customDownloadCommand) => {
     }
   }
   FurmlyCommand.COMMAND_TYPE = { DEFAULT: "DEFAULT", DOWNLOAD: "DOWNLOAD" };
-  return connect(
-    null,
-    mapDispatchToState
-  )(withLogger(FurmlyCommand));
+  return {
+    getComponent: () =>
+      connect(
+        null,
+        mapDispatchToState
+      )(withLogger(FurmlyCommand)),
+    mapDispatchToState,
+    FurmlyCommand
+  };
 };

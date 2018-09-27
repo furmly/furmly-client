@@ -18,7 +18,7 @@ export default (Link, NavigationActions) => {
     };
   };
 
-  //{text:"link text",type:"FURMLY or CLIENT",config:{value:""}}
+
   class FurmlyNav extends Component {
     constructor(props) {
       super(props);
@@ -91,8 +91,15 @@ export default (Link, NavigationActions) => {
     }
   }
   FurmlyNav.NAV_TYPE = { CLIENT: "CLIENT", FURMLY: "FURMLY" };
-  return connect(
-    mapStateToProps,
-    mapDispatchToState
-  )(withLogger(FurmlyNav));
+
+  return {
+    getComponent: () =>
+      connect(
+        mapStateToProps,
+        mapDispatchToState
+      )(withLogger(FurmlyNav)),
+    FurmlyNav,
+    mapDispatchToState,
+    mapStateToProps
+  };
 };

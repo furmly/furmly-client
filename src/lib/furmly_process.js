@@ -2,6 +2,7 @@ import React, { Component } from "react";
 import { connect } from "react-redux";
 import { fetchFurmlyProcess, runFurmlyProcess } from "./actions";
 import _ from "lodash";
+import PropTypes from "prop-types";
 import invariants from "./utils/invariants";
 import withLogger from "./furmly_base";
 /**
@@ -97,13 +98,20 @@ export default (ProgressBar, TextView, FurmlyView) => {
       /*jshint ignore:end */
     }
   }
-  // FurmlyProcess.propTypes = {
-  // 	id: React.PropTypes.string.isRequired,
-  // 	fetchParams: React.PropTypes.object,
-  // 	description: React.PropTypes.object
-  // };
-  return connect(
+
+  FurmlyProcess.propTypes = {
+    id: PropTypes.string.isRequired,
+    fetchParams: PropTypes.object,
+    description: PropTypes.object
+  };
+  return {
+    getComponent: () =>
+      connect(
+        mapStateToProps,
+        mapDispatchToProps
+      )(withLogger(FurmlyProcess)),
+    FurmlyProcess,
     mapStateToProps,
     mapDispatchToProps
-  )(withLogger(FurmlyProcess));
+  };
 };
