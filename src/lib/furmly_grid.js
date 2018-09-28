@@ -110,6 +110,7 @@ export default (
       super(props);
       this.state = {
         form: null,
+        selectedItems: {},
         validator: {},
         _filterValidator: {},
         showItemView: false,
@@ -449,6 +450,33 @@ export default (
     openCommandMenu(item) {
       this.setState({ item: item, showCommandsView: true });
     }
+    selectItem(item) {
+      const selectedItems = Object.assign({}, this.state.selectedItems);
+      selectedItems[item._id] = item;
+      this.setState({
+        selectedItems
+      });
+    }
+    selectAllItems() {
+      this.setState({
+        selectAllItems: this.props.items.reduce((sum, x) => {
+          sum[x._id] = x;
+          return sum;
+        }, {})
+      });
+    }
+    clearSelectedItems() {
+      this.setState({
+        selectedItems: {}
+      });
+    }
+    unSelectItem(item) {
+      const selectedItems = Object.assign({}, this.state.selectedItems);
+      delete selectedItems[item._id];
+      this.setState({
+        selectedItems
+      });
+    }
     execCommand(command, item = this.state.item) {
       switch (command.commandType) {
         case "NAV":
@@ -465,7 +493,9 @@ export default (
             Object.assign(
               {},
               JSON.parse(this.props.args.gridArgs || "{}"),
-              item
+              Object.keys(this.state.selectedItems)
+                .map(x => this.state.selectedItems[x])
+                .concat(item)
             ),
             this.props.component_uid + FurmlyGrid.commandResultViewName()
           );
@@ -504,6 +534,11 @@ export default (
           list={
             <List
               title={this.props.label}
+              selectedItems={this.state.selectedItems}
+              selectItem={this.selectItem}
+              selectAllItems={this.selectAllItems}
+              clearSelectedItems={this.clearSelectedItems}
+              unSelectItem={this.unSelectItem}
               canAddOrEdit={this.isCRUD()}
               header={header}
               footer={footer}
