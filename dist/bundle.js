@@ -2901,6 +2901,7 @@ var furmly_grid = (function (Layout, List, ItemView, Header, ProgressBar, Comman
 
       _this.state = {
         form: null,
+        selectedItems: {},
         validator: {},
         _filterValidator: {},
         showItemView: false,
@@ -3161,8 +3162,45 @@ var furmly_grid = (function (Layout, List, ItemView, Header, ProgressBar, Comman
         this.setState({ item: item, showCommandsView: true });
       }
     }, {
+      key: "selectItem",
+      value: function selectItem(item) {
+        var selectedItems = Object.assign({}, this.state.selectedItems);
+        selectedItems[item._id] = item;
+        this.setState({
+          selectedItems: selectedItems
+        });
+      }
+    }, {
+      key: "selectAllItems",
+      value: function selectAllItems() {
+        this.setState({
+          selectAllItems: this.props.items.reduce(function (sum, x) {
+            sum[x._id] = x;
+            return sum;
+          }, {})
+        });
+      }
+    }, {
+      key: "clearSelectedItems",
+      value: function clearSelectedItems() {
+        this.setState({
+          selectedItems: {}
+        });
+      }
+    }, {
+      key: "unSelectItem",
+      value: function unSelectItem(item) {
+        var selectedItems = Object.assign({}, this.state.selectedItems);
+        delete selectedItems[item._id];
+        this.setState({
+          selectedItems: selectedItems
+        });
+      }
+    }, {
       key: "execCommand",
       value: function execCommand(command) {
+        var _this4 = this;
+
         var item = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : this.state.item;
 
         switch (command.commandType) {
@@ -3175,7 +3213,9 @@ var furmly_grid = (function (Layout, List, ItemView, Header, ProgressBar, Comman
             this.showItemView(ITEM_MODES.EDIT, item);
             break;
           case "PROCESSOR":
-            this.props.run(command.command.value, Object.assign({}, JSON.parse(this.props.args.gridArgs || "{}"), item), this.props.component_uid + FurmlyGrid.commandResultViewName());
+            this.props.run(command.command.value, Object.assign({}, JSON.parse(this.props.args.gridArgs || "{}"), Object.keys(this.state.selectedItems).map(function (x) {
+              return _this4.state.selectedItems[x];
+            }).concat(item)), this.props.component_uid + FurmlyGrid.commandResultViewName());
             break;
         }
       }
@@ -3192,14 +3232,14 @@ var furmly_grid = (function (Layout, List, ItemView, Header, ProgressBar, Comman
     }, {
       key: "__originalRenderMethod__",
       value: function __originalRenderMethod__() {
-        var _this4 = this;
+        var _this5 = this;
 
         this.props.log("rendering..");
 
         var header = this.props.filterTemplate ? React__default.createElement(
           Header,
           { filter: function filter() {
-              return _this4.filter();
+              return _this5.filter();
             } },
           React__default.createElement(Container, {
             elements: this.props.filterTemplate,
@@ -3217,6 +3257,11 @@ var furmly_grid = (function (Layout, List, ItemView, Header, ProgressBar, Comman
         return React__default.createElement(Layout, {
           list: React__default.createElement(List, {
             title: this.props.label,
+            selectedItems: this.state.selectedItems,
+            selectItem: this.selectItem,
+            selectAllItems: this.selectAllItems,
+            clearSelectedItems: this.clearSelectedItems,
+            unSelectItem: this.unSelectItem,
             canAddOrEdit: this.isCRUD(),
             header: header,
             footer: footer,
@@ -3291,6 +3336,7 @@ var furmly_grid = (function (Layout, List, ItemView, Header, ProgressBar, Comman
     getComponent: function getComponent() {
       return reactRedux.connect(mapStateToProps, mapDispatchToProps)(withLogger(FurmlyGrid));
     },
+    FurmlyGrid: FurmlyGrid,
     mapStateToProps: mapStateToProps,
     mapDispatchToProps: mapDispatchToProps
   };
@@ -3839,70 +3885,78 @@ var components = {
 	furmly_command: furmly_command
 };
 
-var defaultMap = {
-  INPUT: components.furmly_input,
-  VIEW: components.furmly_view,
-  CONTAINER: components.furmly_container,
-  PROCESS: components.furmly_process,
-  SECTION: components.furmly_section,
-  SELECT: components.furmly_select,
-  SELECTSET: components.furmly_selectset,
-  LIST: components.furmly_list,
-  HIDDEN: components.furmly_hidden,
-  NAV: components.furmly_nav,
-  IMAGE: components.furmly_image,
-  GRID: components.furmly_grid,
-  FILEUPLOAD: components.furmly_fileupload,
-  ACTIONVIEW: components.furmly_actionview,
-  HTMLVIEW: components.furmly_htmlview,
-  LABEL: components.furmly_label,
-  WEBVIEW: components.furmly_webview,
-  COMMAND: components.furmly_command,
-  recipes: {},
-  _defaultMap: {},
-  componentLocator: function componentLocator(interceptors) {
-    var _this = this;
+var createMap = function createMap() {
+  var _defaultMap = {};
+  var recipes = {};
+  return {
+    INPUT: components.furmly_input,
+    VIEW: components.furmly_view,
+    CONTAINER: components.furmly_container,
+    PROCESS: components.furmly_process,
+    SECTION: components.furmly_section,
+    SELECT: components.furmly_select,
+    SELECTSET: components.furmly_selectset,
+    LIST: components.furmly_list,
+    HIDDEN: components.furmly_hidden,
+    NAV: components.furmly_nav,
+    IMAGE: components.furmly_image,
+    GRID: components.furmly_grid,
+    FILEUPLOAD: components.furmly_fileupload,
+    ACTIONVIEW: components.furmly_actionview,
+    HTMLVIEW: components.furmly_htmlview,
+    LABEL: components.furmly_label,
+    WEBVIEW: components.furmly_webview,
+    COMMAND: components.furmly_command,
+    addRecipe: function addRecipe(name, recipe) {
+      recipes[name] = recipe;
+    },
+    removeRecipe: function removeRecipe(name) {
+      recipes[name] = _defaultMap[name];
+    },
+    componentLocator: function componentLocator(interceptors) {
+      var _this = this;
 
-    return function (context) {
-      var control = void 0;
-      if (interceptors) control = interceptors(context, _this, _this._defaultMap);
-      if (!control) {
-        if (context.uid) {
-          if (_this[context.uid]) return _this[context.uid];
-          var upper = context.uid.toUpperCase();
-          if (_this[upper]) return _this[upper];
+      return function (context) {
+        var control = void 0;
+        if (interceptors) control = interceptors(context, _this, _defaultMap);
+        if (!control) {
+          if (context.uid) {
+            if (_this[context.uid]) return _this[context.uid];
+            var upper = context.uid.toUpperCase();
+            if (_this[upper]) return _this[upper];
+          }
+          return _this[context.elementType];
         }
-        return _this[context.elementType];
-      }
-      return control;
-    };
-  },
-  cook: function cook(name, recipe, customName) {
-    var _this2 = this;
+        return control;
+      };
+    },
+    cook: function cook(name, recipe, customName) {
+      var _this2 = this;
 
-    if (name && recipe) {
-      if (!Array.prototype.isPrototypeOf(recipe)) {
-        throw new Error("Recipe must be an array");
-      }
-      if (!this._defaultMap[name]) throw new Error("Cannot find any recipe for that element");
-      if (name == customName) {
-        console.warn("Custom name will override default recipe");
+      if (name && recipe) {
+        if (!Array.prototype.isPrototypeOf(recipe)) {
+          throw new Error("Recipe must be an array");
+        }
+        if (!_defaultMap[name]) throw new Error("Cannot find any recipe for that element");
+        if (name == customName) {
+          console.warn("Custom name will override default recipe");
+        }
+
+        var cooked = _defaultMap[name].apply(null, recipe);
+        if (customName) this[customName] = cooked;
+        return cooked;
       }
 
-      var cooked = this._defaultMap[name].apply(null, recipe);
-      if (customName) this[customName] = cooked;
-      return cooked;
+      if (!this._cooked) {
+        this._cooked = true;
+        Object.keys(recipes).forEach(function (recipe) {
+          _defaultMap[recipe] = _this2[recipe];
+          _this2[recipe] = _this2[recipe].apply(null, recipes[recipe]);
+        });
+      }
+      return this;
     }
-
-    if (!this._cooked) {
-      this._cooked = true;
-      Object.keys(this.recipes).forEach(function (recipe) {
-        _this2._defaultMap[recipe] = _this2[recipe];
-        _this2[recipe] = _this2[recipe].apply(null, _this2.recipes[recipe]);
-      });
-    }
-    return this;
-  }
+  };
 };
 
 function view$1 () {
@@ -4259,7 +4313,7 @@ var index$2 = {
 	view: view
 };
 
-exports.default = defaultMap;
+exports.default = createMap;
 exports.reducers = index$1;
 exports.toggleAllBusyIndicators = toggleAllBusyIndicators;
 exports.actionEnhancers = index;
