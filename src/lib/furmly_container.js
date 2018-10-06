@@ -1,5 +1,6 @@
 import React, { Component } from "react";
 import invariants from "./utils/invariants";
+import withLogger from "./furmly_base";
 
 export default (...args) => {
   //invariants

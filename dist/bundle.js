@@ -296,15 +296,15 @@ var withLogger$1 = (function (WrappedComponent) {
     }
 
     createClass(HOCComponent, [{
-      key: "componentDidMount",
-      value: function componentDidMount() {
-        this.logger = debug("furmly-client:" + this._constructor.name);
-        this.props.log("componentDidMount");
+      key: "componentWillMount",
+      value: function componentWillMount() {
+        this.logger = debug("furmly-client:" + this.constructor.name);
+        this.log("componentDidMount");
       }
     }, {
       key: "componentWillUnmount",
       value: function componentWillUnmount() {
-        this.props.log("componentWillUnmount");
+        this.log("componentWillUnmount");
         this.logger = null;
       }
     }, {
@@ -315,7 +315,7 @@ var withLogger$1 = (function (WrappedComponent) {
     }, {
       key: "__originalRenderMethod__",
       value: function __originalRenderMethod__() {
-        this.props.log("render");
+        this.log("render");
         return React__default.createElement(WrappedComponent, _extends({}, this.props, { log: this.log }));
       }
     }]);
@@ -1445,7 +1445,7 @@ var furmly_container = (function () {
 
   return {
     getComponent: function getComponent() {
-      return withLogger(FurmlyContainer);
+      return withLogger$1(FurmlyContainer);
     },
     FurmlyContainer: FurmlyContainer
   };
@@ -3256,6 +3256,7 @@ var furmly_grid = (function (Layout, List, ItemView, Header, ProgressBar, Comman
 
         return React__default.createElement(Layout, {
           list: React__default.createElement(List, {
+            key: "grid_list",
             title: this.props.label,
             selectedItems: this.state.selectedItems,
             selectItem: this.selectItem,
@@ -3277,6 +3278,7 @@ var furmly_grid = (function (Layout, List, ItemView, Header, ProgressBar, Comman
             busy: !this.finished() && this.props.busy
           }),
           itemView: React__default.createElement(ItemView, {
+            key: "grid_item_view",
             visibility: (this.isCRUD() || this.isEDITONLY()) && this.state.showItemView,
             done: this.done,
             busy: this.props.fetchingSingleItem || this.props.fetchingItemTemplate,
@@ -3292,12 +3294,14 @@ var furmly_grid = (function (Layout, List, ItemView, Header, ProgressBar, Comman
             })
           }),
           commandsView: React__default.createElement(CommandsView, {
+            key: "grid_commands_view",
             visibility: this.state.showCommandsView,
             close: this.closeCommandView,
             commands: this.props.args.commands,
             execCommand: this.execCommand
           }),
           commandResultView: React__default.createElement(CommandResultView, {
+            key: "grid_commands_result_view",
             visibility: this.state.showCommandResultView,
             done: this.closeCommandResult,
             template: React__default.createElement(Container, {
@@ -3334,7 +3338,7 @@ var furmly_grid = (function (Layout, List, ItemView, Header, ProgressBar, Comman
 
   return {
     getComponent: function getComponent() {
-      return reactRedux.connect(mapStateToProps, mapDispatchToProps)(withLogger(FurmlyGrid));
+      return reactRedux.connect(mapStateToProps, mapDispatchToProps)(withLogger$1(FurmlyGrid));
     },
     FurmlyGrid: FurmlyGrid,
     mapStateToProps: mapStateToProps,
@@ -3888,6 +3892,15 @@ var components = {
 var createMap = function createMap() {
   var _defaultMap = {};
   var recipes = {};
+  var isValidComponent = function isValidComponent(cooked) {
+    if (!React__default.Component.isPrototypeOf(cooked)) {
+      if (typeof cooked.getComponent !== "function") throw new Error("Custom component must either be a react component or have getComponent function return a valid react component");
+      cooked = cooked.getComponent();
+      console.log(cooked);
+      if (!React__default.Component.isPrototypeOf(cooked)) throw new Error("getComponent must return a valid react element");
+    }
+    return cooked;
+  };
   return {
     INPUT: components.furmly_input,
     VIEW: components.furmly_view,
@@ -3943,7 +3956,7 @@ var createMap = function createMap() {
         }
 
         var cooked = _defaultMap[name].apply(null, recipe);
-        if (customName) this[customName] = cooked;
+        if (customName) this[customName] = isValidComponent(cooked);
         return cooked;
       }
 
@@ -3951,7 +3964,8 @@ var createMap = function createMap() {
         this._cooked = true;
         Object.keys(recipes).forEach(function (recipe) {
           _defaultMap[recipe] = _this2[recipe];
-          _this2[recipe] = _this2[recipe].apply(null, recipes[recipe]);
+          var cooked = _this2[recipe].apply(null, recipes[recipe]);
+          _this2[recipe] = isValidComponent(cooked);
         });
       }
       return this;

@@ -1,5 +1,4 @@
 import React from "react";
-import FurmlyBase from "./furmly_base";
 import { connect } from "react-redux";
 import {
   runFurmlyProcessor,
@@ -12,6 +11,7 @@ import {
 } from "./actions";
 import invariants from "./utils/invariants";
 import { getKey, copy, getErrorKey } from "./utils/view";
+import withLogger from "./furmly_base";
 
 export const GRID_MODES = {
   CRUD: "CRUD",
@@ -533,6 +533,7 @@ export default (
         <Layout
           list={
             <List
+              key={"grid_list"}
               title={this.props.label}
               selectedItems={this.state.selectedItems}
               selectItem={this.selectItem}
@@ -560,6 +561,7 @@ export default (
           }
           itemView={
             <ItemView
+              key={"grid_item_view"}
               visibility={
                 (this.isCRUD() || this.isEDITONLY()) && this.state.showItemView
               }
@@ -583,6 +585,7 @@ export default (
           }
           commandsView={
             <CommandsView
+              key={"grid_commands_view"}
               visibility={this.state.showCommandsView}
               close={this.closeCommandView}
               commands={this.props.args.commands}
@@ -591,6 +594,7 @@ export default (
           }
           commandResultView={
             <CommandResultView
+              key={"grid_commands_result_view"}
               visibility={this.state.showCommandResultView}
               done={this.closeCommandResult}
               template={

@@ -8,19 +8,19 @@ export default WrappedComponent => {
       super(props);
       this.log = this.log.bind(this);
     }
-    componentDidMount() {
-      this.logger = debug(`furmly-client:${this._constructor.name}`);
-      this.props.log("componentDidMount");
+    componentWillMount() {
+      this.logger = debug(`furmly-client:${this.constructor.name}`);
+      this.log("componentDidMount");
     }
     componentWillUnmount() {
-      this.props.log("componentWillUnmount");
+      this.log("componentWillUnmount");
       this.logger = null;
     }
     log(m) {
       this.logger(`${m}:::${this.props.name}`);
     }
     render() {
-      this.props.log("render");
+      this.log("render");
       return <WrappedComponent {...this.props} log={this.log} />;
     }
   }

@@ -1,7 +1,21 @@
+import React from "react";
 import components from "./lib";
 const createMap = () => {
   const _defaultMap = {};
   const recipes = {};
+  const isValidComponent = cooked => {
+    if (!React.Component.isPrototypeOf(cooked)) {
+      if (typeof cooked.getComponent !== "function")
+        throw new Error(
+          "Custom component must either be a react component or have getComponent function return a valid react component"
+        );
+      cooked = cooked.getComponent();
+      console.log(cooked);
+      if (!React.Component.isPrototypeOf(cooked))
+        throw new Error("getComponent must return a valid react element");
+    }
+    return cooked;
+  };
   return {
     INPUT: components.furmly_input,
     VIEW: components.furmly_view,
@@ -54,7 +68,7 @@ const createMap = () => {
         }
 
         let cooked = _defaultMap[name].apply(null, recipe);
-        if (customName) this[customName] = cooked;
+        if (customName) this[customName] = isValidComponent(cooked);
         return cooked;
       }
 
@@ -62,7 +76,8 @@ const createMap = () => {
         this._cooked = true;
         Object.keys(recipes).forEach(recipe => {
           _defaultMap[recipe] = this[recipe];
-          this[recipe] = this[recipe].apply(null, recipes[recipe]);
+          let cooked = this[recipe].apply(null, recipes[recipe]);
+          this[recipe] = isValidComponent(cooked);
         });
       }
       return this;
