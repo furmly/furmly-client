@@ -3901,7 +3901,7 @@ var createMap = function createMap() {
     }
     return cooked;
   };
-  return {
+  var api = {
     INPUT: components.furmly_input,
     VIEW: components.furmly_view,
     CONTAINER: components.furmly_container,
@@ -3971,6 +3971,12 @@ var createMap = function createMap() {
       return this;
     }
   };
+  Object.keys(api).map(function (key) {
+    if (key[0] == key[0].toUpperCase()) {
+      api["add" + key + "Recipe"] = api.addRecipe.bind(null, key);
+    }
+  });
+  return api;
 };
 
 function view$1 () {

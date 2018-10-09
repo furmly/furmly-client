@@ -16,7 +16,7 @@ const createMap = () => {
     }
     return cooked;
   };
-  return {
+  const api = {
     INPUT: components.furmly_input,
     VIEW: components.furmly_view,
     CONTAINER: components.furmly_container,
@@ -83,6 +83,12 @@ const createMap = () => {
       return this;
     }
   };
+  Object.keys(api).map(key => {
+    if (key[0] == key[0].toUpperCase()) {
+      api[`add${key}Recipe`] = api.addRecipe.bind(null, key);
+    }
+  });
+  return api;
 };
 
 export default createMap;
