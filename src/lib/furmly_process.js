@@ -38,6 +38,7 @@ export default (ProgressBar, TextView, FurmlyView) => {
     };
   };
 
+
   class FurmlyProcess extends Component {
     constructor(props) {
       super(props);

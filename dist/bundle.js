@@ -11,8 +11,11 @@ var hoistNonReactStatic = _interopDefault(require('hoist-non-react-statics'));
 var PropTypes = _interopDefault(require('prop-types'));
 var _ = _interopDefault(require('lodash'));
 var config = _interopDefault(require('client_config'));
-var CALL_API = _interopDefault(require('call_api'));
+var reduxApiMiddleware = require('redux-api-middleware');
 var reactRedux = require('react-redux');
+var redux = require('redux');
+var createActionEnhancerMiddleware = _interopDefault(require('redux-action-enhancer'));
+var thunkMiddleware = _interopDefault(require('redux-thunk'));
 
 var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol" ? function (obj) {
   return typeof obj;
@@ -637,52 +640,56 @@ var MemCache = function () {
 }();
 
 var ACTIONS = {
-	VALUE_CHANGED: "VALUE_CHANGED",
-	GET_REFRESH_TOKEN: "GET_REFRESH_TOKEN",
-	GOT_REFRESH_TOKEN: "GOT_REFRESH_TOKEN",
-	FAILED_TO_GET_REFRESH_TOKEN: "FAILED_TO_GET_REFRESH_TOKEN",
-	CLEAR_STACK: "CLEAR_STACK",
-	REPLACE_STACK: "REPLACE_STACK",
-	SET_FURMLY_PARAMS: "SET_FURMLY_PARAMS",
-	REMOVE_LAST_FURMLY_PARAMS: "REMOVE_LAST_FURMLY_PARAMS",
-	ALREADY_VISIBLE: "ALREADY_VISIBLE",
-	CLEAR_DATA: "CLEAR_DATA",
-	ADD_NAVIGATION_CONTEXT: "ADD_NAVIGATION_CONTEXT",
-	REMOVE_NAVIGATION_CONTEXT: "REMOVE_NAVIGATION_CONTEXT",
-	OPEN_CONFIRMATION: "OPEN_CONFIRMATION",
-	FETCHED_PROCESS: "FETCHED_PROCESS",
-	FAILED_TO_FETCH_PROCESS: "FAILED_TO_FETCH_PROCESS",
-	FETCHING_PROCESS: "FETCHING_PROCESS",
-	SESSION_MAY_HAVE_EXPIRED: "SESSION_MAY_HAVE_EXPIRED",
-	FETCHING_GRID: "FETCHING_GRID",
-	GET_SINGLE_ITEM_FOR_GRID: "GET_SINGLE_ITEM_FOR_GRID",
-	GOT_SINGLE_ITEM_FOR_GRID: "GOT_SINGLE_ITEM_FOR_GRID",
-	ERROR_WHILE_GETTING_SINGLE_ITEM_FOR_GRID: "ERROR_WHILE_GETTING_SINGLE_ITEM_FOR_GRID",
-	FURMLY_GET_MORE_FOR_GRID: "FURMLY_GET_MORE_FOR_GRID",
-	ERROR_WHILE_FETCHING_GRID: "ERROR_WHILE_FETCHING_GRID",
-	FILTERED_GRID: "FILTERED_GRID",
-	FURMLY_PROCESSOR_RUNNING: "FURMLY_PROCESSOR_RUNNING",
-	FURMLY_PROCESSOR_RAN: "FURMLY_PROCESSOR_RAN",
-	FURMLY_PROCESSOR_FAILED: "FURMLY_PROCESSOR_FAILED",
-	FURMLY_PROCESS_RUNNING: "FURMLY_PROCESS_RUNNING",
-	FURMLY_PROCESS_RAN: "FURMLY_PROCESS_RAN",
-	FURMLY_PROCESS_FAILED: "FURMLY_PROCESS_FAILED",
-	API_ERROR: "API_ERROR",
-	START_FILE_UPLOAD: "START_FILE_UPLOAD",
-	FILE_UPLOADED: "FILE_UPLOADED",
-	FILE_UPLOAD_FAILED: "FILE_UPLOAD_FAILED",
-	GET_PREVIEW: "GET_PREVIEW",
-	GOT_PREVIEW: "GOT_PREVIEW",
-	FAILED_TO_GET_PREVIEW: "FAILED_TO_GET_PREVIEW",
-	GET_ITEM_TEMPLATE: "GET_ITEM_TEMPLATE",
-	GOT_ITEM_TEMPLATE: "GOT_ITEM_TEMPLATE",
-	FAILED_TO_GET_ITEM_TEMPLATE: "FAILED_TO_GET_ITEM_TEMPLATE",
-	GET_FILTER_TEMPLATE: "GET_FILTER_TEMPLATE",
-	GOT_FILTER_TEMPLATE: "GOT_FILTER_TEMPLATE",
-	FAILED_TO_GET_FILTER_TEMPLATE: "FAILED_TO_GET_FILTER_TEMPLATE",
-	ADD_TO_OPEN_CHATS: "ADD_TO_OPEN_CHATS",
-	NEW_MESSAGE: "NEW_MESSAGE",
-	NEW_GROUP_MESSAGE: "NEW_GROUP_MESSAGE"
+  SIGN_OUT: "SIGN_OUT",
+  VALUE_CHANGED: "VALUE_CHANGED",
+  GET_REFRESH_TOKEN: "GET_REFRESH_TOKEN",
+  GOT_REFRESH_TOKEN: "GOT_REFRESH_TOKEN",
+  FAILED_TO_GET_REFRESH_TOKEN: "FAILED_TO_GET_REFRESH_TOKEN",
+  CLEAR_STACK: "CLEAR_STACK",
+  REPLACE_STACK: "REPLACE_STACK",
+  SET_FURMLY_PARAMS: "SET_FURMLY_PARAMS",
+  REMOVE_LAST_FURMLY_PARAMS: "REMOVE_LAST_FURMLY_PARAMS",
+  ALREADY_VISIBLE: "ALREADY_VISIBLE",
+  CLEAR_DATA: "CLEAR_DATA",
+  ADD_NAVIGATION_CONTEXT: "ADD_NAVIGATION_CONTEXT",
+  REMOVE_NAVIGATION_CONTEXT: "REMOVE_NAVIGATION_CONTEXT",
+  OPEN_CONFIRMATION: "OPEN_CONFIRMATION",
+  FETCHED_PROCESS: "FETCHED_PROCESS",
+  FAILED_TO_FETCH_PROCESS: "FAILED_TO_FETCH_PROCESS",
+  FETCHING_PROCESS: "FETCHING_PROCESS",
+  SESSION_MAY_HAVE_EXPIRED: "SESSION_MAY_HAVE_EXPIRED",
+  FETCHING_GRID: "FETCHING_GRID",
+  GET_SINGLE_ITEM_FOR_GRID: "GET_SINGLE_ITEM_FOR_GRID",
+  GOT_SINGLE_ITEM_FOR_GRID: "GOT_SINGLE_ITEM_FOR_GRID",
+  ERROR_WHILE_GETTING_SINGLE_ITEM_FOR_GRID: "ERROR_WHILE_GETTING_SINGLE_ITEM_FOR_GRID",
+  FURMLY_GET_MORE_FOR_GRID: "FURMLY_GET_MORE_FOR_GRID",
+  ERROR_WHILE_FETCHING_GRID: "ERROR_WHILE_FETCHING_GRID",
+  FILTERED_GRID: "FILTERED_GRID",
+  FURMLY_PROCESSOR_RUNNING: "FURMLY_PROCESSOR_RUNNING",
+  FURMLY_PROCESSOR_RAN: "FURMLY_PROCESSOR_RAN",
+  FURMLY_PROCESSOR_FAILED: "FURMLY_PROCESSOR_FAILED",
+  FURMLY_PROCESS_RUNNING: "FURMLY_PROCESS_RUNNING",
+  FURMLY_PROCESS_RAN: "FURMLY_PROCESS_RAN",
+  FURMLY_PROCESS_FAILED: "FURMLY_PROCESS_FAILED",
+  API_ERROR: "API_ERROR",
+  START_FILE_UPLOAD: "START_FILE_UPLOAD",
+  FILE_UPLOADED: "FILE_UPLOADED",
+  FILE_UPLOAD_FAILED: "FILE_UPLOAD_FAILED",
+  GET_PREVIEW: "GET_PREVIEW",
+  GOT_PREVIEW: "GOT_PREVIEW",
+  FAILED_TO_GET_PREVIEW: "FAILED_TO_GET_PREVIEW",
+  GET_ITEM_TEMPLATE: "GET_ITEM_TEMPLATE",
+  GOT_ITEM_TEMPLATE: "GOT_ITEM_TEMPLATE",
+  FAILED_TO_GET_ITEM_TEMPLATE: "FAILED_TO_GET_ITEM_TEMPLATE",
+  GET_FILTER_TEMPLATE: "GET_FILTER_TEMPLATE",
+  GOT_FILTER_TEMPLATE: "GOT_FILTER_TEMPLATE",
+  FAILED_TO_GET_FILTER_TEMPLATE: "FAILED_TO_GET_FILTER_TEMPLATE",
+  ADD_TO_OPEN_CHATS: "ADD_TO_OPEN_CHATS",
+  NEW_MESSAGE: "NEW_MESSAGE",
+  NEW_GROUP_MESSAGE: "NEW_GROUP_MESSAGE",
+  LOGIN: "LOGIN",
+  LOGGED_IN: "LOGGED_IN",
+  LOGIN_FAILED: "FAILED_LOGIN"
 };
 
 function navigation () {
@@ -761,7 +768,7 @@ var enhancers = [{
 		if (hasScreenAlready(state.furmly.navigation, action.payload)) return _extends({ hasScreenAlready: true }, action.payload);
 	}
 }];
-var index = (function () {
+var defaultActionEnhancers = (function () {
 	return enhancers;
 });
 
@@ -784,8 +791,8 @@ function copy(value) {
 }
 
 function getQueryParams(args) {
-  return args ? "?" + Object.keys(args).map(function (x, index$$1, arr) {
-    return x + "=" + (encodeURIComponent(args[x]) + (index$$1 != arr.length - 1 ? "&" : ""));
+  return args ? "?" + Object.keys(args).map(function (x, index, arr) {
+    return x + "=" + (encodeURIComponent(args[x]) + (index != arr.length - 1 ? "&" : ""));
   }).join("") : "";
 }
 function setParams(args) {
@@ -846,7 +853,7 @@ function defaultError(dispatch, customType, _meta, throttleEnabled) {
       if (customType && res.status !== 401) dispatch(displayMessage(res.statusText || res.headers && res.headers.map && res.headers.map.errormessage && res.headers.map.errormessage[0] || "Sorry , an error occurred while processing your request"));
       log$1("an error occurred");
       log$1(action);
-      var args = action[CALL_API];
+      var args = action[reduxApiMiddleware.RSAA];
       if (throttleEnabled) {
         var throttleKey = args.endpoint + args.body;
         throttled[throttleKey] = throttled[throttleKey] || [0, 1];
@@ -863,6 +870,7 @@ function defaultError(dispatch, customType, _meta, throttleEnabled) {
     }
   };
 }
+var loginUrl = BASE_URL + "/login";
 var furmlyDownloadUrl = BASE_URL + "/api/download/:id";
 function fetchFurmlyProcess(id, args) {
   if (config.cacheProcessDescription) {
@@ -880,7 +888,7 @@ function fetchFurmlyProcess(id, args) {
     }
   }
   return function (dispatch, getState) {
-    return dispatch(defineProperty({}, CALL_API, preDispatch({
+    return dispatch(defineProperty({}, reduxApiMiddleware.RSAA, preDispatch({
       endpoint: BASE_URL + "/api/process/describe/" + id + getQueryParams(Object.assign({}, args || {}, { $uiOnDemand: !!config.uiOnDemand })),
       types: [{ type: ACTIONS.FETCHING_PROCESS, meta: id }, {
         type: ACTIONS.FETCHED_PROCESS,
@@ -962,7 +970,7 @@ function getSingleItemForGrid(id, args, key) {
 
 function getRefreshToken() {
   return function (dispatch, getState) {
-    dispatch(defineProperty({}, CALL_API, preRefreshToken({
+    dispatch(defineProperty({}, reduxApiMiddleware.RSAA, preRefreshToken({
       endpoint: BASE_URL + "/api/refresh_token",
       types: [ACTIONS.GET_REFRESH_TOKEN, ACTIONS.GOT_REFRESH_TOKEN, ACTIONS.FAILED_TO_GET_REFRESH_TOKEN],
       body: null
@@ -1006,7 +1014,7 @@ function runFurmlyProcessor(id, args, key) {
     var waitIndex = config.waitingProcessors.length,
         waitHandle = setTimeout(function () {
       config.waitingProcessors.splice(waitIndex, 1);
-      dispatch(defineProperty({}, CALL_API, preDispatch({
+      dispatch(defineProperty({}, reduxApiMiddleware.RSAA, preDispatch({
         endpoint: endpoint,
         types: [{
           type: requestCustomType || ACTIONS.FURMLY_PROCESSOR_RUNNING,
@@ -1051,7 +1059,7 @@ function showMessage$1(message) {
 
 function runFurmlyProcess(details) {
   return function (dispatch, getState) {
-    return dispatch(defineProperty({}, CALL_API, preDispatch({
+    return dispatch(defineProperty({}, reduxApiMiddleware.RSAA, preDispatch({
       endpoint: BASE_URL + "/api/process/run/" + details.id,
       types: [{
         type: ACTIONS.FURMLY_PROCESS_RUNNING,
@@ -1103,7 +1111,7 @@ function runFurmlyProcess(details) {
 }
 function getFurmlyFilePreview(id, key, fileType, query) {
   return function (dispatch, getState) {
-    dispatch(defineProperty({}, CALL_API, preDispatch({
+    dispatch(defineProperty({}, reduxApiMiddleware.RSAA, preDispatch({
       endpoint: BASE_URL + "/api/upload/preview/" + (id + (query || "")),
       types: [{ type: ACTIONS.GET_PREVIEW, meta: key }, {
         type: ACTIONS.GOT_PREVIEW,
@@ -1130,7 +1138,7 @@ function uploadFurmlyFile(file, key) {
   formData.append("file", file);
 
   return function (dispatch, getState) {
-    dispatch(defineProperty({}, CALL_API, preDispatch({
+    dispatch(defineProperty({}, reduxApiMiddleware.RSAA, preDispatch({
       endpoint: BASE_URL + "/api/upload",
       types: [{ type: ACTIONS.START_FILE_UPLOAD, meta: key }, {
         type: ACTIONS.FILE_UPLOADED,
@@ -3868,117 +3876,6 @@ var furmly_command = (function (Link, customDownloadCommand) {
   };
 });
 
-var components = {
-	furmly_input: furmly_input,
-	furmly_view: furmly_view,
-	furmly_container: furmly_container,
-	furmly_process: furmly_process,
-	furmly_section: furmly_section,
-	furmly_select: furmly_select,
-	furmly_selectset: furmly_selectset,
-	furmly_list: furmly_list,
-	furmly_hidden: FurmlyHidden,
-	furmly_nav: furmly_nav,
-	furmly_grid: furmly_grid,
-	furmly_image: furmly_image,
-	furmly_fileupload: furmly_fileupload,
-	furmly_actionview: furmly_actionview,
-	furmly_htmlview: furmly_htmlview,
-	furmly_label: furmly_label,
-	furmly_webview: furmly_webview,
-	furmly_command: furmly_command
-};
-
-var createMap = function createMap() {
-  var _defaultMap = {};
-  var recipes = {};
-  var isValidComponent = function isValidComponent(cooked) {
-    if (!React__default.Component.isPrototypeOf(cooked)) {
-      if (typeof cooked.getComponent !== "function") throw new Error("Custom component must either be a react component or have getComponent function return a valid react component");
-      cooked = cooked.getComponent();
-      console.log(cooked);
-      if (!React__default.Component.isPrototypeOf(cooked)) throw new Error("getComponent must return a valid react element");
-    }
-    return cooked;
-  };
-  var api = {
-    INPUT: components.furmly_input,
-    VIEW: components.furmly_view,
-    CONTAINER: components.furmly_container,
-    PROCESS: components.furmly_process,
-    SECTION: components.furmly_section,
-    SELECT: components.furmly_select,
-    SELECTSET: components.furmly_selectset,
-    LIST: components.furmly_list,
-    HIDDEN: components.furmly_hidden,
-    NAV: components.furmly_nav,
-    IMAGE: components.furmly_image,
-    GRID: components.furmly_grid,
-    FILEUPLOAD: components.furmly_fileupload,
-    ACTIONVIEW: components.furmly_actionview,
-    HTMLVIEW: components.furmly_htmlview,
-    LABEL: components.furmly_label,
-    WEBVIEW: components.furmly_webview,
-    COMMAND: components.furmly_command,
-    addRecipe: function addRecipe(name, recipe) {
-      recipes[name] = recipe;
-    },
-    removeRecipe: function removeRecipe(name) {
-      recipes[name] = _defaultMap[name];
-    },
-    componentLocator: function componentLocator(interceptors) {
-      var _this = this;
-
-      return function (context) {
-        var control = void 0;
-        if (interceptors) control = interceptors(context, _this, _defaultMap);
-        if (!control) {
-          if (context.uid) {
-            if (_this[context.uid]) return _this[context.uid];
-            var upper = context.uid.toUpperCase();
-            if (_this[upper]) return _this[upper];
-          }
-          return _this[context.elementType];
-        }
-        return control;
-      };
-    },
-    cook: function cook(name, recipe, customName) {
-      var _this2 = this;
-
-      if (name && recipe) {
-        if (!Array.prototype.isPrototypeOf(recipe)) {
-          throw new Error("Recipe must be an array");
-        }
-        if (!_defaultMap[name]) throw new Error("Cannot find any recipe for that element");
-        if (name == customName) {
-          console.warn("Custom name will override default recipe");
-        }
-
-        var cooked = _defaultMap[name].apply(null, recipe);
-        if (customName) this[customName] = isValidComponent(cooked);
-        return cooked;
-      }
-
-      if (!this._cooked) {
-        this._cooked = true;
-        Object.keys(recipes).forEach(function (recipe) {
-          _defaultMap[recipe] = _this2[recipe];
-          var cooked = _this2[recipe].apply(null, recipes[recipe]);
-          _this2[recipe] = isValidComponent(cooked);
-        });
-      }
-      return this;
-    }
-  };
-  Object.keys(api).map(function (key) {
-    if (key[0] == key[0].toUpperCase()) {
-      api["add" + key + "Recipe"] = api.addRecipe.bind(null, key);
-    }
-  });
-  return api;
-};
-
 function view$1 () {
 	var _Object$assign7, _Object$assign16, _Object$assign19, _Object$assign20, _Object$assign21, _Object$assign22, _Object$assign23, _Object$assign24;
 
@@ -4282,7 +4179,7 @@ function errorWhileGettingSingleItemForGrid() {
 }
 
 var reducers = [{ name: "navigation", run: navigation }, { name: "view", run: view$1 }];
-function index$1 () {
+function reducers$1 () {
 	var state = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : {};
 	var action = arguments[1];
 
@@ -4305,6 +4202,224 @@ function index$1 () {
 	return changes ? changedState : state;
 }
 
+var combinedReducers = redux.combineReducers({ furmly: reducers$1 });
+
+var sessionHasExpired = function sessionHasExpired(action) {
+  return action && action.type === ACTIONS.SESSION_MAY_HAVE_EXPIRED || action && action.payload && action.payload.status == 401;
+};
+var defaultRootReducer = function defaultRootReducer(state, action) {
+  if (action.type === ACTIONS.SIGN_OUT || sessionHasExpired(action)) {
+    state = {};
+    if (sessionHasExpired(action)) state.popup = { message: "Session Expired" };
+  }
+  return combinedReducers(state, action);
+};
+
+var createStore = (function () {
+  var extraMiddlewares = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : [];
+  var apiMiddleware = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : reduxApiMiddleware.apiMiddleware;
+  var rootReducer = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : defaultRootReducer;
+  var actionEnhancers = arguments[3];
+
+  var enhancers = defaultActionEnhancers();
+  if (actionEnhancers) enhancers = enhancers.concat(actionEnhancers());
+  var middlewares = [thunkMiddleware, createActionEnhancerMiddleware(function () {
+    return enhancers;
+  }), apiMiddleware].concat(toConsumableArray(extraMiddlewares));
+  return redux.compose(redux.applyMiddleware.apply(undefined, toConsumableArray(middlewares)))(redux.createStore)(rootReducer);
+});
+
+var ReactSSRErrorHandler$19 = require("error_handler");
+
+var createProvider = function createProvider(Process) {
+  for (var _len = arguments.length, args = Array(_len > 1 ? _len - 1 : 0), _key = 1; _key < _len; _key++) {
+    args[_key - 1] = arguments[_key];
+  }
+
+  var store = createStore.apply(null, args);
+  return {
+    getComponent: function getComponent() {
+      return function (props) {
+        try {
+          return React__default.createElement(
+            reactRedux.Provider,
+            { store: store },
+            React__default.createElement(Process, props)
+          );
+        } catch (e) {
+          return ReactSSRErrorHandler$19(e);
+        }
+      };
+    },
+    store: store
+  };
+};
+
+var components = {
+  furmly_input: furmly_input,
+  furmly_view: furmly_view,
+  furmly_container: furmly_container,
+  furmly_process: furmly_process,
+  furmly_section: furmly_section,
+  furmly_select: furmly_select,
+  furmly_selectset: furmly_selectset,
+  furmly_list: furmly_list,
+  furmly_hidden: FurmlyHidden,
+  furmly_nav: furmly_nav,
+  furmly_grid: furmly_grid,
+  furmly_image: furmly_image,
+  furmly_fileupload: furmly_fileupload,
+  furmly_actionview: furmly_actionview,
+  furmly_htmlview: furmly_htmlview,
+  furmly_label: furmly_label,
+  furmly_webview: furmly_webview,
+  furmly_provider: createProvider,
+  furmly_command: furmly_command
+};
+
+var Deferred = function Deferred(name) {
+  classCallCheck(this, Deferred);
+
+  if (!name) throw new Error("Deferred component name cannot be null or empty");
+  this.name = name.toUpperCase();
+};
+var log$2 = debug("furmly-init");
+var createMap = function createMap() {
+  var _defaultMap = {};
+  var recipes = {};
+  var preparedRecipes = {};
+  var waiting = {};
+  var deps = {};
+  var getComponent = function getComponent(cooked) {
+    if (!React__default.Component.isPrototypeOf(cooked)) {
+      if (typeof cooked.getComponent !== "function") throw new Error("Custom component must either be a react component or have getComponent function return a valid react component");
+      cooked = cooked.getComponent();
+      log$2("cooked:" + cooked);
+      if (!React__default.Component.isPrototypeOf(cooked) && typeof cooked !== "function") throw new Error("getComponent must return a valid react element");
+    }
+    return cooked;
+  };
+  var api = {
+    INPUT: components.furmly_input,
+    VIEW: components.furmly_view,
+    CONTAINER: components.furmly_container,
+    PROCESS: components.furmly_process,
+    SECTION: components.furmly_section,
+    SELECT: components.furmly_select,
+    SELECTSET: components.furmly_selectset,
+    LIST: components.furmly_list,
+    HIDDEN: components.furmly_hidden,
+    NAV: components.furmly_nav,
+    IMAGE: components.furmly_image,
+    GRID: components.furmly_grid,
+    FILEUPLOAD: components.furmly_fileupload,
+    ACTIONVIEW: components.furmly_actionview,
+    HTMLVIEW: components.furmly_htmlview,
+    LABEL: components.furmly_label,
+    WEBVIEW: components.furmly_webview,
+    COMMAND: components.furmly_command,
+    PROVIDER: components.furmly_provider,
+    prepareRecipe: function prepareRecipe(name, recipe) {
+      var _this = this;
+
+      var parsedRecipe = typeof deps[name] === "number" && !deps[name] && recipe || recipe.reduce(function (acc, x, index) {
+        if (Deferred.prototype.isPrototypeOf(x)) {
+          //check if there's an existing recipe
+          if (recipes[x.name]) {
+            if (preparedRecipes[x.name])
+              // its already prepared.
+              acc.push(_this[x.name]);else {
+              // register to be notified when its ready
+              if (!waiting[x.name]) waiting[x.name] = [];
+              waiting[x.name].push({ name: name, recipe: recipe, index: index });
+              deps[name] = typeof deps[name] == "undefined" ? 1 : ++deps[name];
+            }
+          }
+        } else {
+          acc.push(x);
+        }
+        return acc;
+      }, []);
+
+      if (parsedRecipe.length == recipe.length) {
+        // run recipe.
+        // run all waiting recipes.
+        // save recipe.
+        var cooked = this[name].apply(null, parsedRecipe);
+        this[name] = getComponent(cooked);
+        preparedRecipes[name] = true;
+        if (waiting[name] && waiting[name].length) {
+          waiting[name].forEach(function (x) {
+            deps[x.name] -= 1;
+            x.recipe[x.index] = prepared;
+            //if it has no more dependencies then prepare it.
+            if (!deps[x.name]) {
+              _this.prepareRecipe(x.name, x.recipe);
+            }
+          });
+        }
+      }
+    },
+    addRecipe: function addRecipe(name, recipe) {
+      recipes[name] = recipe;
+    },
+    removeRecipe: function removeRecipe(name) {
+      recipes[name] = _defaultMap[name];
+    },
+    componentLocator: function componentLocator(interceptors) {
+      var _this2 = this;
+
+      return function (context) {
+        var control = void 0;
+        if (interceptors) control = interceptors(context, _this2, _defaultMap);
+        if (!control) {
+          if (context.uid) {
+            if (_this2[context.uid]) return _this2[context.uid];
+            var upper = context.uid.toUpperCase();
+            if (_this2[upper]) return _this2[upper];
+          }
+          return _this2[context.elementType];
+        }
+        return control;
+      };
+    },
+    cook: function cook(name, recipe, customName) {
+      var _this3 = this;
+
+      if (name && recipe) {
+        if (!Array.prototype.isPrototypeOf(recipe)) {
+          throw new Error("Recipe must be an array");
+        }
+        if (!_defaultMap[name]) throw new Error("Cannot find any recipe for that element");
+        if (name == customName) {
+          log$2("Custom name will override default recipe");
+        }
+
+        var cooked = _defaultMap[name].apply(null, recipe);
+        if (customName) this[customName] = getComponent(cooked);
+        return cooked;
+      }
+
+      if (!this._cooked) {
+        Object.keys(recipes).forEach(function (recipe) {
+          _defaultMap[recipe] = _this3[recipe];
+          _this3.prepareRecipe(recipe, recipes[recipe]);
+        });
+        this._cooked = true;
+      }
+      return this;
+    }
+  };
+
+  Object.keys(api).map(function (key) {
+    if (key[0] == key[0].toUpperCase()) {
+      api["add" + key + "Recipe"] = api.addRecipe.bind(null, key);
+    }
+  });
+
+  return api;
+};
+
 function formatExpression (string) {
 	var str = string.toString();
 
@@ -4325,7 +4440,7 @@ function formatExpression (string) {
 	return str;
 }
 
-var index$2 = {
+var index = {
 	invariants: invariants,
 	memcache: MemCache,
 	formatExpression: formatExpression,
@@ -4334,10 +4449,12 @@ var index$2 = {
 };
 
 exports.default = createMap;
-exports.reducers = index$1;
+exports.Deferred = Deferred;
+exports.reducers = reducers$1;
 exports.toggleAllBusyIndicators = toggleAllBusyIndicators;
-exports.actionEnhancers = index;
-exports.utils = index$2;
+exports.actionEnhancers = defaultActionEnhancers;
+exports.utils = index;
+exports.loginUrl = loginUrl;
 exports.addNavigationContext = addNavigationContext;
 exports.removeNavigationContext = removeNavigationContext;
 exports.setParams = setParams;

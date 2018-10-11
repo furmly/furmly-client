@@ -58,7 +58,6 @@ export function hasScreenAlready(state, current) {
 	return state.stack.filter(x => _.isEqual(x, current)).length;
 }
 
-function addToStack(item, stack) {}
 function countRef(stack, index, e) {
 	if (e.key == "Furmly" || e.$routeName == "Furmly") {
 		if (stack._references[e.params.id]) {

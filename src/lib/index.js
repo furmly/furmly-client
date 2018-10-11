@@ -11,29 +11,31 @@ import furmly_nav from "./furmly_nav";
 import furmly_image from "./furmly_image";
 import furmly_grid from "./furmly_grid";
 import furmly_htmlview from "./furmly_htmlview";
-import furmly_fileupload from './furmly_fileupload';
+import furmly_fileupload from "./furmly_fileupload";
 import furmly_actionview from "./furmly_actionview";
-import furmly_label from './furmly_label';
+import furmly_label from "./furmly_label";
 import furmly_webview from "./furmly_webview";
 import furmly_command from "./furmly_command";
+import furmly_provider from "./furmly_provider";
 
 export default {
-	furmly_input,
-	furmly_view,
-	furmly_container,
-	furmly_process, 
-	furmly_section,
-	furmly_select,
-	furmly_selectset,
-	furmly_list,
-	furmly_hidden,
-	furmly_nav,
-	furmly_grid, 
-	furmly_image,
-	furmly_fileupload,
-	furmly_actionview,
-	furmly_htmlview,
-	furmly_label,
-	furmly_webview,
-	furmly_command
-}; 
+  furmly_input,
+  furmly_view,
+  furmly_container,
+  furmly_process,
+  furmly_section,
+  furmly_select,
+  furmly_selectset,
+  furmly_list,
+  furmly_hidden,
+  furmly_nav,
+  furmly_grid,
+  furmly_image,
+  furmly_fileupload,
+  furmly_actionview,
+  furmly_htmlview,
+  furmly_label,
+  furmly_webview,
+  furmly_provider,
+  furmly_command
+};

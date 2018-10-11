@@ -1,5 +1,5 @@
 import config from "client_config";
-import CALL_API from "call_api";
+import { RSAA as CALL_API } from "redux-api-middleware";
 import MemCache from "../utils/memcache";
 import { CHECK_FOR_EXISTING_SCREEN } from "../action-enhancers";
 import debug from "debug";
@@ -11,7 +11,6 @@ const preDispatch = config.preDispatch,
   BASE_URL = global.BASE_URL || config.baseUrl,
   throttled = {},
   cache = new MemCache({ ttl: config.processorsCacheTimeout });
-
 
 export const displayMessage = text => {
   return {
@@ -26,12 +25,12 @@ function copy(value) {
 function getQueryParams(args) {
   return args
     ? "?" +
-      Object.keys(args)
-        .map((x, index, arr) => {
-          return `${x}=${encodeURIComponent(args[x]) +
-            (index != arr.length - 1 ? "&" : "")}`;
-        })
-        .join("")
+        Object.keys(args)
+          .map((x, index, arr) => {
+            return `${x}=${encodeURIComponent(args[x]) +
+              (index != arr.length - 1 ? "&" : "")}`;
+          })
+          .join("")
     : "";
 }
 export function setParams(args) {
@@ -121,6 +120,7 @@ function defaultError(dispatch, customType, meta, throttleEnabled) {
     }
   };
 }
+export const loginUrl = `${BASE_URL}/login`;
 export const furmlyDownloadUrl = `${BASE_URL}/api/download/:id`;
 export function fetchFurmlyProcess(id, args) {
   if (config.cacheProcessDescription) {
@@ -497,4 +497,3 @@ export function uploadFurmlyFile(file, key) {
     });
   };
 }
-
