@@ -78,6 +78,7 @@ export default (ProgressBar, TextView, FurmlyView) => {
       });
     }
     render() {
+      this.props.log("render");
       /*jshint ignore:start */
       if (this.props.busy || typeof this.props.busy == "undefined") {
         return <ProgressBar title="Please wait..." />;

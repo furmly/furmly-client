@@ -1,15 +1,16 @@
-import React, { Component } from "react";
+import React, { PureComponent } from "react";
 import invariants from "./utils/invariants";
 import withLogger from "./furmly_base";
 export default (Layout, Header, Container) => {
   invariants.validComponent(Layout, "Layout");
   invariants.validComponent(Header, "Header");
   invariants.validComponent(Container, "Container");
-  class FurmlySection extends Component {
+  class FurmlySection extends PureComponent {
     constructor(props) {
       super(props);
     }
     render() {
+      this.props.log("render");
       /*jshint ignore:start*/
       //get the container for retrieving
       return (

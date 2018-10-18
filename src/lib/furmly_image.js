@@ -1,5 +1,6 @@
 import React from "react";
 import invariants from "./utils/invariants";
+import withLogger from "./furmly_base";
 
 export default Image => {
   invariants.validComponent(Image, "Image");

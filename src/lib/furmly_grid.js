@@ -136,12 +136,16 @@ export default (
       this.execCommand = this.execCommand.bind(this);
       this.showCommandResult = this.showCommandResult.bind(this);
       this.closeCommandResult = this.closeCommandResult.bind(this);
+      this.selectItem = this.selectItem.bind(this);
+      this.selectAllItems = this.selectAllItems.bind(this);
+      this.unSelectItem = this.unSelectItem.bind(this);
+      this.clearSelectedItems = this.clearSelectedItems.bind(this);
       this.fetchFilterTemplate = this.fetchFilterTemplate.bind(this);
+      this.getCommands = this.getCommands.bind(this);
       if (
         (this.isCRUD() || this.isEDITONLY()) &&
         (!this.props.args.commands ||
-          !this.props.args.commands.filter(x => x.commandType == "$EDIT")
-            .length)
+          !this.props.args.commands.filter(x => this.isEditCommand(x)).length)
       ) {
         let cmd = {
           commandText: "Edit",
@@ -187,18 +191,22 @@ export default (
     closeCommandResult() {
       this.setState({
         showCommandResultView: false,
-        result: null
+        commandResult: null
       });
     }
     componentWillReceiveProps(next) {
+      // item view properties have changed.
       if (next.processed !== this.props.processed) {
         this.getItemsFromSource(null, "filterGrid");
       }
 
+      // command view has been processed.
       if (next.commandProcessed !== this.props.commandProcessed) {
         this.showCommandResult(next);
       }
 
+      // item has fetched data for editing and template has changed.
+      // show item view for editing.
       if (
         next.singleItem &&
         next.singleItem !== this.props.singleItem &&
@@ -212,6 +220,8 @@ export default (
         );
       }
 
+      // item has fetched data for editing
+      // and edit template is already available..
       if (
         next.singleItem &&
         next.singleItem !== this.props.singleItem &&
@@ -220,6 +230,7 @@ export default (
         return this.showItemView(ITEM_MODES.EDIT, next.singleItem, true);
       }
 
+      // item template has been fetched successfully and data is already available.
       if (next.itemTemplate && next.itemTemplate !== this.props.itemTemplate) {
         return this.showItemView(
           this.state.mode,
@@ -228,8 +239,28 @@ export default (
           next.itemTemplate
         );
       }
-
+      // fetch filter template if necessary.
       this.fetchFilterTemplate(next, this.props.filterTemplate);
+    }
+    isEditCommand(x) {
+      return (
+        x.commandType == "$EDIT" ||
+        (x.commandText && x.commandText.toUpperCase() == "EDIT")
+      );
+    }
+
+    getCommands() {
+      if (!this.props.args.commands) return null;
+      const commands = this.props.args.commands.slice();
+      let index = 0;
+      let editCommand;
+      for (index; index < commands.length; index++) {
+        if (this.isEditCommand(commands[index])) {
+          editCommand = commands.splice(index, 1)[0];
+          break;
+        }
+      }
+      return [editCommand, ...commands];
     }
     getItemsFromSource(filter = getFilterValue(), methodName = "run", extra) {
       this.props[methodName](
@@ -299,11 +330,14 @@ export default (
               break;
           }
           if (!id) {
-            return this.props.log(
-              "done  was called on a grid view in " +
-                this.props.args.mode +
-                " and it does not have a processor for it. \n" +
-                JSON.stringify(this.props, null, " ")
+            return (
+              this.props.log(
+                "done  was called on a grid view in " +
+                  this.props.args.mode +
+                  " and it does not have a processor for it. \n" +
+                  JSON.stringify(this.props, null, " ")
+              ),
+              this.cancel()
             );
           }
 
@@ -397,14 +431,13 @@ export default (
         );
       }
       let update = {
-        validator: {},
         showItemView: true,
-        mode: mode,
         showCommandsView: false,
-        itemViewElements: template
+        itemViewElements: template,
+        mode
       };
-      if (!gettingItemTemplate)
-        update.form = existingValue ? copy(existingValue) : existingValue;
+      //  if (!gettingItemTemplate)
+      update.form = existingValue ? copy(existingValue) : existingValue;
       this.setState(update);
     }
 
@@ -448,7 +481,15 @@ export default (
       });
     }
     openCommandMenu(item) {
-      this.setState({ item: item, showCommandsView: true });
+      if (!item) {
+        let keys = Object.keys(this.state.selectedItems);
+        if (keys.length == 0) {
+          this.props.log("trying to open command menu with anything to act on");
+          return;
+        }
+        item = this.state.selectedItems[keys[0]];
+      }
+      this.setState({ item, showCommandsView: true });
     }
     selectItem(item) {
       const selectedItems = Object.assign({}, this.state.selectedItems);
@@ -459,7 +500,7 @@ export default (
     }
     selectAllItems() {
       this.setState({
-        selectAllItems: this.props.items.reduce((sum, x) => {
+        selectedItems: this.props.items.reduce((sum, x) => {
           sum[x._id] = x;
           return sum;
         }, {})
@@ -501,6 +542,8 @@ export default (
           );
           break;
       }
+
+      this.setState({ showCommandsView: false });
     }
     isCRUD() {
       return this.props.args.mode == GRID_MODES.CRUD;
@@ -511,22 +554,23 @@ export default (
     render() {
       this.props.log("rendering..");
 
-      let header = this.props.filterTemplate ? (
-          <Header filter={() => this.filter()}>
-            <Container
-              elements={this.props.filterTemplate}
-              value={this.getFilterValue()}
-              valueChanged={this.valueChanged}
-              name={FurmlyGrid.filterViewName()}
-              validator={this.state._filterValidator}
-              navigation={this.props.navigation}
-              currentProcess={this.props.currentProcess}
-              currentStep={this.props.currentStep}
-            />
-          </Header>
-        ) : this.props.fetchingFilterTemplate ? (
-          <ProgressBar />
-        ) : null,
+      let header =
+          this.props.filterTemplate && this.props.filterTemplate.length ? (
+            <Header filter={() => this.filter()}>
+              <Container
+                elements={this.props.filterTemplate}
+                value={this.getFilterValue()}
+                valueChanged={this.valueChanged}
+                name={FurmlyGrid.filterViewName()}
+                validator={this.state._filterValidator}
+                navigation={this.props.navigation}
+                currentProcess={this.props.currentProcess}
+                currentStep={this.props.currentStep}
+              />
+            </Header>
+          ) : this.props.fetchingFilterTemplate ? (
+            <ProgressBar />
+          ) : null,
         footer = !this.finished() && this.props.busy ? <ProgressBar /> : null;
 
       return (
@@ -553,7 +597,7 @@ export default (
               }
               more={this.more}
               autoFetch={!this.props.args.dontAutoFetchFromSource}
-              commands={this.props.args.commands}
+              getCommands={this.getCommands}
               execCommand={this.execCommand}
               openCommandMenu={this.openCommandMenu}
               busy={!this.finished() && this.props.busy}

@@ -68,6 +68,7 @@ export default (Page, Warning, Container) => {
         });
     }
     render() {
+      this.props.log("render");
       if (!this.props.elements || !this.props.elements.length)
         return (
           <Page hideSubmit={true}>

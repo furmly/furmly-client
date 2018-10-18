@@ -14,7 +14,7 @@ export default (LabelWrapper, Input, DatePicker, Checkbox) => {
   invariants.validComponent(Input, "Input");
   invariants.validComponent(DatePicker, "DatePicker");
   invariants.validComponent(Checkbox, "Checkbox");
-  class FurmlyInput extends Component {
+  class FurmlyInput extends React.PureComponent {
     constructor(props) {
       super(props);
       this.state = {};
@@ -59,7 +59,6 @@ export default (LabelWrapper, Input, DatePicker, Checkbox) => {
     componentWillUnmount() {
       this._mounted = false;
     }
-
     isDateRange(props = this.props) {
       return props.args && props.args.config && props.args.config.isRange;
     }
@@ -172,6 +171,7 @@ export default (LabelWrapper, Input, DatePicker, Checkbox) => {
         this.valueChanged(props.args.default);
     }
     render() {
+      this.props.log("render");
       /*jshint ignore:start */
       let args = this.props.args,
         Result;

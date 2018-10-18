@@ -5,16 +5,9 @@ import invariants from "./utils/invariants";
 import _ from "lodash";
 import { getKey } from "./utils/view";
 import withLogger from "./furmly_base";
-export default (
-  Layout,
-  ProgressBar,
-  Filter,
-  FilterContainer,
-  ContentContainer
-) => {
+export default (Layout, ProgressBar, Filter, Container) => {
   invariants.validComponent(Filter, "Filter");
-  invariants.validComponent(FilterContainer, "FilterContainer");
-  invariants.validComponent(ContentContainer, "ContentContainer");
+  invariants.validComponent(Container, "Container");
   invariants.validComponent(ProgressBar, "ProgressBar");
   invariants.validComponent(Layout, "Layout");
 
@@ -80,7 +73,7 @@ export default (
       });
     }
     render() {
-      this.props.log("rendering");
+      this.props.log("render");
       if (this.props.busy) return <ProgressBar />;
       let { [contentViewName]: contentValue = {}, ...rest } =
         this.props.value || {};
@@ -91,7 +84,7 @@ export default (
               actionLabel={this.props.args.commandText}
               filter={this.filter}
             >
-              <FilterContainer
+              <Container
                 elements={this.props.args.elements}
                 value={rest}
                 name={itemViewName}
@@ -104,7 +97,7 @@ export default (
             </Filter>
           }
           content={
-            <ContentContainer
+            <Container
               name={contentViewName}
               elements={this.props.resultUI}
               value={contentValue}

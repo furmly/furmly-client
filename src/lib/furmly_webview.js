@@ -1,7 +1,10 @@
 import React, { PureComponent } from "react";
+import invariants from "./utils/invariants";
 
 export default (WebView, Text) => {
-  return class FurmlyWebView extends PureComponent {
+  invariants.validComponent(WebView, "WebView");
+  invariants.validComponent(Text, "Text");
+  class FurmlyWebView extends PureComponent {
     constructor(props) {
       super(props);
     }
@@ -12,5 +15,6 @@ export default (WebView, Text) => {
         return <Text>{"Missing url"}</Text>;
       }
     }
-  };
+  }
+  return { getComponent: () => FurmlyWebView, FurmlyWebView };
 };

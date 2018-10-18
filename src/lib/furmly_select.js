@@ -168,7 +168,7 @@ export default (ProgressIndicator, Layout, Container) => {
     render() {
       /*jshint ignore:start*/
 
-      this.props.log(`rendering ${this.props.name}`);
+      this.props.log("render");
       if (this.isEmptyOrNull(this.props.items)) {
         this.props.log(`${this.props.name} is empty`);
         return <ProgressIndicator />;

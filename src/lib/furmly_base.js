@@ -9,7 +9,7 @@ export default WrappedComponent => {
       this.log = this.log.bind(this);
     }
     componentWillMount() {
-      this.logger = debug(`furmly-client:${this.constructor.name}`);
+      this.logger = debug(`furmly-client:${WrappedComponent.name}`);
       this.log("componentDidMount");
     }
     componentWillUnmount() {
@@ -17,10 +17,9 @@ export default WrappedComponent => {
       this.logger = null;
     }
     log(m) {
-      this.logger(`${m}:::${this.props.name}`);
+      this.logger(`${m}:::${this.props.name || this.props.id || ""}`);
     }
     render() {
-      this.log("render");
       return <WrappedComponent {...this.props} log={this.log} />;
     }
   }

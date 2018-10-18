@@ -101,6 +101,9 @@ const createMap = () => {
     removeRecipe(name) {
       recipes[name] = _defaultMap[name];
     },
+    get _defaultMap() {
+      return Object.assign({}, _defaultMap);
+    },
     componentLocator(interceptors) {
       return context => {
         let control;

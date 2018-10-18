@@ -79,6 +79,7 @@ export default (Link, NavigationActions) => {
       }
     }
     render() {
+      this.props.log("render");
       return (
         /*jshint ignore:start */
         <Link

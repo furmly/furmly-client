@@ -22,7 +22,7 @@ export default (...args) => {
   )
     throw new Error("ComponentLocator cannot be null (furmly_container)");
 
-  class FurmlyContainer extends Component {
+  class FurmlyContainer extends React.PureComponent {
     constructor(props) {
       super(props);
       this.onValueChanged = this.onValueChanged.bind(this);
@@ -69,6 +69,7 @@ export default (...args) => {
     }
 
     render() {
+      this.props.log("render");
       let keys = this.props.value ? Object.keys(this.props.value) : [],
         self = this,
         extraVal = {},

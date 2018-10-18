@@ -351,6 +351,7 @@ export default (
     }
 
     render() {
+      this.props.log("render");
       if (this.props.busy) {
         return <ProgressBar />;
       }

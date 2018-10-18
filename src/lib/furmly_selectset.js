@@ -289,7 +289,7 @@ export default (Layout, Picker, ProgressBar, Container) => {
       return !v || !v.length;
     }
     render() {
-      this.props.log(`rendering called`);
+      this.props.log("render");
       /*jshint ignore:start*/
       if (this.props.busy) {
         this.props.log(`${this.props.name} is busy`);

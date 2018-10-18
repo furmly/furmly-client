@@ -53,6 +53,7 @@ export default (Link, customDownloadCommand) => {
       }
     }
     render() {
+      this.props.log("render");
       return (
         /*jshint ignore:start */
         <Link
