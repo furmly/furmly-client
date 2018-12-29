@@ -1,14 +1,12 @@
 {
-  "presets": [
-    ["es2015", { "modules": false }],
-    "react",
-  ],
+  "presets": [["es2015", { "modules": false }], "react"],
   "plugins": [
-  ["@doochik/babel-plugin-transform-react-ssr-try-catch",
-   {
-    errorHandler:"error_handler"                    
-   }
-   ],
+    [
+      "@doochik/babel-plugin-transform-react-ssr-try-catch",
+      {
+        "errorHandler": "error_handler"
+      }
+    ],
     "transform-object-rest-spread",
     "external-helpers"
   ]

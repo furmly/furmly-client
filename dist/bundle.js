@@ -4428,6 +4428,10 @@ var createMap = function createMap() {
     removeRecipe: function removeRecipe(name) {
       recipes[name] = _defaultMap[name];
     },
+
+    get _defaultMap() {
+      return Object.assign({}, _defaultMap);
+    },
     componentLocator: function componentLocator(interceptors) {
       var _this2 = this;
 
