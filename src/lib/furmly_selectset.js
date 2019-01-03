@@ -43,7 +43,7 @@ export default (Layout, Picker, ProgressBar, Container) => {
   };
   class FurmlySelectSet extends React.Component {
     constructor(props) {
-      super(props, log);
+      super(props);
       this.retryFetch = this.retryFetch.bind(this);
       this.onPickerValueChanged = this.onPickerValueChanged.bind(this);
       this.onContainerValueChanged = this.onContainerValueChanged.bind(this);
@@ -183,15 +183,8 @@ export default (Layout, Picker, ProgressBar, Container) => {
     }
 
     onContainerValueChanged(value, pickerValue) {
-      // this.props.log(
-      // 	`value changed ${JSON.stringify(
-      // 		value,
-      // 		null,
-      // 		" "
-      // 	)} pickerValue:${JSON.stringify(pickerValue, null, " ")}`
-      // );
+
       let eve = this._onContainerValueChanged.call(this, value, pickerValue);
-      // this.props.log(`eventual params:${JSON.stringify(eve, null, " ")}`);
 
       this.props.valueChanged.apply(this, eve);
     }
@@ -309,8 +302,6 @@ export default (Layout, Picker, ProgressBar, Container) => {
               keyProperty="id"
               value={unwrapObjectValue(this.props.value)}
               valueChanged={this.respondToPickerValueChanged}
-              currentProcess={this.props.currentProcess}
-              currentStep={this.props.currentStep}
             />
           }
           extraElements={
@@ -320,9 +311,6 @@ export default (Layout, Picker, ProgressBar, Container) => {
               valueChanged={this.onContainerValueChanged}
               elements={this.props.contentItems}
               validator={this.state.containerValidator}
-              navigation={this.props.navigation}
-              currentProcess={this.props.currentProcess}
-              currentStep={this.props.currentStep}
             />
           }
         />

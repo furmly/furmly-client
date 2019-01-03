@@ -105,9 +105,6 @@ export default (...args) => {
                     value={value}
                     validator={this.state._validations[index]}
                     valueChanged={this.onValueChanged}
-                    navigation={this.props.navigation}
-                    currentProcess={this.props.currentProcess}
-                    currentStep={this.props.currentStep}
                   />
                 );
                 if (ComponentWrapper)
@@ -128,9 +125,6 @@ export default (...args) => {
                 validator={this.state._validations[index]}
                 key={x.name}
                 valueChanged={this.onValueChanged}
-                navigation={this.props.navigation}
-                currentProcess={this.props.currentProcess}
-                currentStep={this.props.currentStep}
               />
             );
             return ComponentWrapper

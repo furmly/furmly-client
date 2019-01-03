@@ -386,9 +386,6 @@ export default (
                   name={FurmlyList.modalName()}
                   validator={this.state.validator}
                   valueChanged={this.valueChanged}
-                  navigation={this.props.navigation}
-                  currentProcess={this.props.currentProcess}
-                  currentStep={this.props.currentStep}
                 />
               }
               visibility={this.state.modalVisible}

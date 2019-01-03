@@ -52,6 +52,8 @@ const createMap = () => {
     WEBVIEW: components.furmly_webview,
     COMMAND: components.furmly_command,
     PROVIDER: components.furmly_provider,
+    withNavigation: components.withNavigation,
+    withNavigationProvider: components.withNavigationProvider,
     prepareRecipe(name, recipe) {
       const parsedRecipe =
         (typeof deps[name] === "number" && !deps[name] && recipe) ||

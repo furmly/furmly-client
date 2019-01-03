@@ -92,7 +92,6 @@ export default (ProgressBar, TextView, FurmlyView) => {
         <FurmlyView
           currentStep={this.props.currentStep || 0}
           currentProcess={this.props.id}
-          navigation={this.props.navigation}
           submit={this.submit}
         />
       );

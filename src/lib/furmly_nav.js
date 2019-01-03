@@ -2,22 +2,9 @@ import React, { Component } from "react";
 import { connect } from "react-redux";
 import invariants from "./utils/invariants";
 import withLogger from "./furmly_base";
-export default (Link, NavigationActions) => {
-  if (invariants.validComponent(Link, "Link") && !NavigationActions)
-    throw new Error("NavigationActions cannot be null (furmly_nav)");
-
-  const mapDispatchToState = dispatch => {
-    return {
-      dispatch
-    };
-  };
-
-  const mapStateToProps = (_, initialProps) => state => {
-    return {
-      context: state && state.furmly.view && state.furmly.view.navigationContext
-    };
-  };
-
+import { withNavigation } from "./furmly_navigation_context";
+export default Link => {
+  invariants.validComponent(Link, "Link");
 
   class FurmlyNav extends Component {
     constructor(props) {
@@ -52,29 +39,17 @@ export default (Link, NavigationActions) => {
         params = linkAndParams.params;
         switch (this.props.args.type) {
           case FurmlyNav.NAV_TYPE.CLIENT:
-            //this.props.dispatch(
-            NavigationActions.navigate(
-              {
-                key: link,
-                params
-              },
-              this.props.context,
-              this.props.navigation
-            );
-            //);
+            this.props.furmlyNavigator.navigate({
+              key: link,
+              params
+            });
             break;
 
           case FurmlyNav.NAV_TYPE.FURMLY:
-            //const setParamsAction =
-            NavigationActions.setParams(
-              {
-                params: { id: link, fetchParams: params },
-                key: "Furmly"
-              },
-              this.props.context,
-              this.props.navigation
-            );
-          //this.props.dispatch(setParamsAction);
+            this.props.furmlyNavigator.setParams({
+              params: { id: link, fetchParams: params },
+              key: "Furmly"
+            });
         }
       }
     }
@@ -94,11 +69,7 @@ export default (Link, NavigationActions) => {
   FurmlyNav.NAV_TYPE = { CLIENT: "CLIENT", FURMLY: "FURMLY" };
 
   return {
-    getComponent: () =>
-      connect(
-        mapStateToProps,
-        mapDispatchToState
-      )(withLogger(FurmlyNav)),
+    getComponent: () => withNavigation(withLogger(FurmlyNav)),
     FurmlyNav,
     mapDispatchToState,
     mapStateToProps

@@ -90,9 +90,6 @@ export default (Layout, ProgressBar, Filter, Container) => {
                 name={itemViewName}
                 validator={this.state._filterValidator}
                 valueChanged={this.filterValueChanged}
-                navigation={this.props.navigation}
-                currentProcess={this.props.currentProcess}
-                currentStep={this.props.currentStep}
               />
             </Filter>
           }
@@ -103,9 +100,6 @@ export default (Layout, ProgressBar, Filter, Container) => {
               value={contentValue}
               validator={this.state.validator}
               valueChanged={this.valueChanged}
-              navigation={this.props.navigation}
-              currentProcess={this.props.currentProcess}
-              currentStep={this.props.currentStep}
             />
           }
         />

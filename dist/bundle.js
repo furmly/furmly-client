@@ -772,7 +772,7 @@ var defaultActionEnhancers = (function () {
 	return enhancers;
 });
 
-var log$1 = debug("furmly-actions");
+var log = debug("furmly-actions");
 
 var preDispatch = config.preDispatch;
 var preRefreshToken = config.preRefreshToken;
@@ -851,8 +851,8 @@ function defaultError(dispatch, customType, _meta, throttleEnabled) {
     type: customType || "SHOW_MESSAGE",
     meta: function meta(action, state, res) {
       if (customType && res.status !== 401) dispatch(displayMessage(res.statusText || res.headers && res.headers.map && res.headers.map.errormessage && res.headers.map.errormessage[0] || "Sorry , an error occurred while processing your request"));
-      log$1("an error occurred");
-      log$1(action);
+      log("an error occurred");
+      log(action);
       var args = action[reduxApiMiddleware.RSAA];
       if (throttleEnabled) {
         var throttleKey = args.endpoint + args.body;
@@ -1086,7 +1086,7 @@ function runFurmlyProcess(details) {
             }
             return { id: details.id, data: d };
           }).catch(function (er) {
-            log$1(er);
+            log(er);
             dispatch({
               type: "SHOW_MESSAGE",
               message: "An error occurred while trying to understand a response from the server."
@@ -1267,10 +1267,7 @@ var furmly_view = (function (Page, Warning, Container) {
             name: "furmly_view",
             value: this.props.value,
             valueChanged: this.onValueChanged,
-            validator: this.state.validator,
-            navigation: this.props.navigation,
-            currentStep: this.props.currentStep,
-            currentProcess: this.props.currentProcess
+            validator: this.state.validator
           })
         );
         /*jshint ignore:end*/
@@ -1400,10 +1397,7 @@ var furmly_container = (function () {
                 key: x.name,
                 value: value,
                 validator: _this3.state._validations[index],
-                valueChanged: _this3.onValueChanged,
-                navigation: _this3.props.navigation,
-                currentProcess: _this3.props.currentProcess,
-                currentStep: _this3.props.currentStep
+                valueChanged: _this3.onValueChanged
               }));
               if (ComponentWrapper) return ComponentWrapper(x.elementType, x.uid, x.name, component);
 
@@ -1414,10 +1408,7 @@ var furmly_container = (function () {
             value: value,
             validator: _this3.state._validations[index],
             key: x.name,
-            valueChanged: _this3.onValueChanged,
-            navigation: _this3.props.navigation,
-            currentProcess: _this3.props.currentProcess,
-            currentStep: _this3.props.currentStep
+            valueChanged: _this3.onValueChanged
           }));
           return ComponentWrapper ? ComponentWrapper(x.elementType, x.uid, x.name, component) : component;
           /*jshint ignore:end*/
@@ -1559,7 +1550,6 @@ var furmly_process = (function (ProgressBar, TextView, FurmlyView) {
         return React__default.createElement(FurmlyView, {
           currentStep: this.props.currentStep || 0,
           currentProcess: this.props.id,
-          navigation: this.props.navigation,
           submit: this.submit
         });
 
@@ -1626,10 +1616,7 @@ var furmly_section = (function (Layout, Header, Container) {
             name: this.props.name,
             value: this.props.value,
             valueChanged: this.props.valueChanged,
-            validator: this.props.validator,
-            navigation: this.props.navigation,
-            currentProcess: this.props.currentProcess,
-            currentStep: this.props.currentStep
+            validator: this.props.validator
           })
         });
         /*jshint ignore:end*/
@@ -2010,7 +1997,7 @@ var furmly_selectset = (function (Layout, Picker, ProgressBar, Container) {
     function FurmlySelectSet(props) {
       classCallCheck(this, FurmlySelectSet);
 
-      var _this = possibleConstructorReturn(this, (FurmlySelectSet.__proto__ || Object.getPrototypeOf(FurmlySelectSet)).call(this, props, log));
+      var _this = possibleConstructorReturn(this, (FurmlySelectSet.__proto__ || Object.getPrototypeOf(FurmlySelectSet)).call(this, props));
 
       _this.retryFetch = _this.retryFetch.bind(_this);
       _this.onPickerValueChanged = _this.onPickerValueChanged.bind(_this);
@@ -2131,15 +2118,8 @@ var furmly_selectset = (function (Layout, Picker, ProgressBar, Container) {
     }, {
       key: "onContainerValueChanged",
       value: function onContainerValueChanged(value, pickerValue) {
-        // this.props.log(
-        // 	`value changed ${JSON.stringify(
-        // 		value,
-        // 		null,
-        // 		" "
-        // 	)} pickerValue:${JSON.stringify(pickerValue, null, " ")}`
-        // );
+
         var eve = this._onContainerValueChanged.call(this, value, pickerValue);
-        // this.props.log(`eventual params:${JSON.stringify(eve, null, " ")}`);
 
         this.props.valueChanged.apply(this, eve);
       }
@@ -2245,19 +2225,14 @@ var furmly_selectset = (function (Layout, Picker, ProgressBar, Container) {
             displayProperty: "displayLabel",
             keyProperty: "id",
             value: unwrapObjectValue(this.props.value),
-            valueChanged: this.respondToPickerValueChanged,
-            currentProcess: this.props.currentProcess,
-            currentStep: this.props.currentStep
+            valueChanged: this.respondToPickerValueChanged
           }),
           extraElements: React__default.createElement(Container, {
             name: this.props.args.path || noPath,
             value: this.getContainerValue(),
             valueChanged: this.onContainerValueChanged,
             elements: this.props.contentItems,
-            validator: this.state.containerValidator,
-            navigation: this.props.navigation,
-            currentProcess: this.props.currentProcess,
-            currentStep: this.props.currentStep
+            validator: this.state.containerValidator
           })
         });
         /*jshint ignore:end*/
@@ -2587,10 +2562,7 @@ var furmly_list = (function (Layout, Button, List, Modal, ErrorText, ProgressBar
                 value: this.state.edit,
                 name: FurmlyList.modalName(),
                 validator: this.state.validator,
-                valueChanged: this.valueChanged,
-                navigation: this.props.navigation,
-                currentProcess: this.props.currentProcess,
-                currentStep: this.props.currentStep
+                valueChanged: this.valueChanged
               }),
               visibility: this.state.modalVisible,
               done: this.closeModal
@@ -2675,22 +2647,113 @@ var FurmlyHidden = function (_React$Component) {
 
 var ReactSSRErrorHandler$10 = require("error_handler");
 
-var furmly_nav = (function (Link, NavigationActions) {
-  if (invariants.validComponent(Link, "Link") && !NavigationActions) throw new Error("NavigationActions cannot be null (furmly_nav)");
+var NavigationContext = React__default.createContext({});
 
-  var mapDispatchToState = function mapDispatchToState(dispatch) {
+var withNavigationProvider = function withNavigationProvider(WrappedComponent, Navigator, context) {
+  var navigationActions = void 0;
+  var mapDispatchToProps = function mapDispatchToProps(dispatch) {
+    if (!navigationActions) navigationActions = new Navigator(dispatch, context);
     return {
-      dispatch: dispatch
+      furmlyNavigator: {
+        visible: function visible(args) {
+          return navigationActions.alreadyVisible(args);
+        },
+        replaceStack: function replaceStack(arr) {
+          return navigationActions.replaceStack(arr);
+        },
+        navigate: function navigate(args) {
+          return navigationActions.navigate(args);
+        },
+        setParams: function setParams(args) {
+          return navigationActions.setParams(args);
+        },
+        clearStack: function clearStack() {
+          return navigationActions.clear();
+        },
+        goBack: function goBack(args) {
+          return navigationActions.goBack(args);
+        }
+      }
     };
   };
 
-  var mapStateToProps = function mapStateToProps(_$$1, initialProps) {
-    return function (state) {
-      return {
-        context: state && state.furmly.view && state.furmly.view.navigationContext
-      };
-    };
-  };
+  var NavigationProvider = function (_React$Component) {
+    inherits(NavigationProvider, _React$Component);
+
+    function NavigationProvider() {
+      classCallCheck(this, NavigationProvider);
+      return possibleConstructorReturn(this, (NavigationProvider.__proto__ || Object.getPrototypeOf(NavigationProvider)).apply(this, arguments));
+    }
+
+    createClass(NavigationProvider, [{
+      key: "render",
+      value: function render() {
+        try {
+          return this.__originalRenderMethod__();
+        } catch (e) {
+          return ReactSSRErrorHandler$10(e, this.constructor.name);
+        }
+      }
+    }, {
+      key: "__originalRenderMethod__",
+      value: function __originalRenderMethod__() {
+        return React__default.createElement(
+          NavigationContext.Provider,
+          { value: this.props.furmlyNavigator },
+          React__default.createElement(WrappedComponent, this.props)
+        );
+      }
+    }]);
+    return NavigationProvider;
+  }(React__default.Component);
+
+  return reactRedux.connect(null, mapDispatchToProps)(NavigationProvider);
+};
+
+var withNavigation = function withNavigation(WrappedComponent) {
+  var NavigationConsumer = function (_React$Component2) {
+    inherits(NavigationConsumer, _React$Component2);
+
+    function NavigationConsumer() {
+      classCallCheck(this, NavigationConsumer);
+      return possibleConstructorReturn(this, (NavigationConsumer.__proto__ || Object.getPrototypeOf(NavigationConsumer)).apply(this, arguments));
+    }
+
+    createClass(NavigationConsumer, [{
+      key: "render",
+      value: function render() {
+        try {
+          return this.__originalRenderMethod__();
+        } catch (e) {
+          return ReactSSRErrorHandler$10(e, this.constructor.name);
+        }
+      }
+    }, {
+      key: "__originalRenderMethod__",
+      value: function __originalRenderMethod__() {
+        var _this3 = this;
+
+        return React__default.createElement(
+          NavigationContext.Consumer,
+          null,
+          function (furmlyNavigator) {
+            return React__default.createElement(WrappedComponent, _extends({}, _this3.props, {
+              furmlyNavigator: furmlyNavigator
+            }));
+          }
+        );
+      }
+    }]);
+    return NavigationConsumer;
+  }(React__default.Component);
+
+  return NavigationConsumer;
+};
+
+var ReactSSRErrorHandler$11 = require("error_handler");
+
+var furmly_nav = (function (Link) {
+  invariants.validComponent(Link, "Link");
 
   var FurmlyNav = function (_Component) {
     inherits(FurmlyNav, _Component);
@@ -2700,7 +2763,7 @@ var furmly_nav = (function (Link, NavigationActions) {
         try {
           return this.__originalRenderMethod__();
         } catch (e) {
-          return ReactSSRErrorHandler$10(e, this.constructor.name);
+          return ReactSSRErrorHandler$11(e, this.constructor.name);
         }
       }
     }]);
@@ -2731,21 +2794,17 @@ var furmly_nav = (function (Link, NavigationActions) {
           params = linkAndParams.params;
           switch (this.props.args.type) {
             case FurmlyNav.NAV_TYPE.CLIENT:
-              //this.props.dispatch(
-              NavigationActions.navigate({
+              this.props.furmlyNavigator.navigate({
                 key: link,
                 params: params
-              }, this.props.context, this.props.navigation);
-              //);
+              });
               break;
 
             case FurmlyNav.NAV_TYPE.FURMLY:
-              //const setParamsAction =
-              NavigationActions.setParams({
+              this.props.furmlyNavigator.setParams({
                 params: { id: link, fetchParams: params },
                 key: "Furmly"
-              }, this.props.context, this.props.navigation);
-            //this.props.dispatch(setParamsAction);
+              });
           }
         }
       }
@@ -2785,7 +2844,7 @@ var furmly_nav = (function (Link, NavigationActions) {
 
   return {
     getComponent: function getComponent() {
-      return reactRedux.connect(mapStateToProps, mapDispatchToState)(withLogger(FurmlyNav));
+      return withNavigation(withLogger(FurmlyNav));
     },
     FurmlyNav: FurmlyNav,
     mapDispatchToState: mapDispatchToState,
@@ -2793,7 +2852,7 @@ var furmly_nav = (function (Link, NavigationActions) {
   };
 });
 
-var ReactSSRErrorHandler$11 = require("error_handler");
+var ReactSSRErrorHandler$12 = require("error_handler");
 
 var furmly_image = (function (Image) {
   invariants.validComponent(Image, "Image");
@@ -2812,7 +2871,7 @@ var furmly_image = (function (Image) {
       }
       return React__default.createElement(Image, props);
     } catch (e) {
-      return ReactSSRErrorHandler$11(e);
+      return ReactSSRErrorHandler$12(e);
     }
   };
   return { getComponent: function getComponent() {
@@ -2820,7 +2879,7 @@ var furmly_image = (function (Image) {
     }, FurmlyImage: FurmlyImage };
 });
 
-var ReactSSRErrorHandler$12 = require("error_handler");
+var ReactSSRErrorHandler$13 = require("error_handler");
 
 var GRID_MODES = {
   CRUD: "CRUD",
@@ -2831,8 +2890,8 @@ var ITEM_MODES = {
   EDIT: "EDIT"
 };
 
-var furmly_grid = (function (Layout, List, ItemView, Header, ProgressBar, CommandsView, NavigationActions, CommandResultView, Container) {
-  if (invariants.validComponent(Layout, "Layout") && invariants.validComponent(Header, "Header") && invariants.validComponent(List, "List") && invariants.validComponent(ItemView, "ItemView") && invariants.validComponent(ProgressBar, "ProgressBar") && invariants.validComponent(CommandsView, "CommandsView") && invariants.validComponent(Container, "Container") && invariants.validComponent(CommandResultView, "CommandResultView") && !NavigationActions) throw new Error("NavigationActions cannot be null (furmly_grid)");
+var furmly_grid = (function (Layout, List, ItemView, Header, ProgressBar, CommandsView, CommandResultView, Container) {
+  if (invariants.validComponent(Layout, "Layout") && invariants.validComponent(Header, "Header") && invariants.validComponent(List, "List") && invariants.validComponent(ItemView, "ItemView") && invariants.validComponent(ProgressBar, "ProgressBar") && invariants.validComponent(CommandsView, "CommandsView") && invariants.validComponent(Container, "Container") && !CommandResultView) throw new Error("CommandResultView cannot be null (furmly_grid)");
 
   var mapDispatchToProps = function mapDispatchToProps(dispatch) {
     return {
@@ -2844,12 +2903,6 @@ var furmly_grid = (function (Layout, List, ItemView, Header, ProgressBar, Comman
       },
       more: function more(id, args, key) {
         return dispatch(getMoreForGrid(id, args, key));
-      },
-      go: function go(value) {
-        return dispatch(NavigationActions.setParams({
-          params: { id: value },
-          key: "Furmly"
-        }));
       },
       getSingleItem: function getSingleItem(id, args, key) {
         return dispatch(getSingleItemForGrid(id, args, key));
@@ -2903,7 +2956,7 @@ var furmly_grid = (function (Layout, List, ItemView, Header, ProgressBar, Comman
         try {
           return this.__originalRenderMethod__();
         } catch (e) {
-          return ReactSSRErrorHandler$12(e, this.constructor.name);
+          return ReactSSRErrorHandler$13(e, this.constructor.name);
         }
       }
     }]);
@@ -3270,8 +3323,12 @@ var furmly_grid = (function (Layout, List, ItemView, Header, ProgressBar, Comman
 
         switch (command.commandType) {
           case "NAV":
-            this.props.go(command.command.value, {
-              fetchParams: { _id: item._id }
+            this.props.furmlyNavigator({
+              params: {
+                id: command.command.value,
+                fetchParams: { _id: item._id }
+              },
+              key: "Furmly"
             });
             break;
           case "$EDIT":
@@ -3317,10 +3374,7 @@ var furmly_grid = (function (Layout, List, ItemView, Header, ProgressBar, Comman
             value: this.getFilterValue(),
             valueChanged: this.valueChanged,
             name: FurmlyGrid.filterViewName(),
-            validator: this.state._filterValidator,
-            navigation: this.props.navigation,
-            currentProcess: this.props.currentProcess,
-            currentStep: this.props.currentStep
+            validator: this.state._filterValidator
           })
         ) : this.props.fetchingFilterTemplate ? React__default.createElement(ProgressBar, null) : null,
             footer = !this.finished() && this.props.busy ? React__default.createElement(ProgressBar, null) : null;
@@ -3358,10 +3412,7 @@ var furmly_grid = (function (Layout, List, ItemView, Header, ProgressBar, Comman
               value: this.getItemValue(),
               name: FurmlyGrid.itemViewName(),
               validator: this.state.validator,
-              valueChanged: this.itemValueChanged,
-              navigation: this.props.navigation,
-              currentProcess: this.props.currentProcess,
-              currentStep: this.props.currentStep
+              valueChanged: this.itemValueChanged
             })
           }),
           commandsView: React__default.createElement(CommandsView, {
@@ -3378,10 +3429,7 @@ var furmly_grid = (function (Layout, List, ItemView, Header, ProgressBar, Comman
             template: React__default.createElement(Container, {
               elements: this.state.commandResult,
               name: FurmlyGrid.commandResultViewName(),
-              validator: {},
-              navigation: this.props.navigation,
-              currentProcess: this.props.currentProcess,
-              currentStep: this.props.currentStep
+              validator: {}
             }),
             title: "",
             busy: this.props.commandProcessing
@@ -3409,7 +3457,7 @@ var furmly_grid = (function (Layout, List, ItemView, Header, ProgressBar, Comman
 
   return {
     getComponent: function getComponent() {
-      return reactRedux.connect(mapStateToProps, mapDispatchToProps)(withLogger(FurmlyGrid));
+      return reactRedux.connect(mapStateToProps, mapDispatchToProps)(withNavigation(withLogger(FurmlyGrid)));
     },
     FurmlyGrid: FurmlyGrid,
     mapStateToProps: mapStateToProps,
@@ -3417,7 +3465,7 @@ var furmly_grid = (function (Layout, List, ItemView, Header, ProgressBar, Comman
   };
 });
 
-var ReactSSRErrorHandler$13 = require("error_handler");
+var ReactSSRErrorHandler$14 = require("error_handler");
 
 var furmly_htmlview = (function (PlatformComponent) {
   var FurmlyHTMLViewer = function (_Component) {
@@ -3428,7 +3476,7 @@ var furmly_htmlview = (function (PlatformComponent) {
         try {
           return this.__originalRenderMethod__();
         } catch (e) {
-          return ReactSSRErrorHandler$13(e, this.constructor.name);
+          return ReactSSRErrorHandler$14(e, this.constructor.name);
         }
       }
     }]);
@@ -3465,7 +3513,7 @@ var furmly_htmlview = (function (PlatformComponent) {
   };
 });
 
-var ReactSSRErrorHandler$14 = require("error_handler");
+var ReactSSRErrorHandler$15 = require("error_handler");
 
 /**
  * This component should render a file uploader
@@ -3491,7 +3539,7 @@ var furmly_fileupload = (function (Uploader, ProgressBar, Text) {
         try {
           return this.__originalRenderMethod__();
         } catch (e) {
-          return ReactSSRErrorHandler$14(e, this.constructor.name);
+          return ReactSSRErrorHandler$15(e, this.constructor.name);
         }
       }
     }]);
@@ -3636,7 +3684,7 @@ var furmly_fileupload = (function (Uploader, ProgressBar, Text) {
   }, defineProperty(_ref, "mapDispatchToProps", mapDispatchToProps), defineProperty(_ref, "FurmlyFileUpload", FurmlyFileUpload), _ref;
 });
 
-var ReactSSRErrorHandler$15 = require("error_handler");
+var ReactSSRErrorHandler$16 = require("error_handler");
 
 var furmly_actionview = (function (Layout, ProgressBar, Filter, Container) {
   invariants.validComponent(Filter, "Filter");
@@ -3687,7 +3735,7 @@ var furmly_actionview = (function (Layout, ProgressBar, Filter, Container) {
         try {
           return this.__originalRenderMethod__();
         } catch (e) {
-          return ReactSSRErrorHandler$15(e, this.constructor.name);
+          return ReactSSRErrorHandler$16(e, this.constructor.name);
         }
       }
     }]);
@@ -3760,10 +3808,7 @@ var furmly_actionview = (function (Layout, ProgressBar, Filter, Container) {
               value: rest,
               name: itemViewName,
               validator: this.state._filterValidator,
-              valueChanged: this.filterValueChanged,
-              navigation: this.props.navigation,
-              currentProcess: this.props.currentProcess,
-              currentStep: this.props.currentStep
+              valueChanged: this.filterValueChanged
             })
           ),
           content: React__default.createElement(Container, {
@@ -3771,10 +3816,7 @@ var furmly_actionview = (function (Layout, ProgressBar, Filter, Container) {
             elements: this.props.resultUI,
             value: contentValue,
             validator: this.state.validator,
-            valueChanged: this.valueChanged,
-            navigation: this.props.navigation,
-            currentProcess: this.props.currentProcess,
-            currentStep: this.props.currentStep
+            valueChanged: this.valueChanged
           })
         });
       }
@@ -3792,7 +3834,7 @@ var furmly_actionview = (function (Layout, ProgressBar, Filter, Container) {
   };
 });
 
-var ReactSSRErrorHandler$16 = require("error_handler");
+var ReactSSRErrorHandler$17 = require("error_handler");
 
 var furmly_label = (function (Label) {
   invariants.validComponent(Label, "Label");
@@ -3807,7 +3849,7 @@ var furmly_label = (function (Label) {
       }
       return React__default.createElement(Label, props);
     } catch (e) {
-      return ReactSSRErrorHandler$16(e);
+      return ReactSSRErrorHandler$17(e);
     }
   };
 
@@ -3816,7 +3858,7 @@ var furmly_label = (function (Label) {
     }, FurmlyLabel: FurmlyLabel };
 });
 
-var ReactSSRErrorHandler$17 = require("error_handler");
+var ReactSSRErrorHandler$18 = require("error_handler");
 
 var furmly_webview = (function (WebView, Text) {
   invariants.validComponent(WebView, "WebView");
@@ -3830,7 +3872,7 @@ var furmly_webview = (function (WebView, Text) {
         try {
           return this.__originalRenderMethod__();
         } catch (e) {
-          return ReactSSRErrorHandler$17(e, this.constructor.name);
+          return ReactSSRErrorHandler$18(e, this.constructor.name);
         }
       }
     }]);
@@ -3862,7 +3904,7 @@ var furmly_webview = (function (WebView, Text) {
     }, FurmlyWebView: FurmlyWebView };
 });
 
-var ReactSSRErrorHandler$18 = require("error_handler");
+var ReactSSRErrorHandler$19 = require("error_handler");
 
 var furmly_command = (function (Link, customDownloadCommand) {
   invariants.validComponent(Link, "Link");
@@ -3881,7 +3923,7 @@ var furmly_command = (function (Link, customDownloadCommand) {
         try {
           return this.__originalRenderMethod__();
         } catch (e) {
-          return ReactSSRErrorHandler$18(e, this.constructor.name);
+          return ReactSSRErrorHandler$19(e, this.constructor.name);
         }
       }
     }]);
@@ -4307,7 +4349,7 @@ var createStore = (function () {
   return redux.compose(redux.applyMiddleware.apply(undefined, toConsumableArray(middlewares)))(redux.createStore)(rootReducer);
 });
 
-var ReactSSRErrorHandler$19 = require("error_handler");
+var ReactSSRErrorHandler$20 = require("error_handler");
 
 var createProvider = function createProvider(Process) {
   for (var _len = arguments.length, args = Array(_len > 1 ? _len - 1 : 0), _key = 1; _key < _len; _key++) {
@@ -4325,7 +4367,7 @@ var createProvider = function createProvider(Process) {
             React__default.createElement(Process, props)
           );
         } catch (e) {
-          return ReactSSRErrorHandler$19(e);
+          return ReactSSRErrorHandler$20(e);
         }
       };
     },
@@ -4352,7 +4394,9 @@ var components = {
   furmly_label: furmly_label,
   furmly_webview: furmly_webview,
   furmly_provider: createProvider,
-  furmly_command: furmly_command
+  furmly_command: furmly_command,
+  withNavigation: withNavigation,
+  withNavigationProvider: withNavigationProvider
 };
 
 var Deferred = function Deferred(name) {
@@ -4361,7 +4405,7 @@ var Deferred = function Deferred(name) {
   if (!name) throw new Error("Deferred component name cannot be null or empty");
   this.name = name.toUpperCase();
 };
-var log$2 = debug("furmly-init");
+var log$1 = debug("furmly-init");
 var createMap = function createMap() {
   var _defaultMap = {};
   var recipes = {};
@@ -4372,7 +4416,7 @@ var createMap = function createMap() {
     if (!React__default.Component.isPrototypeOf(cooked)) {
       if (typeof cooked.getComponent !== "function") throw new Error("Custom component must either be a react component or have getComponent function return a valid react component");
       cooked = cooked.getComponent();
-      log$2("cooked:" + cooked);
+      log$1("cooked:" + cooked);
       if (!React__default.Component.isPrototypeOf(cooked) && typeof cooked !== "function") throw new Error("getComponent must return a valid react element");
     }
     return cooked;
@@ -4397,6 +4441,8 @@ var createMap = function createMap() {
     WEBVIEW: components.furmly_webview,
     COMMAND: components.furmly_command,
     PROVIDER: components.furmly_provider,
+    withNavigation: components.withNavigation,
+    withNavigationProvider: components.withNavigationProvider,
     prepareRecipe: function prepareRecipe(name, recipe) {
       var _this = this;
 
@@ -4474,7 +4520,7 @@ var createMap = function createMap() {
         }
         if (!_defaultMap[name]) throw new Error("Cannot find any recipe for that element");
         if (name == customName) {
-          log$2("Custom name will override default recipe");
+          log$1("Custom name will override default recipe");
         }
 
         var cooked = _defaultMap[name].apply(null, recipe);

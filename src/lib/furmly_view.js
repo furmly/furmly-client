@@ -89,9 +89,6 @@ export default (Page, Warning, Container) => {
             value={this.props.value}
             valueChanged={this.onValueChanged}
             validator={this.state.validator}
-            navigation={this.props.navigation}
-            currentStep={this.props.currentStep}
-            currentProcess={this.props.currentProcess}
           />
         </Page>
       );

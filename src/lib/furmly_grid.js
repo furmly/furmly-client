@@ -12,6 +12,7 @@ import {
 import invariants from "./utils/invariants";
 import { getKey, copy, getErrorKey } from "./utils/view";
 import withLogger from "./furmly_base";
+import { withNavigation } from "./furmly_navigation_context";
 
 export const GRID_MODES = {
   CRUD: "CRUD",
@@ -29,7 +30,6 @@ export default (
   Header,
   ProgressBar,
   CommandsView,
-  NavigationActions,
   CommandResultView,
   Container
 ) => {
@@ -41,10 +41,9 @@ export default (
     invariants.validComponent(ProgressBar, "ProgressBar") &&
     invariants.validComponent(CommandsView, "CommandsView") &&
     invariants.validComponent(Container, "Container") &&
-    invariants.validComponent(CommandResultView, "CommandResultView") &&
-    !NavigationActions
+    !CommandResultView
   )
-    throw new Error("NavigationActions cannot be null (furmly_grid)");
+    throw new Error("CommandResultView cannot be null (furmly_grid)");
 
   const mapDispatchToProps = dispatch => {
     return {
@@ -56,13 +55,6 @@ export default (
           })
         ),
       more: (id, args, key) => dispatch(getMoreForGrid(id, args, key)),
-      go: value =>
-        dispatch(
-          NavigationActions.setParams({
-            params: { id: value },
-            key: "Furmly"
-          })
-        ),
       getSingleItem: (id, args, key) =>
         dispatch(getSingleItemForGrid(id, args, key)),
       getItemTemplate: (id, args, key) =>
@@ -525,11 +517,16 @@ export default (
         selectedItems
       });
     }
+
     execCommand(command, item = this.state.item) {
       switch (command.commandType) {
         case "NAV":
-          this.props.go(command.command.value, {
-            fetchParams: { _id: item._id }
+          this.props.furmlyNavigator({
+            params: {
+              id: command.command.value,
+              fetchParams: { _id: item._id }
+            },
+            key: "Furmly"
           });
           break;
         case "$EDIT":
@@ -570,9 +567,6 @@ export default (
                 valueChanged={this.valueChanged}
                 name={FurmlyGrid.filterViewName()}
                 validator={this.state._filterValidator}
-                navigation={this.props.navigation}
-                currentProcess={this.props.currentProcess}
-                currentStep={this.props.currentStep}
               />
             </Header>
           ) : this.props.fetchingFilterTemplate ? (
@@ -627,9 +621,6 @@ export default (
                   name={FurmlyGrid.itemViewName()}
                   validator={this.state.validator}
                   valueChanged={this.itemValueChanged}
-                  navigation={this.props.navigation}
-                  currentProcess={this.props.currentProcess}
-                  currentStep={this.props.currentStep}
                 />
               }
             />
@@ -653,9 +644,6 @@ export default (
                   elements={this.state.commandResult}
                   name={FurmlyGrid.commandResultViewName()}
                   validator={{}}
-                  navigation={this.props.navigation}
-                  currentProcess={this.props.currentProcess}
-                  currentStep={this.props.currentStep}
                 />
               }
               title={""}
@@ -672,7 +660,7 @@ export default (
       connect(
         mapStateToProps,
         mapDispatchToProps
-      )(withLogger(FurmlyGrid)),
+      )(withNavigation(withLogger(FurmlyGrid))),
     FurmlyGrid,
     mapStateToProps,
     mapDispatchToProps
