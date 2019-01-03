@@ -2947,18 +2947,6 @@ var furmly_grid = (function (Layout, List, ItemView, Header, ProgressBar, Comman
       _this.clearSelectedItems = _this.clearSelectedItems.bind(_this);
       _this.fetchFilterTemplate = _this.fetchFilterTemplate.bind(_this);
       _this.getCommands = _this.getCommands.bind(_this);
-      if ((_this.isCRUD() || _this.isEDITONLY()) && (!_this.props.args.commands || !_this.props.args.commands.filter(function (x) {
-        return _this.isEditCommand(x);
-      }).length)) {
-        var cmd = {
-          commandText: "Edit",
-          command: { value: "" },
-          commandType: "$EDIT",
-          commandIcon: "mode-edit"
-        };
-        if (!_this.props.args.commands) _this.props.args.commands = [];
-        _this.props.args.commands.unshift(cmd);
-      }
       return _this;
     }
 
@@ -2967,6 +2955,7 @@ var furmly_grid = (function (Layout, List, ItemView, Header, ProgressBar, Comman
       value: function componentDidMount() {
         this._mounted = true;
         this.fetchFilterTemplate();
+        this.setupEditCommand();
       }
     }, {
       key: "componentWillUnmount",
@@ -2995,6 +2984,26 @@ var furmly_grid = (function (Layout, List, ItemView, Header, ProgressBar, Comman
         });
       }
     }, {
+      key: "setupEditCommand",
+      value: function setupEditCommand() {
+        var _this2 = this;
+
+        var props = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : this.props;
+
+        if ((this.isCRUD(props) || this.isEDITONLY(props)) && (!props.args.commands || !props.args.commands.filter(function (x) {
+          return _this2.isEditCommand(x);
+        }).length)) {
+          var cmd = {
+            commandText: "Edit",
+            command: { value: "" },
+            commandType: "$EDIT",
+            commandIcon: "mode-edit"
+          };
+          if (!props.args.commands) props.args.commands = [];
+          props.args.commands.unshift(cmd);
+        }
+      }
+    }, {
       key: "closeCommandResult",
       value: function closeCommandResult() {
         this.setState({
@@ -3005,6 +3014,9 @@ var furmly_grid = (function (Layout, List, ItemView, Header, ProgressBar, Comman
     }, {
       key: "componentWillReceiveProps",
       value: function componentWillReceiveProps(next) {
+        if (next.args !== this.props.args) {
+          this.setupEditCommand(next);
+        }
         // item view properties have changed.
         if (next.processed !== this.props.processed) {
           this.getItemsFromSource(null, "filterGrid");
@@ -3076,12 +3088,12 @@ var furmly_grid = (function (Layout, List, ItemView, Header, ProgressBar, Comman
     }, {
       key: "filter",
       value: function filter() {
-        var _this2 = this;
+        var _this3 = this;
 
         this.state._filterValidator.validate().then(function () {
-          _this2.getItemsFromSource(_this2.getFilterValue(), "filterGrid");
+          _this3.getItemsFromSource(_this3.getFilterValue(), "filterGrid");
         }, function () {
-          _this2.props.log("a field in filter is invalid");
+          _this3.props.log("a field in filter is invalid");
         });
       }
     }, {
@@ -3092,31 +3104,31 @@ var furmly_grid = (function (Layout, List, ItemView, Header, ProgressBar, Comman
     }, {
       key: "done",
       value: function done(submitted) {
-        var _this3 = this;
+        var _this4 = this;
 
         if (!submitted) return this.cancel();
 
         this.state.validator.validate().then(function () {
           var id = void 0;
-          switch (_this3.state.mode) {
+          switch (_this4.state.mode) {
             case ITEM_MODES.NEW:
-              id = _this3.props.args.extra.createProcessor;
+              id = _this4.props.args.extra.createProcessor;
               break;
             case ITEM_MODES.EDIT:
-              id = _this3.props.args.extra.editProcessor || _this3.props.args.extra.createProcessor;
+              id = _this4.props.args.extra.editProcessor || _this4.props.args.extra.createProcessor;
               break;
           }
           if (!id) {
-            return _this3.props.log("done  was called on a grid view in " + _this3.props.args.mode + " and it does not have a processor for it. \n" + JSON.stringify(_this3.props, null, " ")), _this3.cancel();
+            return _this4.props.log("done  was called on a grid view in " + _this4.props.args.mode + " and it does not have a processor for it. \n" + JSON.stringify(_this4.props, null, " ")), _this4.cancel();
           }
 
-          _this3.props.run(id, Object.assign(JSON.parse(_this3.props.args.gridArgs || "{}"), {
-            entity: _this3.getItemValue()
-          }), _this3.props.component_uid + FurmlyGrid.itemViewName());
+          _this4.props.run(id, Object.assign(JSON.parse(_this4.props.args.gridArgs || "{}"), {
+            entity: _this4.getItemValue()
+          }), _this4.props.component_uid + FurmlyGrid.itemViewName());
 
-          _this3.cancel();
+          _this4.cancel();
         }, function () {
-          _this3.props.log("some modal fields are invalid");
+          _this4.props.log("some modal fields are invalid");
         });
       }
     }, {
@@ -3252,7 +3264,7 @@ var furmly_grid = (function (Layout, List, ItemView, Header, ProgressBar, Comman
     }, {
       key: "execCommand",
       value: function execCommand(command) {
-        var _this4 = this;
+        var _this5 = this;
 
         var item = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : this.state.item;
 
@@ -3267,7 +3279,7 @@ var furmly_grid = (function (Layout, List, ItemView, Header, ProgressBar, Comman
             break;
           case "PROCESSOR":
             this.props.run(command.command.value, Object.assign({}, JSON.parse(this.props.args.gridArgs || "{}"), Object.keys(this.state.selectedItems).map(function (x) {
-              return _this4.state.selectedItems[x];
+              return _this5.state.selectedItems[x];
             }).concat(item)), this.props.component_uid + FurmlyGrid.commandResultViewName());
             break;
         }
@@ -3277,24 +3289,28 @@ var furmly_grid = (function (Layout, List, ItemView, Header, ProgressBar, Comman
     }, {
       key: "isCRUD",
       value: function isCRUD() {
-        return this.props.args.mode == GRID_MODES.CRUD;
+        var props = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : this.props;
+
+        return props.args.mode == GRID_MODES.CRUD;
       }
     }, {
       key: "isEDITONLY",
       value: function isEDITONLY() {
-        return this.props.args.mode == GRID_MODES.EDITONLY;
+        var props = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : this.props;
+
+        return props.args.mode == GRID_MODES.EDITONLY;
       }
     }, {
       key: "__originalRenderMethod__",
       value: function __originalRenderMethod__() {
-        var _this5 = this;
+        var _this6 = this;
 
         this.props.log("rendering..");
 
         var header = this.props.filterTemplate && this.props.filterTemplate.length ? React__default.createElement(
           Header,
           { filter: function filter() {
-              return _this5.filter();
+              return _this6.filter();
             } },
           React__default.createElement(Container, {
             elements: this.props.filterTemplate,

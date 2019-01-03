@@ -142,24 +142,11 @@ export default (
       this.clearSelectedItems = this.clearSelectedItems.bind(this);
       this.fetchFilterTemplate = this.fetchFilterTemplate.bind(this);
       this.getCommands = this.getCommands.bind(this);
-      if (
-        (this.isCRUD() || this.isEDITONLY()) &&
-        (!this.props.args.commands ||
-          !this.props.args.commands.filter(x => this.isEditCommand(x)).length)
-      ) {
-        let cmd = {
-          commandText: "Edit",
-          command: { value: "" },
-          commandType: "$EDIT",
-          commandIcon: "mode-edit"
-        };
-        if (!this.props.args.commands) this.props.args.commands = [];
-        this.props.args.commands.unshift(cmd);
-      }
     }
     componentDidMount() {
       this._mounted = true;
       this.fetchFilterTemplate();
+      this.setupEditCommand();
     }
 
     componentWillUnmount() {
@@ -188,6 +175,23 @@ export default (
         commandResult: props.commandProcessed
       });
     }
+
+    setupEditCommand(props = this.props) {
+      if (
+        (this.isCRUD(props) || this.isEDITONLY(props)) &&
+        (!props.args.commands ||
+          !props.args.commands.filter(x => this.isEditCommand(x)).length)
+      ) {
+        let cmd = {
+          commandText: "Edit",
+          command: { value: "" },
+          commandType: "$EDIT",
+          commandIcon: "mode-edit"
+        };
+        if (!props.args.commands) props.args.commands = [];
+        props.args.commands.unshift(cmd);
+      }
+    }
     closeCommandResult() {
       this.setState({
         showCommandResultView: false,
@@ -195,6 +199,9 @@ export default (
       });
     }
     componentWillReceiveProps(next) {
+      if (next.args !== this.props.args) {
+        this.setupEditCommand(next);
+      }
       // item view properties have changed.
       if (next.processed !== this.props.processed) {
         this.getItemsFromSource(null, "filterGrid");
@@ -545,11 +552,11 @@ export default (
 
       this.setState({ showCommandsView: false });
     }
-    isCRUD() {
-      return this.props.args.mode == GRID_MODES.CRUD;
+    isCRUD(props = this.props) {
+      return props.args.mode == GRID_MODES.CRUD;
     }
-    isEDITONLY() {
-      return this.props.args.mode == GRID_MODES.EDITONLY;
+    isEDITONLY(props = this.props) {
+      return props.args.mode == GRID_MODES.EDITONLY;
     }
     render() {
       this.props.log("rendering..");
