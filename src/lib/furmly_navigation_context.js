@@ -4,18 +4,18 @@ import { connect } from "react-redux";
 const NavigationContext = React.createContext({});
 
 export const withNavigationProvider = (WrappedComponent, Navigator, context) => {
-  let navigationActions;
+  let navigator;
   const mapDispatchToProps = dispatch => {
-    if (!navigationActions)
-      navigationActions = new Navigator(dispatch, context);
+    if (!navigator)
+      navigator = new Navigator(dispatch, context);
     return {
       furmlyNavigator: {
-        visible: args => navigationActions.alreadyVisible(args),
-        replaceStack: arr => navigationActions.replaceStack(arr),
-        navigate: args => navigationActions.navigate(args),
-        setParams: args => navigationActions.setParams(args),
-        clearStack: () => navigationActions.clear(),
-        goBack: args => navigationActions.goBack(args)
+        visible: args => navigator.alreadyVisible(args),
+        replaceStack: arr => navigator.replaceStack(arr),
+        navigate: args => navigator.navigate(args),
+        setParams: args => navigator.setParams(args),
+        clearStack: () => navigator.clear(),
+        goBack: args => navigator.goBack(args)
       }
     };
   };

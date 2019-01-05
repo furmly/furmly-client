@@ -2650,28 +2650,28 @@ var ReactSSRErrorHandler$10 = require("error_handler");
 var NavigationContext = React__default.createContext({});
 
 var withNavigationProvider = function withNavigationProvider(WrappedComponent, Navigator, context) {
-  var navigationActions = void 0;
+  var navigator = void 0;
   var mapDispatchToProps = function mapDispatchToProps(dispatch) {
-    if (!navigationActions) navigationActions = new Navigator(dispatch, context);
+    if (!navigator) navigator = new Navigator(dispatch, context);
     return {
       furmlyNavigator: {
         visible: function visible(args) {
-          return navigationActions.alreadyVisible(args);
+          return navigator.alreadyVisible(args);
         },
         replaceStack: function replaceStack(arr) {
-          return navigationActions.replaceStack(arr);
+          return navigator.replaceStack(arr);
         },
         navigate: function navigate(args) {
-          return navigationActions.navigate(args);
+          return navigator.navigate(args);
         },
         setParams: function setParams(args) {
-          return navigationActions.setParams(args);
+          return navigator.setParams(args);
         },
         clearStack: function clearStack() {
-          return navigationActions.clear();
+          return navigator.clear();
         },
         goBack: function goBack(args) {
-          return navigationActions.goBack(args);
+          return navigator.goBack(args);
         }
       }
     };
