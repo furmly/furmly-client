@@ -521,7 +521,7 @@ export default (
     execCommand(command, item = this.state.item) {
       switch (command.commandType) {
         case "NAV":
-          this.props.furmlyNavigator({
+          this.props.furmlyNavigator.replaceStack({
             params: {
               id: command.command.value,
               fetchParams: { _id: item._id }

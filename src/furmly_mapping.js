@@ -97,7 +97,8 @@ const createMap = () => {
         }
       }
     },
-    addRecipe(name, recipe) {
+    addRecipe(name, recipe, fn) {
+      if (!this[name] && fn) this[name] = fn;
       recipes[name] = recipe;
     },
     removeRecipe(name) {

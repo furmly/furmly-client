@@ -3323,7 +3323,7 @@ var furmly_grid = (function (Layout, List, ItemView, Header, ProgressBar, Comman
 
         switch (command.commandType) {
           case "NAV":
-            this.props.furmlyNavigator({
+            this.props.furmlyNavigator.replaceStack({
               params: {
                 id: command.command.value,
                 fetchParams: { _id: item._id }
@@ -4484,7 +4484,8 @@ var createMap = function createMap() {
         }
       }
     },
-    addRecipe: function addRecipe(name, recipe) {
+    addRecipe: function addRecipe(name, recipe, fn) {
+      if (!this[name] && fn) this[name] = fn;
       recipes[name] = recipe;
     },
     removeRecipe: function removeRecipe(name) {
