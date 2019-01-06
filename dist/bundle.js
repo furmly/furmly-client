@@ -4399,6 +4399,8 @@ var components = {
   withNavigationProvider: withNavigationProvider
 };
 
+var _this4 = undefined;
+
 var Deferred = function Deferred(name) {
   classCallCheck(this, Deferred);
 
@@ -4542,7 +4544,7 @@ var createMap = function createMap() {
 
   Object.keys(api).map(function (key) {
     if (key[0] == key[0].toUpperCase()) {
-      api["add" + key + "Recipe"] = api.addRecipe.bind(null, key);
+      api["add" + key + "Recipe"] = api.addRecipe.bind(_this4, key);
     }
   });
 
