@@ -521,13 +521,15 @@ export default (
     execCommand(command, item = this.state.item) {
       switch (command.commandType) {
         case "NAV":
-          this.props.furmlyNavigator.replaceStack({
-            params: {
-              id: command.command.value,
-              fetchParams: { _id: item._id }
-            },
-            key: "Furmly"
-          });
+          this.props.furmlyNavigator.replaceStack([
+            {
+              params: {
+                id: command.command.value,
+                fetchParams: { _id: item._id }
+              },
+              key: "Furmly"
+            }
+          ]);
           break;
         case "$EDIT":
           this.showItemView(ITEM_MODES.EDIT, item);

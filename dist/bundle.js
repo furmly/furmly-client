@@ -3323,13 +3323,13 @@ var furmly_grid = (function (Layout, List, ItemView, Header, ProgressBar, Comman
 
         switch (command.commandType) {
           case "NAV":
-            this.props.furmlyNavigator.replaceStack({
+            this.props.furmlyNavigator.replaceStack([{
               params: {
                 id: command.command.value,
                 fetchParams: { _id: item._id }
               },
               key: "Furmly"
-            });
+            }]);
             break;
           case "$EDIT":
             this.showItemView(ITEM_MODES.EDIT, item);
@@ -4399,8 +4399,6 @@ var components = {
   withNavigationProvider: withNavigationProvider
 };
 
-var _this4 = undefined;
-
 var Deferred = function Deferred(name) {
   classCallCheck(this, Deferred);
 
@@ -4544,7 +4542,7 @@ var createMap = function createMap() {
 
   Object.keys(api).map(function (key) {
     if (key[0] == key[0].toUpperCase()) {
-      api["add" + key + "Recipe"] = api.addRecipe.bind(_this4, key);
+      api["add" + key + "Recipe"] = api.addRecipe.bind(api, key);
     }
   });
 
