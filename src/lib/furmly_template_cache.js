@@ -15,7 +15,7 @@ export const withTemplateCacheProvider = WrappedComponent => {
       };
     }
     get(key) {
-      return (this.cache[key] && copy(this.cache[key])) || [];
+      return this.cache[key] && copy(this.cache[key]);
     }
     add(key, value) {
       this.cache[key] = value;

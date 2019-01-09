@@ -1601,7 +1601,7 @@ var withTemplateCacheProvider = function withTemplateCacheProvider(WrappedCompon
     createClass(TemplateCacheProvider, [{
       key: "get",
       value: function get$$1(key) {
-        return this.cache[key] && copy$1(this.cache[key]) || [];
+        return this.cache[key] && copy$1(this.cache[key]);
       }
     }, {
       key: "add",

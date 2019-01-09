@@ -301,7 +301,7 @@ export default (
     }
     edit(index) {
       this.setState({
-        edit: JSON.parse(JSON.stringify(this.props.items[index])),
+        edit: copy(this.props.items[index]),
         existing: index,
         mode: EDIT,
         modalVisible: true
