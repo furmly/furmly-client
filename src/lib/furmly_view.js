@@ -9,7 +9,6 @@ export default (Page, Warning, Container) => {
   invariants.validComponent(Container, "Container");
 
   const mapStateToProps = (_, initialProps) => (state, ownProps) => {
-    //log("mapping state to props");
     let _state = state.furmly.view[ownProps.currentProcess],
       description = _state && _state.description,
       map = {
@@ -22,6 +21,8 @@ export default (Page, Warning, Container) => {
         map.hideSubmit = true;
       map.title = description.title;
       map.processDescription = description.description;
+      map.commandLabel = description.steps[ownProps.currentStep].commandLabel;
+      map.uid = description.uid;
     }
     return map;
   };
@@ -81,6 +82,8 @@ export default (Page, Warning, Container) => {
           submit={this.submit}
           hideSubmit={this.props.hideSubmit}
           processDescription={this.props.processDescription}
+          commandLabel={this.props.commandLabel}
+          uid={this.props.uid}
         >
           <Container
             label={this.props.title}
