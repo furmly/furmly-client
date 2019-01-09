@@ -54,6 +54,8 @@ const createMap = () => {
     PROVIDER: components.furmly_provider,
     withNavigation: components.withNavigation,
     withNavigationProvider: components.withNavigationProvider,
+    withTemplateCache: components.withTemplateCache,
+    withTemplateCacheProvider: components.withTemplateCacheProvider,
     prepareRecipe(name, recipe) {
       const parsedRecipe =
         (typeof deps[name] === "number" && !deps[name] && recipe) ||
@@ -151,7 +153,7 @@ const createMap = () => {
 
   Object.keys(api).map(key => {
     if (key[0] == key[0].toUpperCase()) {
-      api[`add${key}Recipe`] = api.addRecipe.bind(api, key); 
+      api[`add${key}Recipe`] = api.addRecipe.bind(api, key);
     }
   });
 

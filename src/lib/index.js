@@ -18,6 +18,10 @@ import furmly_webview from "./furmly_webview";
 import furmly_command from "./furmly_command";
 import furmly_provider from "./furmly_provider";
 import {
+  withTemplateCache,
+  withTemplateCacheProvider
+} from "./furmly_template_cache";
+import {
   withNavigation,
   withNavigationProvider
 } from "./furmly_navigation_context";
@@ -43,5 +47,7 @@ export default {
   furmly_provider,
   furmly_command,
   withNavigation,
-  withNavigationProvider
+  withNavigationProvider,
+  withTemplateCache,
+  withTemplateCacheProvider
 };

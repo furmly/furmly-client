@@ -242,7 +242,7 @@ export default function(state = {}, action) {
 				},
 				//always carry over the navigationContext.
 				navigationContext: state.navigationContext,
-				templateCache: state.templateCache || {},
+				//templateCache: state.templateCache || {},
 				[getBusyKey(action.payload.id)]: false,
 				[getErrorKey(action.payload.id)]: action.error
 			});

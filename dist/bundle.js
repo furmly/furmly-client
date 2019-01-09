@@ -1168,7 +1168,6 @@ var furmly_view = (function (Page, Warning, Container) {
 
   var mapStateToProps = function mapStateToProps(_$$1, initialProps) {
     return function (state, ownProps) {
-      //log("mapping state to props");
       var _state = state.furmly.view[ownProps.currentProcess],
           description = _state && _state.description,
           map = {
@@ -1180,6 +1179,8 @@ var furmly_view = (function (Page, Warning, Container) {
         if (description.steps[ownProps.currentStep].mode == "VIEW") map.hideSubmit = true;
         map.title = description.title;
         map.processDescription = description.description;
+        map.commandLabel = description.steps[ownProps.currentStep].commandLabel;
+        map.uid = description.uid;
       }
       return map;
     };
@@ -1259,7 +1260,9 @@ var furmly_view = (function (Page, Warning, Container) {
           {
             submit: this.submit,
             hideSubmit: this.props.hideSubmit,
-            processDescription: this.props.processDescription
+            processDescription: this.props.processDescription,
+            commandLabel: this.props.commandLabel,
+            uid: this.props.uid
           },
           React__default.createElement(Container, {
             label: this.props.title,
@@ -1452,7 +1455,214 @@ var furmly_container = (function () {
   };
 });
 
+function getTitleFromState(state) {
+  var id = state.furmly.navigation.stack.length && state.furmly.navigation.stack[state.furmly.navigation.stack.length - 1].params.id;
+
+  if (!id) return "Furmly";
+  return state.furmly.view[id] && state.furmly.view[id + "-busy"] && "Loading..." || state.furmly.view[id] && state.furmly.view[id].description && state.furmly.view[id].description.steps[state.furmly.view[id].currentStep || 0].description || state.furmly.view[id] && state.furmly.view[id].description && state.furmly.view[id].description.title || "Furmly";
+}
+
+function getValueBasedOnMode(props, v) {
+  return props.args && props.args.mode && (typeof v === "undefined" ? "undefined" : _typeof(v)) !== "object" && props.args.mode == "ObjectId" && { $objectID: v } || v;
+}
+function isObjectIdMode(props) {
+  return props.args && props.args.mode === "ObjectId";
+}
+function getCurrentStepFromState(state) {
+  return state.furmly.navigation.stack.length && state.furmly.navigation.stack[state.furmly.navigation.stack.length - 1].params.currentStep || 0;
+}
+function getCurrentStep(state) {
+  return state.furmly.navigation.stack.length && state.furmly.navigation.stack[state.furmly.navigation.stack.length - 1].params.currentStep || 0;
+}
+
+function getCurrentProcess(state) {
+  for (var i = state.furmly.navigation.stack.length - 1; i >= 0; i--) {
+    if (state.furmly.navigation.stack[i].key == "Furmly") {
+      return state.furmly.navigation.stack[i].params.id;
+    }
+  }
+  return null;
+}
+function getKey(state, key, ownProps) {
+  return ownProps.currentStep + "/" + ownProps.currentProcess + "/" + key;
+}
+var exp = /^(\d+)\/([a-f\d]{1,24}|[a-zA-Z0-9_]+)\/.+$/i;
+function isValidKey(key) {
+  var result = exp.exec(key);
+  if (!result) return false;
+
+  return { step: result[1], process: result[2] };
+}
+
+function runThroughObj(conditions, data) {
+  var result = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : {};
+  var parent = arguments.length > 3 && arguments[3] !== undefined ? arguments[3] : null;
+
+  if (data) Object.keys(data).forEach(function (key) {
+    for (var v = 0; v < conditions.length; v++) {
+      if (conditions[v](key, data, result, parent)) return result;
+    }
+    if (Array.prototype.isPrototypeOf(data[key])) return data[key].forEach(function (element) {
+      runThroughObj(conditions, element, result, data);
+    });
+    if (data[key] && _typeof(data[key]) == "object") return runThroughObj(conditions, data[key], result, data);
+  });
+  return result;
+}
+
+function unwrapObjectValue(value) {
+  return value && (typeof value === "undefined" ? "undefined" : _typeof(value)) == "object" ? value.$objectID : value;
+}
+/**
+ * This method retrieves all the recursively declared templates and returns them. it also assigns
+ * unique ids to every element it finds.
+ * @param  {[type]} null    [description]
+ * @param  {[type]} [	(key, data,         result, parent) [description]
+ * @param  {[type]} (key,   data,         result, parent  [description]
+ * @return {[type]}         [description]
+ */
+var getTemplatesAndAddComponentUid = runThroughObj.bind(null, [function (key, data, result, parent) {
+  if (key === "furmly_ref") {
+    if (data.template) return result[data.furmly_ref] = data.template, result;
+    if (parent && parent.itemTemplate) return result[data.furmly_ref] = parent.itemTemplate, result;
+  }
+}, function (key, data, result, parent) {
+  if (key == "elementType" && !data.component_uid) {
+    data.component_uid = uuid();
+  }
+}]);
+
+var toggleAllBusyIndicators = runThroughObj.bind(null, [function (key, data) {
+  if (/(getting|busy|fetching)+/i.test(key) && typeof data[key] == "boolean") {
+    data[key] = false;
+  }
+}]);
+var keyInvariants = function keyInvariants(fn) {
+  return function (key) {
+    if (typeof key === "undefined") throw new Error("Key cannot be undefined");
+    if ((typeof key === "undefined" ? "undefined" : _typeof(key)) === "object") throw new Error("Key cannot be an object");
+    if (typeof key !== "string") throw new Error("Key must be a string");
+    return fn.call(this, key);
+  };
+};
+var getBusyKey = keyInvariants(function (key) {
+  return key + "-busy";
+});
+var getErrorKey = keyInvariants(function (key) {
+  return key + "-error";
+});
+var copy$1 = function copy(value) {
+  return JSON.parse(JSON.stringify(value));
+};
+var isArr = function isArr(v) {
+  return Array.prototype.isPrototypeOf(v);
+};
+var view = {
+  getCurrentStepFromState: getCurrentStepFromState,
+  getTitleFromState: getTitleFromState,
+  getCurrentStep: getCurrentStep,
+  getCurrentProcess: getCurrentProcess,
+  isValidKey: isValidKey,
+  getKey: getKey
+};
+
 var ReactSSRErrorHandler$4 = require("error_handler");
+
+var TemplateCacheContext = React__default.createContext({});
+var withTemplateCacheProvider = function withTemplateCacheProvider(WrappedComponent) {
+  var TemplateCacheProvider = function (_React$Component) {
+    inherits(TemplateCacheProvider, _React$Component);
+    createClass(TemplateCacheProvider, [{
+      key: "render",
+      value: function render() {
+        try {
+          return this.__originalRenderMethod__();
+        } catch (e) {
+          return ReactSSRErrorHandler$4(e, this.constructor.name);
+        }
+      }
+    }]);
+
+    function TemplateCacheProvider(props) {
+      classCallCheck(this, TemplateCacheProvider);
+
+      var _this = possibleConstructorReturn(this, (TemplateCacheProvider.__proto__ || Object.getPrototypeOf(TemplateCacheProvider)).call(this, props));
+
+      _this.add = _this.add.bind(_this);
+      _this.get = _this.get.bind(_this);
+      _this.cache = {};
+      _this.state = {
+        add: _this.add,
+        get: _this.get
+      };
+      return _this;
+    }
+
+    createClass(TemplateCacheProvider, [{
+      key: "get",
+      value: function get$$1(key) {
+        return this.cache[key] && copy$1(this.cache[key]) || [];
+      }
+    }, {
+      key: "add",
+      value: function add(key, value) {
+        this.cache[key] = value;
+      }
+    }, {
+      key: "__originalRenderMethod__",
+      value: function __originalRenderMethod__() {
+        return React__default.createElement(
+          TemplateCacheContext.Provider,
+          { value: this.state },
+          React__default.createElement(WrappedComponent, this.props)
+        );
+      }
+    }]);
+    return TemplateCacheProvider;
+  }(React__default.Component);
+
+  return TemplateCacheProvider;
+};
+
+var withTemplateCache = function withTemplateCache(WrappedComponent) {
+  var TemplateCacheConsumer = function (_React$Component2) {
+    inherits(TemplateCacheConsumer, _React$Component2);
+
+    function TemplateCacheConsumer() {
+      classCallCheck(this, TemplateCacheConsumer);
+      return possibleConstructorReturn(this, (TemplateCacheConsumer.__proto__ || Object.getPrototypeOf(TemplateCacheConsumer)).apply(this, arguments));
+    }
+
+    createClass(TemplateCacheConsumer, [{
+      key: "render",
+      value: function render() {
+        try {
+          return this.__originalRenderMethod__();
+        } catch (e) {
+          return ReactSSRErrorHandler$4(e, this.constructor.name);
+        }
+      }
+    }, {
+      key: "__originalRenderMethod__",
+      value: function __originalRenderMethod__() {
+        var _this3 = this;
+
+        return React__default.createElement(
+          TemplateCacheContext.Consumer,
+          null,
+          function (cache) {
+            return React__default.createElement(WrappedComponent, _extends({}, _this3.props, { templateCache: cache }));
+          }
+        );
+      }
+    }]);
+    return TemplateCacheConsumer;
+  }(React__default.Component);
+
+  return TemplateCacheConsumer;
+};
+
+var ReactSSRErrorHandler$5 = require("error_handler");
 
 /**
  * Higher order function that recieves Platform specific implementation of Input
@@ -1497,7 +1707,7 @@ var furmly_process = (function (ProgressBar, TextView, FurmlyView) {
         try {
           return this.__originalRenderMethod__();
         } catch (e) {
-          return ReactSSRErrorHandler$4(e, this.constructor.name);
+          return ReactSSRErrorHandler$5(e, this.constructor.name);
         }
       }
     }]);
@@ -1566,7 +1776,7 @@ var furmly_process = (function (ProgressBar, TextView, FurmlyView) {
   };
   return {
     getComponent: function getComponent() {
-      return reactRedux.connect(mapStateToProps, mapDispatchToProps)(withLogger(FurmlyProcess));
+      return reactRedux.connect(mapStateToProps, mapDispatchToProps)(withLogger(withTemplateCacheProvider(FurmlyProcess)));
     },
     FurmlyProcess: FurmlyProcess,
     mapStateToProps: mapStateToProps,
@@ -1574,7 +1784,7 @@ var furmly_process = (function (ProgressBar, TextView, FurmlyView) {
   };
 });
 
-var ReactSSRErrorHandler$5 = require("error_handler");
+var ReactSSRErrorHandler$6 = require("error_handler");
 
 var furmly_section = (function (Layout, Header, Container) {
   invariants.validComponent(Layout, "Layout");
@@ -1589,7 +1799,7 @@ var furmly_section = (function (Layout, Header, Container) {
         try {
           return this.__originalRenderMethod__();
         } catch (e) {
-          return ReactSSRErrorHandler$5(e, this.constructor.name);
+          return ReactSSRErrorHandler$6(e, this.constructor.name);
         }
       }
     }]);
@@ -1630,116 +1840,7 @@ var furmly_section = (function (Layout, Header, Container) {
     }, FurmlySection: FurmlySection };
 });
 
-function getTitleFromState(state) {
-	var id = state.furmly.navigation.stack.length && state.furmly.navigation.stack[state.furmly.navigation.stack.length - 1].params.id;
-
-	if (!id) return "Furmly";
-	return state.furmly.view[id] && state.furmly.view[id + "-busy"] && "Loading..." || state.furmly.view[id] && state.furmly.view[id].description && state.furmly.view[id].description.steps[state.furmly.view[id].currentStep || 0].description || state.furmly.view[id] && state.furmly.view[id].description && state.furmly.view[id].description.title || "Furmly";
-}
-
-function getValueBasedOnMode(props, v) {
-	return props.args && props.args.mode && (typeof v === "undefined" ? "undefined" : _typeof(v)) !== "object" && props.args.mode == "ObjectId" && { $objectID: v } || v;
-}
-function isObjectIdMode(props) {
-	return props.args && props.args.mode === "ObjectId";
-}
-function getCurrentStepFromState(state) {
-	return state.furmly.navigation.stack.length && state.furmly.navigation.stack[state.furmly.navigation.stack.length - 1].params.currentStep || 0;
-}
-function getCurrentStep(state) {
-	return state.furmly.navigation.stack.length && state.furmly.navigation.stack[state.furmly.navigation.stack.length - 1].params.currentStep || 0;
-}
-
-function getCurrentProcess(state) {
-	for (var i = state.furmly.navigation.stack.length - 1; i >= 0; i--) {
-		if (state.furmly.navigation.stack[i].key == "Furmly") {
-			return state.furmly.navigation.stack[i].params.id;
-		}
-	}
-	return null;
-}
-function getKey(state, key, ownProps) {
-	return ownProps.currentStep + "/" + ownProps.currentProcess + "/" + key;
-}
-var exp = /^(\d+)\/([a-f\d]{1,24}|[a-zA-Z0-9_]+)\/.+$/i;
-function isValidKey(key) {
-	var result = exp.exec(key);
-	if (!result) return false;
-
-	return { step: result[1], process: result[2] };
-}
-
-function runThroughObj(conditions, data) {
-	var result = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : {};
-	var parent = arguments.length > 3 && arguments[3] !== undefined ? arguments[3] : null;
-
-	if (data) Object.keys(data).forEach(function (key) {
-		for (var v = 0; v < conditions.length; v++) {
-			if (conditions[v](key, data, result, parent)) return result;
-		}
-		if (Array.prototype.isPrototypeOf(data[key])) return data[key].forEach(function (element) {
-			runThroughObj(conditions, element, result, data);
-		});
-		if (data[key] && _typeof(data[key]) == "object") return runThroughObj(conditions, data[key], result, data);
-	});
-	return result;
-}
-
-function unwrapObjectValue(value) {
-	return value && (typeof value === "undefined" ? "undefined" : _typeof(value)) == "object" ? value.$objectID : value;
-}
-/**
- * This method retrieves all the recursively declared templates and returns them. it also assigns 
- * unique ids to every element it finds.
- * @param  {[type]} null    [description]
- * @param  {[type]} [	(key, data,         result, parent) [description]
- * @param  {[type]} (key,   data,         result, parent  [description]
- * @return {[type]}         [description]
- */
-var getTemplatesAndAddComponentUid = runThroughObj.bind(null, [function (key, data, result, parent) {
-	if (key === "furmly_ref") {
-		if (data.template) return result[data.furmly_ref] = data.template, result;
-		if (parent && parent.itemTemplate) return result[data.furmly_ref] = parent.itemTemplate, result;
-	}
-}, function (key, data, result, parent) {
-	if (key == "elementType" && !data.component_uid) {
-		data.component_uid = uuid();
-	}
-}]);
-
-var toggleAllBusyIndicators = runThroughObj.bind(null, [function (key, data) {
-	if (/(getting|busy|fetching)+/i.test(key) && typeof data[key] == "boolean") {
-		data[key] = false;
-	}
-}]);
-var keyInvariants = function keyInvariants(fn) {
-	return function (key) {
-		if (typeof key === "undefined") throw new Error("Key cannot be undefined");
-		if ((typeof key === "undefined" ? "undefined" : _typeof(key)) === "object") throw new Error("Key cannot be an object");
-		if (typeof key !== "string") throw new Error("Key must be a string");
-		return fn.call(this, key);
-	};
-};
-var getBusyKey = keyInvariants(function (key) {
-	return key + "-busy";
-});
-var getErrorKey = keyInvariants(function (key) {
-	return key + "-error";
-});
-var copy$1 = function copy(value) {
-	return JSON.parse(JSON.stringify(value));
-};
-
-var view = {
-	getCurrentStepFromState: getCurrentStepFromState,
-	getTitleFromState: getTitleFromState,
-	getCurrentStep: getCurrentStep,
-	getCurrentProcess: getCurrentProcess,
-	isValidKey: isValidKey,
-	getKey: getKey
-};
-
-var ReactSSRErrorHandler$6 = require("error_handler");
+var ReactSSRErrorHandler$7 = require("error_handler");
 
 var furmly_select = (function (ProgressIndicator, Layout, Container) {
   if (invariants.validComponent(ProgressIndicator, "ProgressIndicator") && invariants.validComponent(Layout, "Layout") && !Container) throw new Error("Container cannot be null (furmly_select)");
@@ -1777,7 +1878,7 @@ var furmly_select = (function (ProgressIndicator, Layout, Container) {
         try {
           return this.__originalRenderMethod__();
         } catch (e) {
-          return ReactSSRErrorHandler$6(e, this.constructor.name);
+          return ReactSSRErrorHandler$7(e, this.constructor.name);
         }
       }
     }]);
@@ -1940,7 +2041,7 @@ var furmly_select = (function (ProgressIndicator, Layout, Container) {
   };
 });
 
-var ReactSSRErrorHandler$7 = require("error_handler");
+var ReactSSRErrorHandler$8 = require("error_handler");
 
 var furmly_selectset = (function (Layout, Picker, ProgressBar, Container) {
   //map elements in FurmlyView props to elements in store.
@@ -1989,7 +2090,7 @@ var furmly_selectset = (function (Layout, Picker, ProgressBar, Container) {
         try {
           return this.__originalRenderMethod__();
         } catch (e) {
-          return ReactSSRErrorHandler$7(e, this.constructor.name);
+          return ReactSSRErrorHandler$8(e, this.constructor.name);
         }
       }
     }]);
@@ -2252,7 +2353,7 @@ var furmly_selectset = (function (Layout, Picker, ProgressBar, Container) {
   };
 });
 
-var ReactSSRErrorHandler$8 = require("error_handler");
+var ReactSSRErrorHandler$9 = require("error_handler");
 
 var furmly_list = (function (Layout, Button, List, Modal, ErrorText, ProgressBar, Container) {
   invariants.validComponent(Layout, "Layout");
@@ -2270,7 +2371,6 @@ var furmly_list = (function (Layout, Button, List, Modal, ErrorText, ProgressBar
 
       return {
         confirmation: state.app && state.app.confirmationResult && state.app.confirmationResult[component_uid],
-        templateCache: state.furmly.view.templateCache,
         dataTemplate: state.furmly.view[component_uid],
         component_uid: component_uid,
         busy: state.furmly.view[component_uid + "-busy"],
@@ -2316,7 +2416,7 @@ var furmly_list = (function (Layout, Button, List, Modal, ErrorText, ProgressBar
         try {
           return this.__originalRenderMethod__();
         } catch (e) {
-          return ReactSSRErrorHandler$8(e, this.constructor.name);
+          return ReactSSRErrorHandler$9(e, this.constructor.name);
         }
       }
     }]);
@@ -2389,8 +2489,9 @@ var furmly_list = (function (Layout, Button, List, Modal, ErrorText, ProgressBar
 
         this._mounted = true;
         //if its template is a reference then store it.
-        if (this.isTemplateRef()) {
-          this.props.templateCache[this.isTemplateRef()] = Array.prototype.isPrototypeOf(this.props.args.itemTemplate) ? this.props.args.itemTemplate : this.props.args.itemTemplate.template;
+        var ref = this.isTag();
+        if (ref && !this.props.templateCache.get(ref)) {
+          this.props.templateCache.add(ref, Array.prototype.isPrototypeOf(this.props.args.itemTemplate) ? this.props.args.itemTemplate : this.props.args.itemTemplate.template);
         }
 
         var equal = equivalent(this.props.dataTemplate, this.props.items);
@@ -2421,9 +2522,22 @@ var furmly_list = (function (Layout, Button, List, Modal, ErrorText, ProgressBar
         this.props.getListItemDataTemplate(props.args.listItemDataTemplateProcessor, i, props.component_uid);
       }
     }, {
+      key: "isTag",
+      value: function isTag() {
+        var _props$args = this.props.args,
+            itemTemplate = _props$args.itemTemplate,
+            behavior = _props$args.behavior;
+
+        return itemTemplate && (!isArr(itemTemplate) && itemTemplate.template && itemTemplate.furmly_ref || isArr(itemTemplate) && behavior && behavior.furmly_ref);
+      }
+    }, {
       key: "isTemplateRef",
       value: function isTemplateRef() {
-        return this.props.args.itemTemplate && !Array.prototype.isPrototypeOf(this.props.args.itemTemplate) && this.props.args.itemTemplate.furmly_ref || this.props.args.behavior && this.props.args.behavior.furmly_ref && this.props.args.itemTemplate;
+        var _props$args2 = this.props.args,
+            itemTemplate = _props$args2.itemTemplate,
+            behavior = _props$args2.behavior;
+
+        return itemTemplate && itemTemplate.template_ref || behavior && behavior.template_ref;
       }
     }, {
       key: "runValidators",
@@ -2448,12 +2562,16 @@ var furmly_list = (function (Layout, Button, List, Modal, ErrorText, ProgressBar
     }, {
       key: "isLessThanMaxLength",
       value: function isLessThanMaxLength(element) {
-        return this.props.items && this.props.items.length && this.props.items.length <= element.args.max || element.error || "The maximum number of items is " + element.args.max;
+        var items = this.props.items;
+
+        return items && items.length && items.length <= element.args.max || element.error || "The maximum number of items is " + element.args.max;
       }
     }, {
       key: "isGreaterThanMinLength",
       value: function isGreaterThanMinLength(element) {
-        return this.props.items && this.props.items.length && this.props.items.length >= element.args.min || element.error || "The minimum number of items is " + element.args.min;
+        var items = this.props.items;
+
+        return items && items.length && items.length >= element.args.min || element.error || "The minimum number of items is " + element.args.min;
       }
     }, {
       key: "closeModal",
@@ -2472,9 +2590,6 @@ var furmly_list = (function (Layout, Button, List, Modal, ErrorText, ProgressBar
               edit: null,
               existing: null
             });
-
-            // if (this.props.args.listItemDataTemplateProcessor)
-            // 	this.getListItemDataTemplate(items);
           }).catch(function (er) {
             _this3.props.log(er);
           });
@@ -2487,7 +2602,6 @@ var furmly_list = (function (Layout, Button, List, Modal, ErrorText, ProgressBar
     }, {
       key: "valueChanged",
       value: function valueChanged$$1(v) {
-        //this.state.form = v && v[FurmlyList.modalName()];
         this.setState({ edit: v && v[FurmlyList.modalName()] });
       }
     }, {
@@ -2512,23 +2626,26 @@ var furmly_list = (function (Layout, Button, List, Modal, ErrorText, ProgressBar
 
         if (this.state.itemTemplate) return;
 
-        if (!this.props.args.itemTemplate) {
-          if ((!this.props.args.behavior || !this.props.args.behavior.template_ref) && !this.props.args.disabled) throw new Error("Empty List view item template");
+        var _props$args3 = this.props.args,
+            behavior = _props$args3.behavior,
+            itemTemplate = _props$args3.itemTemplate,
+            disabled = _props$args3.disabled;
 
-          this.props.args.itemTemplate = this.props.templateCache[this.props.args.behavior && this.props.args.behavior.template_ref] || [];
-        }
 
-        var itemTemplate = copy$1(this.isTemplateRef() && !Array.prototype.isPrototypeOf(this.props.args.itemTemplate) ? this.props.args.itemTemplate.template : this.props.args.itemTemplate);
+        if (!this.isTag() && !this.isTemplateRef() && !isArr(itemTemplate) && !disabled) throw new Error("Empty List view item template");
 
-        if (this.props.args.behavior && this.props.args.behavior.extension && this.props.args.behavior.extension.length) this.props.args.behavior.extension.forEach(function (element, index) {
+        var _itemTemplate = isArr(itemTemplate) ? copy$1(itemTemplate) : this.isTag() ? copy$1(itemTemplate.template) : this.isTemplateRef() ? this.props.templateCache.get(behavior && behavior.template_ref || itemTemplate.template_ref) : [];
+
+        (behavior && behavior.extension || itemTemplate && itemTemplate.extension || []).forEach(function (element, index) {
           element.key = index;
-          itemTemplate.push(copy$1(element));
+          _itemTemplate.push(copy$1(element));
         });
 
         //this happens asynchronously;
+
         setTimeout(function () {
           if (_this4._mounted) _this4.setState({
-            itemTemplate: itemTemplate
+            itemTemplate: _itemTemplate
           });
         }, 0);
       }
@@ -2539,8 +2656,7 @@ var furmly_list = (function (Layout, Button, List, Modal, ErrorText, ProgressBar
         if (this.props.busy) {
           return React__default.createElement(ProgressBar, null);
         }
-        var //template = this.getItemTemplate(),
-        disabled = this.isDisabled();
+        var disabled = this.isDisabled();
 
         return (
           /*jshint ignore:start */
@@ -2583,7 +2699,7 @@ var furmly_list = (function (Layout, Button, List, Modal, ErrorText, ProgressBar
 
   return {
     getComponent: function getComponent() {
-      return reactRedux.connect(mapStateToProps, mapDispatchToProps)(withLogger(FurmlyList));
+      return reactRedux.connect(mapStateToProps, mapDispatchToProps)(withLogger(withTemplateCache(FurmlyList)));
     },
     mapStateToProps: mapStateToProps,
     mapDispatchToProps: mapDispatchToProps,
@@ -2591,7 +2707,7 @@ var furmly_list = (function (Layout, Button, List, Modal, ErrorText, ProgressBar
   };
 });
 
-var ReactSSRErrorHandler$9 = require("error_handler");
+var ReactSSRErrorHandler$10 = require("error_handler");
 
 var FurmlyHidden = function (_React$Component) {
 	inherits(FurmlyHidden, _React$Component);
@@ -2601,7 +2717,7 @@ var FurmlyHidden = function (_React$Component) {
 			try {
 				return this.__originalRenderMethod__();
 			} catch (e) {
-				return ReactSSRErrorHandler$9(e, this.constructor.name);
+				return ReactSSRErrorHandler$10(e, this.constructor.name);
 			}
 		}
 	}]);
@@ -2645,7 +2761,7 @@ var FurmlyHidden = function (_React$Component) {
 	return FurmlyHidden;
 }(React__default.Component);
 
-var ReactSSRErrorHandler$10 = require("error_handler");
+var ReactSSRErrorHandler$11 = require("error_handler");
 
 var NavigationContext = React__default.createContext({});
 
@@ -2691,7 +2807,7 @@ var withNavigationProvider = function withNavigationProvider(WrappedComponent, N
         try {
           return this.__originalRenderMethod__();
         } catch (e) {
-          return ReactSSRErrorHandler$10(e, this.constructor.name);
+          return ReactSSRErrorHandler$11(e, this.constructor.name);
         }
       }
     }, {
@@ -2725,7 +2841,7 @@ var withNavigation = function withNavigation(WrappedComponent) {
         try {
           return this.__originalRenderMethod__();
         } catch (e) {
-          return ReactSSRErrorHandler$10(e, this.constructor.name);
+          return ReactSSRErrorHandler$11(e, this.constructor.name);
         }
       }
     }, {
@@ -2750,7 +2866,7 @@ var withNavigation = function withNavigation(WrappedComponent) {
   return NavigationConsumer;
 };
 
-var ReactSSRErrorHandler$11 = require("error_handler");
+var ReactSSRErrorHandler$12 = require("error_handler");
 
 var furmly_nav = (function (Link) {
   invariants.validComponent(Link, "Link");
@@ -2763,7 +2879,7 @@ var furmly_nav = (function (Link) {
         try {
           return this.__originalRenderMethod__();
         } catch (e) {
-          return ReactSSRErrorHandler$11(e, this.constructor.name);
+          return ReactSSRErrorHandler$12(e, this.constructor.name);
         }
       }
     }]);
@@ -2852,7 +2968,7 @@ var furmly_nav = (function (Link) {
   };
 });
 
-var ReactSSRErrorHandler$12 = require("error_handler");
+var ReactSSRErrorHandler$13 = require("error_handler");
 
 var furmly_image = (function (Image) {
   invariants.validComponent(Image, "Image");
@@ -2871,7 +2987,7 @@ var furmly_image = (function (Image) {
       }
       return React__default.createElement(Image, props);
     } catch (e) {
-      return ReactSSRErrorHandler$12(e);
+      return ReactSSRErrorHandler$13(e);
     }
   };
   return { getComponent: function getComponent() {
@@ -2879,7 +2995,7 @@ var furmly_image = (function (Image) {
     }, FurmlyImage: FurmlyImage };
 });
 
-var ReactSSRErrorHandler$13 = require("error_handler");
+var ReactSSRErrorHandler$14 = require("error_handler");
 
 var GRID_MODES = {
   CRUD: "CRUD",
@@ -2956,7 +3072,7 @@ var furmly_grid = (function (Layout, List, ItemView, Header, ProgressBar, Comman
         try {
           return this.__originalRenderMethod__();
         } catch (e) {
-          return ReactSSRErrorHandler$13(e, this.constructor.name);
+          return ReactSSRErrorHandler$14(e, this.constructor.name);
         }
       }
     }]);
@@ -3465,7 +3581,7 @@ var furmly_grid = (function (Layout, List, ItemView, Header, ProgressBar, Comman
   };
 });
 
-var ReactSSRErrorHandler$14 = require("error_handler");
+var ReactSSRErrorHandler$15 = require("error_handler");
 
 var furmly_htmlview = (function (PlatformComponent) {
   var FurmlyHTMLViewer = function (_Component) {
@@ -3476,7 +3592,7 @@ var furmly_htmlview = (function (PlatformComponent) {
         try {
           return this.__originalRenderMethod__();
         } catch (e) {
-          return ReactSSRErrorHandler$14(e, this.constructor.name);
+          return ReactSSRErrorHandler$15(e, this.constructor.name);
         }
       }
     }]);
@@ -3513,7 +3629,7 @@ var furmly_htmlview = (function (PlatformComponent) {
   };
 });
 
-var ReactSSRErrorHandler$15 = require("error_handler");
+var ReactSSRErrorHandler$16 = require("error_handler");
 
 /**
  * This component should render a file uploader
@@ -3539,7 +3655,7 @@ var furmly_fileupload = (function (Uploader, ProgressBar, Text) {
         try {
           return this.__originalRenderMethod__();
         } catch (e) {
-          return ReactSSRErrorHandler$15(e, this.constructor.name);
+          return ReactSSRErrorHandler$16(e, this.constructor.name);
         }
       }
     }]);
@@ -3684,7 +3800,7 @@ var furmly_fileupload = (function (Uploader, ProgressBar, Text) {
   }, defineProperty(_ref, "mapDispatchToProps", mapDispatchToProps), defineProperty(_ref, "FurmlyFileUpload", FurmlyFileUpload), _ref;
 });
 
-var ReactSSRErrorHandler$16 = require("error_handler");
+var ReactSSRErrorHandler$17 = require("error_handler");
 
 var furmly_actionview = (function (Layout, ProgressBar, Filter, Container) {
   invariants.validComponent(Filter, "Filter");
@@ -3735,7 +3851,7 @@ var furmly_actionview = (function (Layout, ProgressBar, Filter, Container) {
         try {
           return this.__originalRenderMethod__();
         } catch (e) {
-          return ReactSSRErrorHandler$16(e, this.constructor.name);
+          return ReactSSRErrorHandler$17(e, this.constructor.name);
         }
       }
     }]);
@@ -3834,7 +3950,7 @@ var furmly_actionview = (function (Layout, ProgressBar, Filter, Container) {
   };
 });
 
-var ReactSSRErrorHandler$17 = require("error_handler");
+var ReactSSRErrorHandler$18 = require("error_handler");
 
 var furmly_label = (function (Label) {
   invariants.validComponent(Label, "Label");
@@ -3849,7 +3965,7 @@ var furmly_label = (function (Label) {
       }
       return React__default.createElement(Label, props);
     } catch (e) {
-      return ReactSSRErrorHandler$17(e);
+      return ReactSSRErrorHandler$18(e);
     }
   };
 
@@ -3858,7 +3974,7 @@ var furmly_label = (function (Label) {
     }, FurmlyLabel: FurmlyLabel };
 });
 
-var ReactSSRErrorHandler$18 = require("error_handler");
+var ReactSSRErrorHandler$19 = require("error_handler");
 
 var furmly_webview = (function (WebView, Text) {
   invariants.validComponent(WebView, "WebView");
@@ -3872,7 +3988,7 @@ var furmly_webview = (function (WebView, Text) {
         try {
           return this.__originalRenderMethod__();
         } catch (e) {
-          return ReactSSRErrorHandler$18(e, this.constructor.name);
+          return ReactSSRErrorHandler$19(e, this.constructor.name);
         }
       }
     }]);
@@ -3904,7 +4020,7 @@ var furmly_webview = (function (WebView, Text) {
     }, FurmlyWebView: FurmlyWebView };
 });
 
-var ReactSSRErrorHandler$19 = require("error_handler");
+var ReactSSRErrorHandler$20 = require("error_handler");
 
 var furmly_command = (function (Link, customDownloadCommand) {
   invariants.validComponent(Link, "Link");
@@ -3923,7 +4039,7 @@ var furmly_command = (function (Link, customDownloadCommand) {
         try {
           return this.__originalRenderMethod__();
         } catch (e) {
-          return ReactSSRErrorHandler$19(e, this.constructor.name);
+          return ReactSSRErrorHandler$20(e, this.constructor.name);
         }
       }
     }]);
@@ -4124,7 +4240,7 @@ function view$1 () {
 			return Object.assign({}, state, (_Object$assign22 = {}, defineProperty(_Object$assign22, action.payload.id, {
 				description: fetchedDescription,
 				0: fetchedValue
-			}), defineProperty(_Object$assign22, "navigationContext", state.navigationContext), defineProperty(_Object$assign22, "templateCache", state.templateCache || {}), defineProperty(_Object$assign22, getBusyKey(action.payload.id), false), defineProperty(_Object$assign22, getErrorKey(action.payload.id), action.error), _Object$assign22));
+			}), defineProperty(_Object$assign22, "navigationContext", state.navigationContext), defineProperty(_Object$assign22, getBusyKey(action.payload.id), false), defineProperty(_Object$assign22, getErrorKey(action.payload.id), action.error), _Object$assign22));
 		case ACTIONS.FETCHING_PROCESS:
 			return Object.assign({}, state, (_Object$assign23 = {}, defineProperty(_Object$assign23, getBusyKey(action.meta), !action.error), defineProperty(_Object$assign23, getErrorKey(action.meta), !!action.error), _Object$assign23));
 		case ACTIONS.FAILED_TO_FETCH_PROCESS:
@@ -4349,7 +4465,7 @@ var createStore = (function () {
   return redux.compose(redux.applyMiddleware.apply(undefined, toConsumableArray(middlewares)))(redux.createStore)(rootReducer);
 });
 
-var ReactSSRErrorHandler$20 = require("error_handler");
+var ReactSSRErrorHandler$21 = require("error_handler");
 
 var createProvider = function createProvider(Process) {
   for (var _len = arguments.length, args = Array(_len > 1 ? _len - 1 : 0), _key = 1; _key < _len; _key++) {
@@ -4367,7 +4483,7 @@ var createProvider = function createProvider(Process) {
             React__default.createElement(Process, props)
           );
         } catch (e) {
-          return ReactSSRErrorHandler$20(e);
+          return ReactSSRErrorHandler$21(e);
         }
       };
     },
@@ -4396,7 +4512,9 @@ var components = {
   furmly_provider: createProvider,
   furmly_command: furmly_command,
   withNavigation: withNavigation,
-  withNavigationProvider: withNavigationProvider
+  withNavigationProvider: withNavigationProvider,
+  withTemplateCache: withTemplateCache,
+  withTemplateCacheProvider: withTemplateCacheProvider
 };
 
 var Deferred = function Deferred(name) {
@@ -4443,6 +4561,8 @@ var createMap = function createMap() {
     PROVIDER: components.furmly_provider,
     withNavigation: components.withNavigation,
     withNavigationProvider: components.withNavigationProvider,
+    withTemplateCache: components.withTemplateCache,
+    withTemplateCacheProvider: components.withTemplateCacheProvider,
     prepareRecipe: function prepareRecipe(name, recipe) {
       var _this = this;
 

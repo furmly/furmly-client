@@ -1,19 +1,25 @@
 import React from "react";
+import { copy } from "./utils/view";
 
 const TemplateCacheContext = React.createContext({});
-export const withTemplateProvider = WrappedComponent => {
+export const withTemplateCacheProvider = WrappedComponent => {
   class TemplateCacheProvider extends React.Component {
     constructor(props) {
       super(props);
+      this.add = this.add.bind(this);
+      this.get = this.get.bind(this);
+      this.cache = {};
       this.state = {
-        cache: {},
         add: this.add,
-        remove: this.remove
+        get: this.get
       };
     }
-    add = (key, value) => {
-      this.setState({ cache: { ...this.cache, [key]: value } });
-    };
+    get(key) {
+      return (this.cache[key] && copy(this.cache[key])) || [];
+    }
+    add(key, value) {
+      this.cache[key] = value;
+    }
     render() {
       return (
         <TemplateCacheContext.Provider value={this.state}>
@@ -30,9 +36,7 @@ export const withTemplateCache = WrappedComponent => {
     render() {
       return (
         <TemplateCacheContext.Consumer>
-          {cache => (
-            <WrappedComponent {...this.props} templateCache={cache} />
-          )}
+          {cache => <WrappedComponent {...this.props} templateCache={cache} />}
         </TemplateCacheContext.Consumer>
       );
     }

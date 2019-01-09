@@ -5,6 +5,7 @@ import _ from "lodash";
 import PropTypes from "prop-types";
 import invariants from "./utils/invariants";
 import withLogger from "./furmly_base";
+import { withTemplateCacheProvider } from "./furmly_template_cache";
 /**
  * Higher order function that recieves Platform specific implementation of Input
  * @param  {Function} Input Input class
@@ -37,7 +38,6 @@ export default (ProgressBar, TextView, FurmlyView) => {
       }
     };
   };
-
 
   class FurmlyProcess extends Component {
     constructor(props) {
@@ -110,7 +110,7 @@ export default (ProgressBar, TextView, FurmlyView) => {
       connect(
         mapStateToProps,
         mapDispatchToProps
-      )(withLogger(FurmlyProcess)),
+      )(withLogger(withTemplateCacheProvider(FurmlyProcess))),
     FurmlyProcess,
     mapStateToProps,
     mapDispatchToProps

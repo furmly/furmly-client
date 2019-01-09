@@ -8,8 +8,9 @@ import {
   openConfirmation,
   clearElementData
 } from "./actions";
-import { getKey, copy } from "./utils/view";
+import { getKey, copy, isArr } from "./utils/view";
 import withLogger from "./furmly_base";
+import { withTemplateCache } from "./furmly_template_cache";
 
 export default (
   Layout,
@@ -37,7 +38,6 @@ export default (
         state.app &&
         state.app.confirmationResult &&
         state.app.confirmationResult[component_uid],
-      templateCache: state.furmly.view.templateCache,
       dataTemplate: state.furmly.view[component_uid],
       component_uid,
       busy: state.furmly.view[`${component_uid}-busy`],
@@ -163,12 +163,14 @@ export default (
     componentDidMount() {
       this._mounted = true;
       //if its template is a reference then store it.
-      if (this.isTemplateRef()) {
-        this.props.templateCache[
-          this.isTemplateRef()
-        ] = Array.prototype.isPrototypeOf(this.props.args.itemTemplate)
-          ? this.props.args.itemTemplate
-          : this.props.args.itemTemplate.template;
+      const ref = this.isTag();
+      if (ref && !this.props.templateCache.get(ref)) {
+        this.props.templateCache.add(
+          ref,
+          Array.prototype.isPrototypeOf(this.props.args.itemTemplate)
+            ? this.props.args.itemTemplate
+            : this.props.args.itemTemplate.template
+        );
       }
 
       let equal = equivalent(this.props.dataTemplate, this.props.items);
@@ -214,14 +216,21 @@ export default (
         props.component_uid
       );
     }
-    isTemplateRef() {
+    isTag() {
+      const { itemTemplate, behavior } = this.props.args;
       return (
-        (this.props.args.itemTemplate &&
-          !Array.prototype.isPrototypeOf(this.props.args.itemTemplate) &&
-          this.props.args.itemTemplate.furmly_ref) ||
-        (this.props.args.behavior &&
-          this.props.args.behavior.furmly_ref &&
-          this.props.args.itemTemplate)
+        itemTemplate &&
+        ((!isArr(itemTemplate) &&
+          itemTemplate.template &&
+          itemTemplate.furmly_ref) ||
+          (isArr(itemTemplate) && behavior && behavior.furmly_ref))
+      );
+    }
+    isTemplateRef() {
+      const { itemTemplate, behavior } = this.props.args;
+      return (
+        (itemTemplate && itemTemplate.template_ref) ||
+        (behavior && behavior.template_ref)
       );
     }
     runValidators() {
@@ -240,18 +249,16 @@ export default (
       );
     }
     isLessThanMaxLength(element) {
+      const { items } = this.props;
       return (
-        (this.props.items &&
-          this.props.items.length &&
-          this.props.items.length <= element.args.max) ||
+        (items && items.length && items.length <= element.args.max) ||
         (element.error || "The maximum number of items is " + element.args.max)
       );
     }
     isGreaterThanMinLength(element) {
+      const { items } = this.props;
       return (
-        (this.props.items &&
-          this.props.items.length &&
-          this.props.items.length >= element.args.min) ||
+        (items && items.length && items.length >= element.args.min) ||
         (element.error || "The minimum number of items is " + element.args.min)
       );
     }
@@ -271,9 +278,6 @@ export default (
               edit: null,
               existing: null
             });
-
-            // if (this.props.args.listItemDataTemplateProcessor)
-            // 	this.getListItemDataTemplate(items);
           })
           .catch(er => {
             this.props.log(er);
@@ -285,7 +289,6 @@ export default (
       this.setState({ modalVisible: false, edit: null });
     }
     valueChanged(v) {
-      //this.state.form = v && v[FurmlyList.modalName()];
       this.setState({ edit: v && v[FurmlyList.modalName()] });
     }
 
@@ -307,45 +310,45 @@ export default (
     static modalName() {
       return "_modal_";
     }
+
     getItemTemplate() {
       if (this.state.itemTemplate) return;
 
-      if (!this.props.args.itemTemplate) {
-        if (
-          (!this.props.args.behavior ||
-            !this.props.args.behavior.template_ref) &&
-          !this.props.args.disabled
-        )
-          throw new Error("Empty List view item template");
-
-        this.props.args.itemTemplate =
-          this.props.templateCache[
-            this.props.args.behavior && this.props.args.behavior.template_ref
-          ] || [];
-      }
-
-      let itemTemplate = copy(
-        this.isTemplateRef() &&
-        !Array.prototype.isPrototypeOf(this.props.args.itemTemplate)
-          ? this.props.args.itemTemplate.template
-          : this.props.args.itemTemplate
-      );
+      const { behavior, itemTemplate, disabled } = this.props.args;
 
       if (
-        this.props.args.behavior &&
-        this.props.args.behavior.extension &&
-        this.props.args.behavior.extension.length
+        !this.isTag() &&
+        !this.isTemplateRef() &&
+        !isArr(itemTemplate) &&
+        !disabled
       )
-        this.props.args.behavior.extension.forEach((element, index) => {
-          element.key = index;
-          itemTemplate.push(copy(element));
-        });
+        throw new Error("Empty List view item template");
+
+      let _itemTemplate = isArr(itemTemplate)
+        ? copy(itemTemplate)
+        : this.isTag()
+        ? copy(itemTemplate.template)
+        : this.isTemplateRef()
+        ? this.props.templateCache.get(
+            (behavior && behavior.template_ref) || itemTemplate.template_ref
+          )
+        : [];
+
+      (
+        (behavior && behavior.extension) ||
+        (itemTemplate && itemTemplate.extension) ||
+        []
+      ).forEach((element, index) => {
+        element.key = index;
+        _itemTemplate.push(copy(element));
+      });
 
       //this happens asynchronously;
+
       setTimeout(() => {
         if (this._mounted)
           this.setState({
-            itemTemplate: itemTemplate
+            itemTemplate: _itemTemplate
           });
       }, 0);
     }
@@ -355,8 +358,7 @@ export default (
       if (this.props.busy) {
         return <ProgressBar />;
       }
-      let //template = this.getItemTemplate(),
-      disabled = this.isDisabled();
+      let disabled = this.isDisabled();
 
       return (
         /*jshint ignore:start */
@@ -403,7 +405,7 @@ export default (
       connect(
         mapStateToProps,
         mapDispatchToProps
-      )(withLogger(FurmlyList)),
+      )(withLogger(withTemplateCache(FurmlyList))),
     mapStateToProps,
     mapDispatchToProps,
     FurmlyList
