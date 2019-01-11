@@ -1176,7 +1176,10 @@ var furmly_view = (function (Page, Warning, Container) {
 
       if (description && description.steps[ownProps.currentStep]) {
         map.elements = description.steps[ownProps.currentStep].form.elements;
-        if (description.steps[ownProps.currentStep].mode == "VIEW") map.hideSubmit = true;
+        if (description.steps[ownProps.currentStep].mode == "VIEW") {
+          map.hideSubmit = true;
+        }
+
         map.title = description.title;
         map.processDescription = description.description;
         map.commandLabel = description.steps[ownProps.currentStep].commandLabel;
@@ -1369,7 +1372,10 @@ var furmly_container = (function () {
       key: "onValueChanged",
       value: function onValueChanged() {
         var form = Object.assign.apply(Object, [{}, this.props.value || {}].concat(toConsumableArray(Array.prototype.slice.call(arguments))));
-
+        if (!this.props.name) {
+          this.props.valueChanged(form);
+          return;
+        }
         this.props.valueChanged(defineProperty({}, this.props.name, form));
       }
     }, {
@@ -2613,7 +2619,7 @@ var furmly_list = (function (Layout, Button, List, Modal, ErrorText, ProgressBar
       key: "edit",
       value: function edit(index) {
         this.setState({
-          edit: JSON.parse(JSON.stringify(this.props.items[index])),
+          edit: copy$1(this.props.items[index]),
           existing: index,
           mode: EDIT,
           modalVisible: true

@@ -64,7 +64,10 @@ export default (...args) => {
         this.props.value || {},
         ...Array.prototype.slice.call(arguments)
       );
-
+      if (!this.props.name) {
+        this.props.valueChanged(form);
+        return;
+      }
       this.props.valueChanged({ [this.props.name]: form });
     }
 

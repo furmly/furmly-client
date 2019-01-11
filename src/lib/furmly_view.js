@@ -17,8 +17,10 @@ export default (Page, Warning, Container) => {
 
     if (description && description.steps[ownProps.currentStep]) {
       map.elements = description.steps[ownProps.currentStep].form.elements;
-      if (description.steps[ownProps.currentStep].mode == "VIEW")
+      if (description.steps[ownProps.currentStep].mode == "VIEW") {
         map.hideSubmit = true;
+      }
+
       map.title = description.title;
       map.processDescription = description.description;
       map.commandLabel = description.steps[ownProps.currentStep].commandLabel;
