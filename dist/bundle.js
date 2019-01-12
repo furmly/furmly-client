@@ -1670,6 +1670,111 @@ var withTemplateCache = function withTemplateCache(WrappedComponent) {
 
 var ReactSSRErrorHandler$5 = require("error_handler");
 
+var NavigationContext = React__default.createContext({});
+
+var withNavigationProvider = function withNavigationProvider(WrappedComponent, Navigator, context) {
+  var navigator = void 0;
+  var mapDispatchToProps = function mapDispatchToProps(dispatch) {
+    if (!navigator) navigator = new Navigator(dispatch, context);
+    return {
+      furmlyNavigator: {
+        visible: function visible(args) {
+          return navigator.alreadyVisible(args);
+        },
+        replaceStack: function replaceStack(arr) {
+          return navigator.replaceStack(arr);
+        },
+        navigate: function navigate(args) {
+          return navigator.navigate(args);
+        },
+        setParams: function setParams(args) {
+          return navigator.setParams(args);
+        },
+        clearStack: function clearStack() {
+          return navigator.clear();
+        },
+        goBack: function goBack(args) {
+          return navigator.goBack(args);
+        }
+      }
+    };
+  };
+
+  var NavigationProvider = function (_React$Component) {
+    inherits(NavigationProvider, _React$Component);
+
+    function NavigationProvider() {
+      classCallCheck(this, NavigationProvider);
+      return possibleConstructorReturn(this, (NavigationProvider.__proto__ || Object.getPrototypeOf(NavigationProvider)).apply(this, arguments));
+    }
+
+    createClass(NavigationProvider, [{
+      key: "render",
+      value: function render() {
+        try {
+          return this.__originalRenderMethod__();
+        } catch (e) {
+          return ReactSSRErrorHandler$5(e, this.constructor.name);
+        }
+      }
+    }, {
+      key: "__originalRenderMethod__",
+      value: function __originalRenderMethod__() {
+        return React__default.createElement(
+          NavigationContext.Provider,
+          { value: this.props.furmlyNavigator },
+          React__default.createElement(WrappedComponent, this.props)
+        );
+      }
+    }]);
+    return NavigationProvider;
+  }(React__default.Component);
+
+  return reactRedux.connect(null, mapDispatchToProps)(NavigationProvider);
+};
+
+var withNavigation = function withNavigation(WrappedComponent) {
+  var NavigationConsumer = function (_React$Component2) {
+    inherits(NavigationConsumer, _React$Component2);
+
+    function NavigationConsumer() {
+      classCallCheck(this, NavigationConsumer);
+      return possibleConstructorReturn(this, (NavigationConsumer.__proto__ || Object.getPrototypeOf(NavigationConsumer)).apply(this, arguments));
+    }
+
+    createClass(NavigationConsumer, [{
+      key: "render",
+      value: function render() {
+        try {
+          return this.__originalRenderMethod__();
+        } catch (e) {
+          return ReactSSRErrorHandler$5(e, this.constructor.name);
+        }
+      }
+    }, {
+      key: "__originalRenderMethod__",
+      value: function __originalRenderMethod__() {
+        var _this3 = this;
+
+        return React__default.createElement(
+          NavigationContext.Consumer,
+          null,
+          function (furmlyNavigator) {
+            return React__default.createElement(WrappedComponent, _extends({}, _this3.props, {
+              furmlyNavigator: furmlyNavigator
+            }));
+          }
+        );
+      }
+    }]);
+    return NavigationConsumer;
+  }(React__default.Component);
+
+  return NavigationConsumer;
+};
+
+var ReactSSRErrorHandler$6 = require("error_handler");
+
 /**
  * Higher order function that recieves Platform specific implementation of Input
  * @param  {Function} Input Input class
@@ -1713,7 +1818,7 @@ var furmly_process = (function (ProgressBar, TextView, FurmlyView) {
         try {
           return this.__originalRenderMethod__();
         } catch (e) {
-          return ReactSSRErrorHandler$5(e, this.constructor.name);
+          return ReactSSRErrorHandler$6(e, this.constructor.name);
         }
       }
     }]);
@@ -1738,7 +1843,7 @@ var furmly_process = (function (ProgressBar, TextView, FurmlyView) {
     }, {
       key: "componentWillReceiveProps",
       value: function componentWillReceiveProps(next) {
-        if (next.completed && next.completed != this.props.completed) return this.props.navigation.goBack();
+        if (next.completed && next.completed != this.props.completed) return this.props.furmlyNavigator.goBack();
 
         if ((next.id !== this.props.id || !_.isEqual(next.fetchParams, this.props.fetchParams)) && !next.busy && !next.description || next.id == this.props.id && !_.isEqual(next.fetchParams, this.props.fetchParams) && !next.busy) this.props.fetch(next.id, next.fetchParams);
       }
@@ -1782,7 +1887,7 @@ var furmly_process = (function (ProgressBar, TextView, FurmlyView) {
   };
   return {
     getComponent: function getComponent() {
-      return reactRedux.connect(mapStateToProps, mapDispatchToProps)(withLogger(withTemplateCacheProvider(FurmlyProcess)));
+      return reactRedux.connect(mapStateToProps, mapDispatchToProps)(withLogger(withNavigation(withTemplateCacheProvider(FurmlyProcess))));
     },
     FurmlyProcess: FurmlyProcess,
     mapStateToProps: mapStateToProps,
@@ -1790,7 +1895,7 @@ var furmly_process = (function (ProgressBar, TextView, FurmlyView) {
   };
 });
 
-var ReactSSRErrorHandler$6 = require("error_handler");
+var ReactSSRErrorHandler$7 = require("error_handler");
 
 var furmly_section = (function (Layout, Header, Container) {
   invariants.validComponent(Layout, "Layout");
@@ -1805,7 +1910,7 @@ var furmly_section = (function (Layout, Header, Container) {
         try {
           return this.__originalRenderMethod__();
         } catch (e) {
-          return ReactSSRErrorHandler$6(e, this.constructor.name);
+          return ReactSSRErrorHandler$7(e, this.constructor.name);
         }
       }
     }]);
@@ -1846,7 +1951,7 @@ var furmly_section = (function (Layout, Header, Container) {
     }, FurmlySection: FurmlySection };
 });
 
-var ReactSSRErrorHandler$7 = require("error_handler");
+var ReactSSRErrorHandler$8 = require("error_handler");
 
 var furmly_select = (function (ProgressIndicator, Layout, Container) {
   if (invariants.validComponent(ProgressIndicator, "ProgressIndicator") && invariants.validComponent(Layout, "Layout") && !Container) throw new Error("Container cannot be null (furmly_select)");
@@ -1884,7 +1989,7 @@ var furmly_select = (function (ProgressIndicator, Layout, Container) {
         try {
           return this.__originalRenderMethod__();
         } catch (e) {
-          return ReactSSRErrorHandler$7(e, this.constructor.name);
+          return ReactSSRErrorHandler$8(e, this.constructor.name);
         }
       }
     }]);
@@ -2047,7 +2152,7 @@ var furmly_select = (function (ProgressIndicator, Layout, Container) {
   };
 });
 
-var ReactSSRErrorHandler$8 = require("error_handler");
+var ReactSSRErrorHandler$9 = require("error_handler");
 
 var furmly_selectset = (function (Layout, Picker, ProgressBar, Container) {
   //map elements in FurmlyView props to elements in store.
@@ -2096,7 +2201,7 @@ var furmly_selectset = (function (Layout, Picker, ProgressBar, Container) {
         try {
           return this.__originalRenderMethod__();
         } catch (e) {
-          return ReactSSRErrorHandler$8(e, this.constructor.name);
+          return ReactSSRErrorHandler$9(e, this.constructor.name);
         }
       }
     }]);
@@ -2359,7 +2464,7 @@ var furmly_selectset = (function (Layout, Picker, ProgressBar, Container) {
   };
 });
 
-var ReactSSRErrorHandler$9 = require("error_handler");
+var ReactSSRErrorHandler$10 = require("error_handler");
 
 var furmly_list = (function (Layout, Button, List, Modal, ErrorText, ProgressBar, Container) {
   invariants.validComponent(Layout, "Layout");
@@ -2422,7 +2527,7 @@ var furmly_list = (function (Layout, Button, List, Modal, ErrorText, ProgressBar
         try {
           return this.__originalRenderMethod__();
         } catch (e) {
-          return ReactSSRErrorHandler$9(e, this.constructor.name);
+          return ReactSSRErrorHandler$10(e, this.constructor.name);
         }
       }
     }]);
@@ -2713,7 +2818,7 @@ var furmly_list = (function (Layout, Button, List, Modal, ErrorText, ProgressBar
   };
 });
 
-var ReactSSRErrorHandler$10 = require("error_handler");
+var ReactSSRErrorHandler$11 = require("error_handler");
 
 var FurmlyHidden = function (_React$Component) {
 	inherits(FurmlyHidden, _React$Component);
@@ -2723,7 +2828,7 @@ var FurmlyHidden = function (_React$Component) {
 			try {
 				return this.__originalRenderMethod__();
 			} catch (e) {
-				return ReactSSRErrorHandler$10(e, this.constructor.name);
+				return ReactSSRErrorHandler$11(e, this.constructor.name);
 			}
 		}
 	}]);
@@ -2766,111 +2871,6 @@ var FurmlyHidden = function (_React$Component) {
 	}]);
 	return FurmlyHidden;
 }(React__default.Component);
-
-var ReactSSRErrorHandler$11 = require("error_handler");
-
-var NavigationContext = React__default.createContext({});
-
-var withNavigationProvider = function withNavigationProvider(WrappedComponent, Navigator, context) {
-  var navigator = void 0;
-  var mapDispatchToProps = function mapDispatchToProps(dispatch) {
-    if (!navigator) navigator = new Navigator(dispatch, context);
-    return {
-      furmlyNavigator: {
-        visible: function visible(args) {
-          return navigator.alreadyVisible(args);
-        },
-        replaceStack: function replaceStack(arr) {
-          return navigator.replaceStack(arr);
-        },
-        navigate: function navigate(args) {
-          return navigator.navigate(args);
-        },
-        setParams: function setParams(args) {
-          return navigator.setParams(args);
-        },
-        clearStack: function clearStack() {
-          return navigator.clear();
-        },
-        goBack: function goBack(args) {
-          return navigator.goBack(args);
-        }
-      }
-    };
-  };
-
-  var NavigationProvider = function (_React$Component) {
-    inherits(NavigationProvider, _React$Component);
-
-    function NavigationProvider() {
-      classCallCheck(this, NavigationProvider);
-      return possibleConstructorReturn(this, (NavigationProvider.__proto__ || Object.getPrototypeOf(NavigationProvider)).apply(this, arguments));
-    }
-
-    createClass(NavigationProvider, [{
-      key: "render",
-      value: function render() {
-        try {
-          return this.__originalRenderMethod__();
-        } catch (e) {
-          return ReactSSRErrorHandler$11(e, this.constructor.name);
-        }
-      }
-    }, {
-      key: "__originalRenderMethod__",
-      value: function __originalRenderMethod__() {
-        return React__default.createElement(
-          NavigationContext.Provider,
-          { value: this.props.furmlyNavigator },
-          React__default.createElement(WrappedComponent, this.props)
-        );
-      }
-    }]);
-    return NavigationProvider;
-  }(React__default.Component);
-
-  return reactRedux.connect(null, mapDispatchToProps)(NavigationProvider);
-};
-
-var withNavigation = function withNavigation(WrappedComponent) {
-  var NavigationConsumer = function (_React$Component2) {
-    inherits(NavigationConsumer, _React$Component2);
-
-    function NavigationConsumer() {
-      classCallCheck(this, NavigationConsumer);
-      return possibleConstructorReturn(this, (NavigationConsumer.__proto__ || Object.getPrototypeOf(NavigationConsumer)).apply(this, arguments));
-    }
-
-    createClass(NavigationConsumer, [{
-      key: "render",
-      value: function render() {
-        try {
-          return this.__originalRenderMethod__();
-        } catch (e) {
-          return ReactSSRErrorHandler$11(e, this.constructor.name);
-        }
-      }
-    }, {
-      key: "__originalRenderMethod__",
-      value: function __originalRenderMethod__() {
-        var _this3 = this;
-
-        return React__default.createElement(
-          NavigationContext.Consumer,
-          null,
-          function (furmlyNavigator) {
-            return React__default.createElement(WrappedComponent, _extends({}, _this3.props, {
-              furmlyNavigator: furmlyNavigator
-            }));
-          }
-        );
-      }
-    }]);
-    return NavigationConsumer;
-  }(React__default.Component);
-
-  return NavigationConsumer;
-};
 
 var ReactSSRErrorHandler$12 = require("error_handler");
 

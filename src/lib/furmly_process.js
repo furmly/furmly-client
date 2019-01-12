@@ -6,6 +6,7 @@ import PropTypes from "prop-types";
 import invariants from "./utils/invariants";
 import withLogger from "./furmly_base";
 import { withTemplateCacheProvider } from "./furmly_template_cache";
+import { withNavigation } from "./furmly_navigation_context";
 /**
  * Higher order function that recieves Platform specific implementation of Input
  * @param  {Function} Input Input class
@@ -56,7 +57,7 @@ export default (ProgressBar, TextView, FurmlyView) => {
     }
     componentWillReceiveProps(next) {
       if (next.completed && next.completed != this.props.completed)
-        return this.props.navigation.goBack();
+        return this.props.furmlyNavigator.goBack();
 
       if (
         ((next.id !== this.props.id ||
@@ -110,7 +111,7 @@ export default (ProgressBar, TextView, FurmlyView) => {
       connect(
         mapStateToProps,
         mapDispatchToProps
-      )(withLogger(withTemplateCacheProvider(FurmlyProcess))),
+      )(withLogger(withNavigation(withTemplateCacheProvider(FurmlyProcess)))),
     FurmlyProcess,
     mapStateToProps,
     mapDispatchToProps
