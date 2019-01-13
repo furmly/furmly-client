@@ -49,6 +49,7 @@ export default (ProgressIndicator, Layout, Container) => {
       this.fetchItems = this.fetchItems.bind(this);
       this.onValueChanged = this.onValueChanged.bind(this);
       this.selectFirstItem = this.selectFirstItem.bind(this);
+      this.getDisplayValue = this.getDisplayValue.bind(this);
       this.getValueBasedOnMode = this.getValueBasedOnMode.bind(this);
       this.props.validator.validate = () => {
         return this.runValidators();
@@ -67,6 +68,15 @@ export default (ProgressIndicator, Layout, Container) => {
         this.props.valueChanged({
           [this.props.name]: this.getValueBasedOnMode(value)
         });
+        if (this.props.displayValueChanged) {
+          setTimeout(
+            () =>
+              this.props.displayValueChanged({
+                [this.props.name]: this.getDisplayValue(value)
+              }),
+            0
+          );
+        }
       }
     }
     fetchItems(source, args, component_uid) {
@@ -78,8 +88,21 @@ export default (ProgressIndicator, Layout, Container) => {
     }
     isValidValue(items = this.props.items, value = this.props.value) {
       value = unwrapObjectValue(value);
-      return items && items.length && items.filter(x => x._id == value).length;
+      return (
+        items &&
+        items.length &&
+        items.filter(x => x._id == value || x.uid == value).length
+      );
     }
+    getDisplayValue(value = this.props.value, items = this.props.items) {
+      value = unwrapObjectValue(value);
+      return (
+        items &&
+        items.length &&
+        items.filter(x => x._id == value || x.uid == value)[0].displayLabel
+      );
+    }
+
     getValueBasedOnMode(v) {
       return (
         (this.props.args &&
@@ -108,7 +131,7 @@ export default (ProgressIndicator, Layout, Container) => {
       }
 
       if (next.items && next.items.length == 1 && !next.value) {
-        return this.selectFirstItem(next.items[0]._id);
+        return this.selectFirstItem(next.items[0].uid || next.items[0]._id);
       }
 
       if (
@@ -187,7 +210,7 @@ export default (ProgressIndicator, Layout, Container) => {
               label={this.props.label}
               items={this.props.items}
               displayProperty="displayLabel"
-              keyProperty="_id"
+              keyProperty={["uid", "_id"]}
               value={unwrapObjectValue(this.props.value)}
               valueChanged={this.onValueChanged}
             />
@@ -197,7 +220,7 @@ export default (ProgressIndicator, Layout, Container) => {
       /*jshint ignore:end*/
     }
   }
-
+  FurmlySelect.hasDisplayValue = true;
   return {
     getComponent: () =>
       withProcess(

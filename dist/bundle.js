@@ -693,72 +693,74 @@ var ACTIONS = {
 };
 
 function navigation () {
-	var state = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : createStack();
-	var action = arguments[1];
+  var state = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : createStack();
+  var action = arguments[1];
 
-	switch (action.type) {
-		case ACTIONS.SET_FURMLY_PARAMS:
-		case ACTIONS.ALREADY_VISIBLE:
-			if (hasScreenAlready(state, action.payload)) {
-				makeTop(state, action.payload);
-			} else {
-				state.stack.push(action.payload);
-			}
-			var stack = copyStack(state);
-			countRef(stack, stack.stack.length - 1, action.payload);
-			return Object.assign({}, state, stack);
-		case ACTIONS.REPLACE_STACK:
-			var stack = createStack();
-			stack.stack = action.payload.slice();
-			stack.stack.forEach(countRef.bind(null, stack, stack.stack.length - 1));
-			return Object.assign({}, state, stack);
+  switch (action.type) {
+    case ACTIONS.SET_FURMLY_PARAMS:
+    case ACTIONS.ALREADY_VISIBLE:
+      if (hasScreenAlready(state, action.payload)) {
+        makeTop(state, action.payload);
+      } else {
+        state.stack.push(action.payload);
+      }
+      var stack = copyStack(state);
+      countRef(stack, stack.stack.length - 1, action.payload);
+      return Object.assign({}, state, stack);
+    case ACTIONS.REPLACE_STACK:
+      var stack = createStack();
+      stack.stack = action.payload.slice();
+      stack.stack.forEach(function (x, index) {
+        return countRef(stack, index, x);
+      });
+      return Object.assign({}, state, stack);
 
-		case ACTIONS.REMOVE_LAST_FURMLY_PARAMS:
-			var stack = copyStack(state),
-			    item = stack.stack.pop();
-			if (item && (item.key == "Furmly" || item.$routeName == "Furmly") && stack._references[item.params.id]) {
-				var refs = stack._references[item.params.id][0];
-				stack._references[item.params.id][0] = refs - 1;
-				//clean up.
-				if (!stack._references[item.params.id][0]) delete stack._references[item.params.id];
-			}
-			return Object.assign({}, state, stack);
-		case ACTIONS.CLEAR_STACK:
-			return createStack();
-		default:
-			return state;
-	}
+    case ACTIONS.REMOVE_LAST_FURMLY_PARAMS:
+      var stack = copyStack(state),
+          item = stack.stack.pop();
+      if (item && (item.key == "Furmly" || item.$routeName == "Furmly") && stack._references[item.params.id]) {
+        var refs = stack._references[item.params.id][0];
+        stack._references[item.params.id][0] = refs - 1;
+        //clean up.
+        if (!stack._references[item.params.id][0]) delete stack._references[item.params.id];
+      }
+      return Object.assign({}, state, stack);
+    case ACTIONS.CLEAR_STACK:
+      return createStack();
+    default:
+      return state;
+  }
 }
 
 function copyStack(state) {
-	var stack = state.stack.slice(),
-	    _references = JSON.parse(JSON.stringify(state._references));
-	return { stack: stack, _references: _references };
+  var stack = state.stack.slice(),
+      _references = JSON.parse(JSON.stringify(state._references));
+  return { stack: stack, _references: _references };
 }
 function makeTop(state, curr) {
-	state.stack.push(state.stack.splice(state._references[curr.params.id][1], 1)[0]);
-	state._references[curr.params.id][1] = state.stack.length - 1;
+  state.stack.push(state.stack.splice(state._references[curr.params.id][1], 1)[0]);
+  state._references[curr.params.id][1] = state.stack.length - 1;
 }
 function hasScreenAlready(state, current) {
-	return state.stack.filter(function (x) {
-		return _.isEqual(x, current);
-	}).length;
+  return state.stack.filter(function (x) {
+    return _.isEqual(x, current);
+  }).length;
 }
 
 function countRef(stack, index, e) {
-	if (e.key == "Furmly" || e.$routeName == "Furmly") {
-		if (stack._references[e.params.id]) {
-			stack._references[e.params.id][0] = stack._references[e.params.id][0] + 1;
-		} else {
-			stack._references[e.params.id] = [1, index];
-		}
-	}
+  if (e.key == "Furmly" || e.$routeName == "Furmly") {
+    if (stack._references[e.params.id]) {
+      stack._references[e.params.id][0] = stack._references[e.params.id][0] + 1;
+    } else {
+      stack._references[e.params.id] = [1, index];
+    }
+  }
 }
 
 function createStack() {
-	var stack = [],
-	    _references = {};
-	return { stack: stack, _references: _references };
+  var stack = [],
+      _references = {};
+  return { stack: stack, _references: _references };
 }
 
 var CHECK_FOR_EXISTING_SCREEN = Symbol("CHECK FOR EXISTING SCREEN");
@@ -1204,7 +1206,7 @@ var withProcessProvider = function withProcessProvider(WrappedComponent) {
 
         this.setState({
           currentProcess: props.id,
-          currentStep: props.currentStep
+          currentStep: props.currentStep || 0
         });
       }
     }, {
@@ -1224,7 +1226,7 @@ var withProcessProvider = function withProcessProvider(WrappedComponent) {
   return ProcessProvider;
 };
 
-var withProcess$1 = function withProcess(WrappedComponent) {
+var withProcess = function withProcess(WrappedComponent) {
   var ProcessConsumer = function (_React$Component2) {
     inherits(ProcessConsumer, _React$Component2);
 
@@ -1391,7 +1393,7 @@ var furmly_view = (function (Page, Warning, Container) {
 
   return {
     getComponent: function getComponent() {
-      return withProcess$1(reactRedux.connect(mapStateToProps, mapDispatchToProps)(withLogger(FurmlyView)));
+      return withProcess(reactRedux.connect(mapStateToProps, mapDispatchToProps)(withLogger(FurmlyView)));
     },
     mapStateToProps: mapStateToProps,
     mapDispatchToProps: mapDispatchToProps,
@@ -1439,6 +1441,7 @@ var furmly_container = (function () {
       var _this = possibleConstructorReturn(this, (FurmlyContainer.__proto__ || Object.getPrototypeOf(FurmlyContainer)).call(this, props));
 
       _this.onValueChanged = _this.onValueChanged.bind(_this);
+      _this.onDisplayValueChanged = _this.onDisplayValueChanged.bind(_this);
       _this.state = {
         _validations: (_this.props.elements || []).map(function (x) {
           return {};
@@ -1486,6 +1489,18 @@ var furmly_container = (function () {
         this.props.valueChanged(defineProperty({}, this.props.name, form));
       }
     }, {
+      key: "onDisplayValueChanged",
+      value: function onDisplayValueChanged() {
+        var form = Object.assign.apply(Object, [{}, this.props.displayValue || {}].concat(toConsumableArray(Array.prototype.slice.call(arguments))));
+        if (this.props.displayValueChanged) {
+          if (!this.props.name) {
+            this.props.displayValueChanged(form);
+            return;
+          }
+          this.props.displayValueChanged(defineProperty({}, this.props.name, form));
+        }
+      }
+    }, {
       key: "__originalRenderMethod__",
       value: function __originalRenderMethod__() {
         var _this3 = this;
@@ -1498,17 +1513,28 @@ var furmly_container = (function () {
             elements = (this.props.elements || []).sort(function (x, y) {
           return x.order - y.order;
         }).map(function (x, index) {
-          var FurmlyComponent = ComponentLocator(x),
-              source = self.props.value,
-              value = source ? _this3.props.value[x.name] : null;
+          var FurmlyComponent = ComponentLocator(x);
+          var source = self.props.value;
+          var value = source ? _this3.props.value[x.name] : null;
+          var elemProps = {};
 
-          if (source && source.hasOwnProperty(x.name) && keys.indexOf(x.name) !== -1) keys.splice(keys.indexOf(x.name), 1);
+          if (FurmlyComponent.hasDisplayValue && _this3.props.displayValueChanged) {
+            elemProps.displayValueChanged = _this3.onDisplayValueChanged;
+          }
+
+          if (source && source.hasOwnProperty(x.name) && keys.indexOf(x.name) !== -1) {
+            keys.splice(keys.indexOf(x.name), 1);
+          }
+
           /*jshint ignore:start*/
-          if (!FurmlyComponent) throw new Error("Unknown component:" + JSON.stringify(x, null, " "));
+          if (!FurmlyComponent) {
+            throw new Error("Unknown component:" + JSON.stringify(x, null, " "));
+          }
+
           if (FurmlyComponent.notifyExtra) {
             notifyExtra.push(index);
             return function (extra) {
-              var component = React__default.createElement(FurmlyComponent, _extends({}, x, {
+              var component = React__default.createElement(FurmlyComponent, _extends({}, x, elemProps, {
                 extra: extra,
                 key: x.name,
                 value: value,
@@ -1520,7 +1546,7 @@ var furmly_container = (function () {
               return component;
             };
           }
-          var component = React__default.createElement(FurmlyComponent, _extends({}, x, {
+          var component = React__default.createElement(FurmlyComponent, _extends({}, x, elemProps, {
             value: value,
             validator: _this3.state._validations[index],
             key: x.name,
@@ -1898,7 +1924,7 @@ var furmly_process = (function (ProgressBar, TextView, FurmlyView) {
     return function (state, ownProps) {
       var _state = state.furmly.view["" + ownProps.id];
       return {
-        busy: !!state.furmly.view[ownProps.id + "-busy"],
+        busy: state.furmly.view[ownProps.id + "-busy"],
         description: _state && _state.description,
         instanceId: _state && _state.instanceId,
         message: state.furmly.view.message,
@@ -1951,9 +1977,14 @@ var furmly_process = (function (ProgressBar, TextView, FurmlyView) {
     }, {
       key: "componentWillReceiveProps",
       value: function componentWillReceiveProps(next) {
-        if (next.completed && next.completed != this.props.completed) return this.props.furmlyNavigator.goBack();
+        if (next.completed && next.completed != this.props.completed) {
+          return this.props.furmlyNavigator.goBack();
+        }
 
-        if ((next.id !== this.props.id || !_.isEqual(next.fetchParams, this.props.fetchParams)) && !next.busy && !next.description || next.id == this.props.id && !_.isEqual(next.fetchParams, this.props.fetchParams) && !next.busy) this.props.fetch(next.id, next.fetchParams);
+        if ((next.id !== this.props.id || !_.isEqual(next.fetchParams, this.props.fetchParams)) && !next.busy && !next.description || next.id == this.props.id && !_.isEqual(next.fetchParams, this.props.fetchParams) && !next.busy) {
+          this.props.log("fetching...");
+          this.props.fetch(next.id, next.fetchParams);
+        }
       }
     }, {
       key: "submit",
@@ -1970,7 +2001,7 @@ var furmly_process = (function (ProgressBar, TextView, FurmlyView) {
       value: function __originalRenderMethod__() {
         this.props.log("render");
         /*jshint ignore:start */
-        if (this.props.busy || typeof this.props.busy == "undefined") {
+        if (this.props.busy || typeof this.props.busy == "undefined" && !this.props.description) {
           return React__default.createElement(ProgressBar, { title: "Please wait..." });
         }
         if (!this.props.description) {
@@ -2107,6 +2138,7 @@ var furmly_select = (function (ProgressIndicator, Layout, Container) {
       _this.fetchItems = _this.fetchItems.bind(_this);
       _this.onValueChanged = _this.onValueChanged.bind(_this);
       _this.selectFirstItem = _this.selectFirstItem.bind(_this);
+      _this.getDisplayValue = _this.getDisplayValue.bind(_this);
       _this.getValueBasedOnMode = _this.getValueBasedOnMode.bind(_this);
       _this.props.validator.validate = function () {
         return _this.runValidators();
@@ -2129,8 +2161,15 @@ var furmly_select = (function (ProgressIndicator, Layout, Container) {
     }, {
       key: "onValueChanged",
       value: function onValueChanged(value) {
+        var _this2 = this;
+
         if (this._mounted) {
           this.props.valueChanged(defineProperty({}, this.props.name, this.getValueBasedOnMode(value)));
+          if (this.props.displayValueChanged) {
+            setTimeout(function () {
+              return _this2.props.displayValueChanged(defineProperty({}, _this2.props.name, _this2.getDisplayValue(value)));
+            }, 0);
+          }
         }
       }
     }, {
@@ -2149,8 +2188,19 @@ var furmly_select = (function (ProgressIndicator, Layout, Container) {
 
         value = unwrapObjectValue(value);
         return items && items.length && items.filter(function (x) {
-          return x._id == value;
+          return x._id == value || x.uid == value;
         }).length;
+      }
+    }, {
+      key: "getDisplayValue",
+      value: function getDisplayValue() {
+        var value = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : this.props.value;
+        var items = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : this.props.items;
+
+        value = unwrapObjectValue(value);
+        return items && items.length && items.filter(function (x) {
+          return x._id == value || x.uid == value;
+        })[0].displayLabel;
       }
     }, {
       key: "getValueBasedOnMode",
@@ -2165,7 +2215,7 @@ var furmly_select = (function (ProgressIndicator, Layout, Container) {
         }
 
         if (next.items && next.items.length == 1 && !next.value) {
-          return this.selectFirstItem(next.items[0]._id);
+          return this.selectFirstItem(next.items[0].uid || next.items[0]._id);
         }
 
         if (next.items && next.value && !this.isValidValue(next.items, next.value) || !next.items && !next.busy && !next.error) {
@@ -2175,10 +2225,10 @@ var furmly_select = (function (ProgressIndicator, Layout, Container) {
     }, {
       key: "selectFirstItem",
       value: function selectFirstItem(item) {
-        var _this2 = this;
+        var _this3 = this;
 
         setTimeout(function () {
-          _this2.onValueChanged(item);
+          _this3.onValueChanged(item);
         }, 0);
       }
     }, {
@@ -2194,7 +2244,7 @@ var furmly_select = (function (ProgressIndicator, Layout, Container) {
     }, {
       key: "componentDidMount",
       value: function componentDidMount() {
-        var _this3 = this;
+        var _this4 = this;
 
         this._mounted = true;
         if (!this.props.items) {
@@ -2208,7 +2258,7 @@ var furmly_select = (function (ProgressIndicator, Layout, Container) {
         if (this.isObjectIdMode() && this.props.value && _typeof(this.props.value) !== "object") {
           //update the form to indicate its an objectId.
           return setTimeout(function () {
-            _this3.onValueChanged(_this3.props.value);
+            _this4.onValueChanged(_this4.props.value);
           }, 0);
         }
       }
@@ -2235,7 +2285,7 @@ var furmly_select = (function (ProgressIndicator, Layout, Container) {
             label: this.props.label,
             items: this.props.items,
             displayProperty: "displayLabel",
-            keyProperty: "_id",
+            keyProperty: ["uid", "_id"],
             value: unwrapObjectValue(this.props.value),
             valueChanged: this.onValueChanged
           })
@@ -2246,9 +2296,10 @@ var furmly_select = (function (ProgressIndicator, Layout, Container) {
     return FurmlySelect;
   }(React.Component);
 
+  FurmlySelect.hasDisplayValue = true;
   return {
     getComponent: function getComponent() {
-      return withProcess$1(reactRedux.connect(mapStateToProps, mapDispatchToProps)(withLogger(FurmlySelect)));
+      return withProcess(reactRedux.connect(mapStateToProps, mapDispatchToProps)(withLogger(FurmlySelect)));
     },
     FurmlySelect: FurmlySelect,
     mapStateToProps: mapStateToProps,
@@ -2538,7 +2589,7 @@ var furmly_selectset = (function (Layout, Picker, ProgressBar, Container) {
             items: this.props.items,
             errors: this.state.errors,
             displayProperty: "displayLabel",
-            keyProperty: "id",
+            keyProperty: ["id"],
             value: unwrapObjectValue(this.props.value),
             valueChanged: this.respondToPickerValueChanged
           }),
@@ -2559,7 +2610,7 @@ var furmly_selectset = (function (Layout, Picker, ProgressBar, Container) {
   FurmlySelectSet.notifyExtra = true;
   return {
     getComponent: function getComponent() {
-      return withProcess$1(reactRedux.connect(mapStateToProps, mapDispatchToProps)(withLogger(FurmlySelectSet)));
+      return withProcess(reactRedux.connect(mapStateToProps, mapDispatchToProps)(withLogger(FurmlySelectSet)));
     },
     FurmlySelectSet: FurmlySelectSet,
     mapStateToProps: mapStateToProps,
@@ -2651,6 +2702,7 @@ var furmly_list = (function (Layout, Button, List, Modal, ErrorText, ProgressBar
       _this.edit = _this.edit.bind(_this);
       _this.runValidators = _this.runValidators.bind(_this);
       _this.isDisabled = _this.isDisabled.bind(_this);
+      _this.displayValueChanged = _this.displayValueChanged.bind(_this);
       _this.getListItemDataTemplate = _this.getListItemDataTemplate.bind(_this);
       _this.props.validator.validate = function () {
         return _this.runValidators();
@@ -2797,7 +2849,11 @@ var furmly_list = (function (Layout, Button, List, Modal, ErrorText, ProgressBar
           this.state.validator.validate().then(function () {
             var items = (_this3.props.items || []).slice();
 
-            if (_this3.state.mode == NEW) items.push(_this3.state.edit);else items.splice(_this3.state.existing, 1, _this3.state.edit);
+            if (_this3.state.mode == NEW) {
+              items.push(_this3.state.edit);
+            } else {
+              items.splice(_this3.state.existing, 1, _this3.state.edit);
+            }
             _this3.props.valueChanged(defineProperty({}, _this3.props.name, items));
             _this3.setState({
               modalVisible: false,
@@ -2817,6 +2873,23 @@ var furmly_list = (function (Layout, Button, List, Modal, ErrorText, ProgressBar
       key: "valueChanged",
       value: function valueChanged$$1(v) {
         this.setState({ edit: v && v[FurmlyList.modalName()] });
+      }
+    }, {
+      key: "displayValueChanged",
+      value: function displayValueChanged(v) {
+        var value = v && v[FurmlyList.modalName()];
+        if (value) {
+          var edit = this.state.edit;
+
+          var ex = _extends({}, edit);
+          Object.keys(value).forEach(function (x) {
+            Object.defineProperty(ex, x + "_display", {
+              value: value[x],
+              enumerable: false
+            });
+          });
+          this.setState({ edit: ex });
+        }
       }
     }, {
       key: "remove",
@@ -2892,7 +2965,8 @@ var furmly_list = (function (Layout, Button, List, Modal, ErrorText, ProgressBar
                 value: this.state.edit,
                 name: FurmlyList.modalName(),
                 validator: this.state.validator,
-                valueChanged: this.valueChanged
+                valueChanged: this.valueChanged,
+                displayValueChanged: this.displayValueChanged
               }),
               visibility: this.state.modalVisible,
               done: this.closeModal
@@ -2913,7 +2987,7 @@ var furmly_list = (function (Layout, Button, List, Modal, ErrorText, ProgressBar
 
   return {
     getComponent: function getComponent() {
-      return withProcess$1(reactRedux.connect(mapStateToProps, mapDispatchToProps)(withLogger(withTemplateCache(FurmlyList))));
+      return withProcess(reactRedux.connect(mapStateToProps, mapDispatchToProps)(withLogger(withTemplateCache(FurmlyList))));
     },
     mapStateToProps: mapStateToProps,
     mapDispatchToProps: mapDispatchToProps,
@@ -3682,7 +3756,7 @@ var furmly_grid = (function (Layout, List, ItemView, Header, ProgressBar, Comman
 
   return {
     getComponent: function getComponent() {
-      return withProcess$1(reactRedux.connect(mapStateToProps, mapDispatchToProps)(withNavigation(withLogger(FurmlyGrid))));
+      return withProcess(reactRedux.connect(mapStateToProps, mapDispatchToProps)(withNavigation(withLogger(FurmlyGrid))));
     },
     FurmlyGrid: FurmlyGrid,
     mapStateToProps: mapStateToProps,
@@ -4051,7 +4125,7 @@ var furmly_actionview = (function (Layout, ProgressBar, Filter, Container) {
 
   return {
     getComponent: function getComponent() {
-      return withProcess$1(reactRedux.connect(mapStateToProps, mapDispatchToProps)(withLogger(FurmlyActionView)));
+      return withProcess(reactRedux.connect(mapStateToProps, mapDispatchToProps)(withLogger(FurmlyActionView)));
     },
     FurmlyActionView: FurmlyActionView,
     mapDispatchToProps: mapDispatchToProps,
@@ -4230,13 +4304,6 @@ function view$1 () {
 	switch (action.type) {
 		case ACTIONS.CLEAR_DATA:
 			return Object.assign(state, defineProperty({}, action.payload, null));
-		case ACTIONS.ADD_NAVIGATION_CONTEXT:
-			return Object.assign({}, state, {
-				navigationContext: action.payload
-			});
-		case ACTIONS.REMOVE_NAVIGATION_CONTEXT:
-			delete state.navigationContext;
-			return Object.assign({}, state);
 		case ACTIONS.CLEAR_STACK:
 			return {};
 		case ACTIONS.FURMLY_PROCESS_FAILED:
@@ -4249,7 +4316,6 @@ function view$1 () {
 				}
 				return sum;
 			}, {
-				navigationContext: state.navigationContext,
 				message: state.message
 			});
 			return _state;
@@ -4349,11 +4415,11 @@ function view$1 () {
 			return Object.assign({}, state, (_Object$assign22 = {}, defineProperty(_Object$assign22, action.payload.id, {
 				description: fetchedDescription,
 				0: fetchedValue
-			}), defineProperty(_Object$assign22, "navigationContext", state.navigationContext), defineProperty(_Object$assign22, getBusyKey(action.payload.id), false), defineProperty(_Object$assign22, getErrorKey(action.payload.id), action.error), _Object$assign22));
+			}), defineProperty(_Object$assign22, getBusyKey(action.payload.id), false), defineProperty(_Object$assign22, getErrorKey(action.payload.id), action.error), _Object$assign22));
 		case ACTIONS.FETCHING_PROCESS:
 			return Object.assign({}, state, (_Object$assign23 = {}, defineProperty(_Object$assign23, getBusyKey(action.meta), !action.error), defineProperty(_Object$assign23, getErrorKey(action.meta), !!action.error), _Object$assign23));
 		case ACTIONS.FAILED_TO_FETCH_PROCESS:
-			return Object.assign({}, state, (_Object$assign24 = {}, defineProperty(_Object$assign24, action.meta, null), defineProperty(_Object$assign24, "navigationContext", state.navigationContext), defineProperty(_Object$assign24, getBusyKey(action.meta), false), defineProperty(_Object$assign24, getErrorKey(action.meta), true), _Object$assign24));
+			return Object.assign({}, state, (_Object$assign24 = {}, defineProperty(_Object$assign24, action.meta, null), defineProperty(_Object$assign24, getBusyKey(action.meta), false), defineProperty(_Object$assign24, getErrorKey(action.meta), true), _Object$assign24));
 		case ACTIONS.START_FILE_UPLOAD:
 			return Object.assign({}, state, defineProperty({}, action.meta, startUpload(state[action.meta], action)));
 		case ACTIONS.FILE_UPLOADED:
@@ -4624,7 +4690,7 @@ var components = {
   withNavigationProvider: withNavigationProvider,
   withTemplateCache: withTemplateCache,
   withTemplateCacheProvider: withTemplateCacheProvider,
-  withProcess: withProcess$1,
+  withProcess: withProcess,
   withProcessProvider: withProcessProvider
 };
 
@@ -4783,23 +4849,26 @@ var createMap = function createMap() {
 };
 
 function formatExpression (string) {
-	var str = string.toString();
+  var str = string.toString();
+  var res = "" + str;
 
-	for (var _len = arguments.length, rest = Array(_len > 1 ? _len - 1 : 0), _key = 1; _key < _len; _key++) {
-		rest[_key - 1] = arguments[_key];
-	}
+  for (var _len = arguments.length, rest = Array(_len > 1 ? _len - 1 : 0), _key = 1; _key < _len; _key++) {
+    rest[_key - 1] = arguments[_key];
+  }
 
-	if (rest.length) {
-		var t = _typeof(rest[0]);
-		var key;
-		var args = "string" === t || "number" === t ? rest : rest[0];
+  if (rest.length) {
+    var t = _typeof(rest[0]);
+    var arr;
+    var exp = /(\{([\w|_]+)\})/g;
+    var args = "string" === t || "number" === t ? rest : rest[0];
 
-		for (key in args) {
-			str = str.replace(new RegExp("\\{" + key + "\\}", "gi"), args[key]);
-		}
-	}
+    while (arr = exp.exec(str)) {
+      res = res.replace(arr[0], args[arr[2]] || "");
+    }
+    str = res;
+  }
 
-	return str;
+  return str;
 }
 
 var index = {

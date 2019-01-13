@@ -1,14 +1,17 @@
 export default function(string, ...rest) {
-	var str = string.toString();
-	if (rest.length) {
-		var t = typeof rest[0];
-		var key;
-		var args = "string" === t || "number" === t ? rest : rest[0];
+  var str = string.toString();
+  var res = "" + str;
+  if (rest.length) {
+    var t = typeof rest[0];
+    var arr;
+    var exp = /(\{([\w|_]+)\})/g;
+    var args = "string" === t || "number" === t ? rest : rest[0];
 
-		for (key in args) {
-			str = str.replace(new RegExp("\\{" + key + "\\}", "gi"), args[key]);
-		}
-	}
+    while ((arr = exp.exec(str))) {
+      res = res.replace(arr[0], args[arr[2]] || "");
+    }
+    str = res;
+  }
 
-	return str;
+  return str;
 }

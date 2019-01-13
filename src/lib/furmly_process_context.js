@@ -22,7 +22,7 @@ export const withProcessProvider = WrappedComponent => {
     setup(props = this.props) {
       this.setState({
         currentProcess: props.id,
-        currentStep: props.currentStep
+        currentStep: props.currentStep || 0
       });
     }
     render() {

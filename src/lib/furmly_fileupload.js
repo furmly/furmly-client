@@ -5,6 +5,7 @@ import { uploadFurmlyFile, getFurmlyFilePreview } from "./actions";
 import invariants from "./utils/invariants";
 import ValidationHelper from "./utils/validator";
 import { getKey } from "./utils/view";
+import { withProcess } from "./furmly_process_context";
 
 /**
  * This component should render a file uploader

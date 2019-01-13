@@ -7,13 +7,6 @@ export default function(state = {}, action) {
 	switch (action.type) {
 		case ACTIONS.CLEAR_DATA:
 			return Object.assign(state, { [action.payload]: null });
-		case ACTIONS.ADD_NAVIGATION_CONTEXT:
-			return Object.assign({}, state, {
-				navigationContext: action.payload
-			});
-		case ACTIONS.REMOVE_NAVIGATION_CONTEXT:
-			delete state.navigationContext;
-			return Object.assign({}, state);
 		case ACTIONS.CLEAR_STACK:
 			return {};
 		case ACTIONS.FURMLY_PROCESS_FAILED:
@@ -30,7 +23,6 @@ export default function(state = {}, action) {
 					return sum;
 				},
 				{
-					navigationContext: state.navigationContext,
 					message: state.message
 				}
 			);
@@ -240,9 +232,6 @@ export default function(state = {}, action) {
 					description: fetchedDescription,
 					0: fetchedValue
 				},
-				//always carry over the navigationContext.
-				navigationContext: state.navigationContext,
-				//templateCache: state.templateCache || {},
 				[getBusyKey(action.payload.id)]: false,
 				[getErrorKey(action.payload.id)]: action.error
 			});
@@ -254,8 +243,6 @@ export default function(state = {}, action) {
 		case ACTIONS.FAILED_TO_FETCH_PROCESS:
 			return Object.assign({}, state, {
 				[action.meta]: null,
-				//always carry over the navigationContext.
-				navigationContext: state.navigationContext,
 				[getBusyKey(action.meta)]: false,
 				[getErrorKey(action.meta)]: true
 			});

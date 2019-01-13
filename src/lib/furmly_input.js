@@ -1,4 +1,4 @@
-import React, { Component } from "react";
+import React from "react";
 import PropTypes from "prop-types";
 import ValidationHelper, { VALIDATOR_TYPES } from "./utils/validator";
 import invariants from "./utils/invariants";

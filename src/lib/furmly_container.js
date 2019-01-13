@@ -26,6 +26,7 @@ export default (...args) => {
     constructor(props) {
       super(props);
       this.onValueChanged = this.onValueChanged.bind(this);
+      this.onDisplayValueChanged = this.onDisplayValueChanged.bind(this);
       this.state = {
         _validations: (this.props.elements || []).map(x => ({}))
       };
@@ -71,6 +72,21 @@ export default (...args) => {
       this.props.valueChanged({ [this.props.name]: form });
     }
 
+    onDisplayValueChanged() {
+      let form = Object.assign(
+        {},
+        this.props.displayValue || {},
+        ...Array.prototype.slice.call(arguments)
+      );
+      if (this.props.displayValueChanged) {
+        if (!this.props.name) {
+          this.props.displayValueChanged(form);
+          return;
+        }
+        this.props.displayValueChanged({ [this.props.name]: form });
+      }
+    }
+
     render() {
       this.props.log("render");
       let keys = this.props.value ? Object.keys(this.props.value) : [],
@@ -82,27 +98,40 @@ export default (...args) => {
             return x.order - y.order;
           })
           .map((x, index) => {
-            let FurmlyComponent = ComponentLocator(x),
-              source = self.props.value,
-              value = source ? this.props.value[x.name] : null;
+            const FurmlyComponent = ComponentLocator(x);
+            const source = self.props.value;
+            const value = source ? this.props.value[x.name] : null;
+            const elemProps = {};
+
+            if (
+              FurmlyComponent.hasDisplayValue &&
+              this.props.displayValueChanged
+            ) {
+              elemProps.displayValueChanged = this.onDisplayValueChanged;
+            }
 
             if (
               source &&
               source.hasOwnProperty(x.name) &&
               keys.indexOf(x.name) !== -1
-            )
+            ) {
               keys.splice(keys.indexOf(x.name), 1);
+            }
+
             /*jshint ignore:start*/
-            if (!FurmlyComponent)
+            if (!FurmlyComponent) {
               throw new Error(
                 "Unknown component:" + JSON.stringify(x, null, " ")
               );
+            }
+
             if (FurmlyComponent.notifyExtra) {
               notifyExtra.push(index);
               return extra => {
                 let component = (
                   <FurmlyComponent
                     {...x}
+                    {...elemProps}
                     extra={extra}
                     key={x.name}
                     value={value}
@@ -124,6 +153,7 @@ export default (...args) => {
             let component = (
               <FurmlyComponent
                 {...x}
+                {...elemProps}
                 value={value}
                 validator={this.state._validations[index]}
                 key={x.name}

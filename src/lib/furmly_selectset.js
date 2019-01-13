@@ -299,7 +299,7 @@ export default (Layout, Picker, ProgressBar, Container) => {
               items={this.props.items}
               errors={this.state.errors}
               displayProperty="displayLabel"
-              keyProperty="id"
+              keyProperty={["id"]}
               value={unwrapObjectValue(this.props.value)}
               valueChanged={this.respondToPickerValueChanged}
             />

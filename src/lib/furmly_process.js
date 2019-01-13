@@ -22,7 +22,7 @@ export default (ProgressBar, TextView, FurmlyView) => {
   const mapStateToProps = (_, initialProps) => (state, ownProps) => {
     let _state = state.furmly.view[`${ownProps.id}`];
     return {
-      busy: !!state.furmly.view[`${ownProps.id}-busy`],
+      busy: state.furmly.view[`${ownProps.id}-busy`],
       description: _state && _state.description,
       instanceId: _state && _state.instanceId,
       message: state.furmly.view.message,
@@ -57,8 +57,9 @@ export default (ProgressBar, TextView, FurmlyView) => {
       }
     }
     componentWillReceiveProps(next) {
-      if (next.completed && next.completed != this.props.completed)
+      if (next.completed && next.completed != this.props.completed) {
         return this.props.furmlyNavigator.goBack();
+      }
 
       if (
         ((next.id !== this.props.id ||
@@ -68,8 +69,10 @@ export default (ProgressBar, TextView, FurmlyView) => {
         (next.id == this.props.id &&
           !_.isEqual(next.fetchParams, this.props.fetchParams) &&
           !next.busy)
-      )
+      ) {
+        this.props.log("fetching...");
         this.props.fetch(next.id, next.fetchParams);
+      }
     }
     submit(form) {
       this.props.runProcess({
@@ -82,7 +85,10 @@ export default (ProgressBar, TextView, FurmlyView) => {
     render() {
       this.props.log("render");
       /*jshint ignore:start */
-      if (this.props.busy || typeof this.props.busy == "undefined") {
+      if (
+        this.props.busy ||
+        (typeof this.props.busy == "undefined" && !this.props.description)
+      ) {
         return <ProgressBar title="Please wait..." />;
       }
       if (!this.props.description) {

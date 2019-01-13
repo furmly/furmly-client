@@ -87,6 +87,7 @@ export default (
       this.edit = this.edit.bind(this);
       this.runValidators = this.runValidators.bind(this);
       this.isDisabled = this.isDisabled.bind(this);
+      this.displayValueChanged = this.displayValueChanged.bind(this);
       this.getListItemDataTemplate = this.getListItemDataTemplate.bind(this);
       this.props.validator.validate = () => {
         return this.runValidators();
@@ -271,8 +272,11 @@ export default (
           .then(() => {
             let items = (this.props.items || []).slice();
 
-            if (this.state.mode == NEW) items.push(this.state.edit);
-            else items.splice(this.state.existing, 1, this.state.edit);
+            if (this.state.mode == NEW) {
+              items.push(this.state.edit);
+            } else {
+              items.splice(this.state.existing, 1, this.state.edit);
+            }
             this.props.valueChanged({ [this.props.name]: items });
             this.setState({
               modalVisible: false,
@@ -292,7 +296,20 @@ export default (
     valueChanged(v) {
       this.setState({ edit: v && v[FurmlyList.modalName()] });
     }
-
+    displayValueChanged(v) {
+      const value = v && v[FurmlyList.modalName()];
+      if (value) {
+        const { edit } = this.state;
+        let ex = { ...edit };
+        Object.keys(value).forEach(x => {
+          Object.defineProperty(ex, x + "_display", {
+            value: value[x],
+            enumerable: false
+          });
+        });
+        this.setState({ edit: ex });
+      }
+    }
     remove(index) {
       this.props.openConfirmation(
         this.props.component_uid,
@@ -389,6 +406,7 @@ export default (
                   name={FurmlyList.modalName()}
                   validator={this.state.validator}
                   valueChanged={this.valueChanged}
+                  displayValueChanged={this.displayValueChanged}
                 />
               }
               visibility={this.state.modalVisible}
