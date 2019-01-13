@@ -1,4 +1,5 @@
 import React from "react";
+import hoistNonReactStatic from "hoist-non-react-statics";
 
 const ProcessContext = React.createContext({});
 export const withProcessProvider = WrappedComponent => {
@@ -32,6 +33,7 @@ export const withProcessProvider = WrappedComponent => {
       );
     }
   }
+  hoistNonReactStatic(ProcessProvider, WrappedComponent);
   return ProcessProvider;
 };
 
@@ -43,13 +45,14 @@ export const withProcess = WrappedComponent => {
           {processContext => (
             <WrappedComponent
               {...this.props}
-              currentProcess={processContext.currentStep}
-              currentStep={processContext.currentProcess}
+              currentProcess={processContext.currentProcess}
+              currentStep={processContext.currentStep}
             />
           )}
         </ProcessContext.Consumer>
       );
     }
   }
+  hoistNonReactStatic(ProcessConsumer, WrappedComponent);
   return ProcessConsumer;
 };

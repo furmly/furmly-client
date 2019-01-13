@@ -1220,6 +1220,7 @@ var withProcessProvider = function withProcessProvider(WrappedComponent) {
     return ProcessProvider;
   }(React__default.Component);
 
+  hoistNonReactStatic(ProcessProvider, WrappedComponent);
   return ProcessProvider;
 };
 
@@ -1251,8 +1252,8 @@ var withProcess$1 = function withProcess(WrappedComponent) {
           null,
           function (processContext) {
             return React__default.createElement(WrappedComponent, _extends({}, _this3.props, {
-              currentProcess: processContext.currentStep,
-              currentStep: processContext.currentProcess
+              currentProcess: processContext.currentProcess,
+              currentStep: processContext.currentStep
             }));
           }
         );
@@ -1261,6 +1262,7 @@ var withProcess$1 = function withProcess(WrappedComponent) {
     return ProcessConsumer;
   }(React__default.Component);
 
+  hoistNonReactStatic(ProcessConsumer, WrappedComponent);
   return ProcessConsumer;
 };
 
@@ -1875,6 +1877,7 @@ var withNavigation = function withNavigation(WrappedComponent) {
     return NavigationConsumer;
   }(React__default.Component);
 
+  hoistNonReactStatic(NavigationConsumer, WrappedComponent);
   return NavigationConsumer;
 };
 

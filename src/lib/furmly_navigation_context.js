@@ -1,13 +1,17 @@
 import React from "react";
 import { connect } from "react-redux";
+import hoistNonReactStatic from "hoist-non-react-statics";
 
 const NavigationContext = React.createContext({});
 
-export const withNavigationProvider = (WrappedComponent, Navigator, context) => {
+export const withNavigationProvider = (
+  WrappedComponent,
+  Navigator,
+  context
+) => {
   let navigator;
   const mapDispatchToProps = dispatch => {
-    if (!navigator)
-      navigator = new Navigator(dispatch, context);
+    if (!navigator) navigator = new Navigator(dispatch, context);
     return {
       furmlyNavigator: {
         visible: args => navigator.alreadyVisible(args),
@@ -49,5 +53,6 @@ export const withNavigation = WrappedComponent => {
       );
     }
   }
+  hoistNonReactStatic(NavigationConsumer, WrappedComponent);
   return NavigationConsumer;
 };
