@@ -10,7 +10,7 @@ export default WrappedComponent => {
     }
     componentWillMount() {
       this.logger = debug(`furmly-client:${WrappedComponent.name}`);
-      this.log("componentDidMount");
+      this.log("componentWillMount");
     }
     componentWillUnmount() {
       this.log("componentWillUnmount");

@@ -10,6 +10,7 @@ import {
   getErrorKey
 } from "./utils/view";
 import withLogger from "./furmly_base";
+import { withProcess } from "./furmly_process_context";
 export default (ProgressIndicator, Layout, Container) => {
   if (
     invariants.validComponent(ProgressIndicator, "ProgressIndicator") &&
@@ -199,10 +200,12 @@ export default (ProgressIndicator, Layout, Container) => {
 
   return {
     getComponent: () =>
-      connect(
-        mapStateToProps,
-        mapDispatchToProps
-      )(withLogger(FurmlySelect)),
+      withProcess(
+        connect(
+          mapStateToProps,
+          mapDispatchToProps
+        )(withLogger(FurmlySelect))
+      ),
     FurmlySelect,
     mapStateToProps,
     mapDispatchToProps

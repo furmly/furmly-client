@@ -5,8 +5,9 @@ import _ from "lodash";
 import PropTypes from "prop-types";
 import invariants from "./utils/invariants";
 import withLogger from "./furmly_base";
-import { withTemplateCacheProvider } from "./furmly_template_cache";
+import { withTemplateCacheProvider } from "./furmly_template_cache_context";
 import { withNavigation } from "./furmly_navigation_context";
+import { withProcessProvider } from "./furmly_process_context";
 /**
  * Higher order function that recieves Platform specific implementation of Input
  * @param  {Function} Input Input class
@@ -89,13 +90,7 @@ export default (ProgressBar, TextView, FurmlyView) => {
           <TextView text="Sorry we couldnt load that process...please wait a few minutes and retry." />
         );
       }
-      return (
-        <FurmlyView
-          currentStep={this.props.currentStep || 0}
-          currentProcess={this.props.id}
-          submit={this.submit}
-        />
-      );
+      return <FurmlyView submit={this.submit} />;
 
       /*jshint ignore:end */
     }
@@ -111,7 +106,13 @@ export default (ProgressBar, TextView, FurmlyView) => {
       connect(
         mapStateToProps,
         mapDispatchToProps
-      )(withLogger(withNavigation(withTemplateCacheProvider(FurmlyProcess)))),
+      )(
+        withLogger(
+          withNavigation(
+            withTemplateCacheProvider(withProcessProvider(FurmlyProcess))
+          )
+        )
+      ),
     FurmlyProcess,
     mapStateToProps,
     mapDispatchToProps

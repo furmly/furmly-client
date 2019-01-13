@@ -13,6 +13,7 @@ import invariants from "./utils/invariants";
 import { getKey, copy, getErrorKey } from "./utils/view";
 import withLogger from "./furmly_base";
 import { withNavigation } from "./furmly_navigation_context";
+import { withProcess } from "./furmly_process_context";
 
 export const GRID_MODES = {
   CRUD: "CRUD",
@@ -659,10 +660,12 @@ export default (
 
   return {
     getComponent: () =>
-      connect(
-        mapStateToProps,
-        mapDispatchToProps
-      )(withNavigation(withLogger(FurmlyGrid))),
+      withProcess(
+        connect(
+          mapStateToProps,
+          mapDispatchToProps
+        )(withNavigation(withLogger(FurmlyGrid)))
+      ),
     FurmlyGrid,
     mapStateToProps,
     mapDispatchToProps

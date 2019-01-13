@@ -56,6 +56,8 @@ const createMap = () => {
     withNavigationProvider: components.withNavigationProvider,
     withTemplateCache: components.withTemplateCache,
     withTemplateCacheProvider: components.withTemplateCacheProvider,
+    withProcess: components.withProcess,
+    withProcessProvider: components.withProcessProvider,
     prepareRecipe(name, recipe) {
       const parsedRecipe =
         (typeof deps[name] === "number" && !deps[name] && recipe) ||

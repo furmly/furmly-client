@@ -139,10 +139,12 @@ export default (Uploader, ProgressBar, Text, previews = []) => {
 
   return {
     getComponent: () =>
-      connect(
-        mapStateToProps,
-        mapDispatchToProps
-      )(withLogger(FurmlyFileUpload)),
+      withProcess(
+        connect(
+          mapStateToProps,
+          mapDispatchToProps
+        )(withLogger(FurmlyFileUpload))
+      ),
     mapDispatchToProps,
     mapDispatchToProps,
     FurmlyFileUpload

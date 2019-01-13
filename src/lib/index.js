@@ -20,11 +20,12 @@ import furmly_provider from "./furmly_provider";
 import {
   withTemplateCache,
   withTemplateCacheProvider
-} from "./furmly_template_cache";
+} from "./furmly_template_cache_context";
 import {
   withNavigation,
   withNavigationProvider
 } from "./furmly_navigation_context";
+import { withProcess, withProcessProvider } from "./furmly_process_context";
 
 export default {
   furmly_input,
@@ -49,5 +50,7 @@ export default {
   withNavigation,
   withNavigationProvider,
   withTemplateCache,
-  withTemplateCacheProvider
+  withTemplateCacheProvider,
+  withProcess,
+  withProcessProvider
 };

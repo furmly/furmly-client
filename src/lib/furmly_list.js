@@ -10,7 +10,8 @@ import {
 } from "./actions";
 import { getKey, copy, isArr } from "./utils/view";
 import withLogger from "./furmly_base";
-import { withTemplateCache } from "./furmly_template_cache";
+import { withTemplateCache } from "./furmly_template_cache_context";
+import { withProcess } from "./furmly_process_context";
 
 export default (
   Layout,
@@ -402,10 +403,12 @@ export default (
 
   return {
     getComponent: () =>
-      connect(
-        mapStateToProps,
-        mapDispatchToProps
-      )(withLogger(withTemplateCache(FurmlyList))),
+      withProcess(
+        connect(
+          mapStateToProps,
+          mapDispatchToProps
+        )(withLogger(withTemplateCache(FurmlyList)))
+      ),
     mapStateToProps,
     mapDispatchToProps,
     FurmlyList

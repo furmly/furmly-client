@@ -5,6 +5,7 @@ import invariants from "./utils/invariants";
 import _ from "lodash";
 import { getKey } from "./utils/view";
 import withLogger from "./furmly_base";
+import { withProcess } from "./furmly_process_context";
 export default (Layout, ProgressBar, Filter, Container) => {
   invariants.validComponent(Filter, "Filter");
   invariants.validComponent(Container, "Container");
@@ -109,10 +110,12 @@ export default (Layout, ProgressBar, Filter, Container) => {
 
   return {
     getComponent: () =>
-      connect(
-        mapStateToProps,
-        mapDispatchToProps
-      )(withLogger(FurmlyActionView)),
+      withProcess(
+        connect(
+          mapStateToProps,
+          mapDispatchToProps
+        )(withLogger(FurmlyActionView))
+      ),
     FurmlyActionView,
     mapDispatchToProps,
     mapStateToProps

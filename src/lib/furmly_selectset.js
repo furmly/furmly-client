@@ -7,6 +7,7 @@ import ValidationHelper from "./utils/validator";
 import { getKey, getErrorKey, getBusyKey } from "./utils/view";
 import _ from "lodash";
 import withLogger from "./furmly_base";
+import { withProcess } from "./furmly_process_context";
 
 export default (Layout, Picker, ProgressBar, Container) => {
   //map elements in FurmlyView props to elements in store.
@@ -183,7 +184,6 @@ export default (Layout, Picker, ProgressBar, Container) => {
     }
 
     onContainerValueChanged(value, pickerValue) {
-
       let eve = this._onContainerValueChanged.call(this, value, pickerValue);
 
       this.props.valueChanged.apply(this, eve);
@@ -322,10 +322,12 @@ export default (Layout, Picker, ProgressBar, Container) => {
   FurmlySelectSet.notifyExtra = true;
   return {
     getComponent: () =>
-      connect(
-        mapStateToProps,
-        mapDispatchToProps
-      )(withLogger(FurmlySelectSet)),
+      withProcess(
+        connect(
+          mapStateToProps,
+          mapDispatchToProps
+        )(withLogger(FurmlySelectSet))
+      ),
     FurmlySelectSet,
     mapStateToProps,
     mapDispatchToProps

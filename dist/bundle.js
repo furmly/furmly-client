@@ -302,7 +302,7 @@ var withLogger = (function (WrappedComponent) {
       key: "componentWillMount",
       value: function componentWillMount() {
         this.logger = debug("furmly-client:" + WrappedComponent.name);
-        this.log("componentDidMount");
+        this.log("componentWillMount");
       }
     }, {
       key: "componentWillUnmount",
@@ -1161,6 +1161,111 @@ function uploadFurmlyFile(file, key) {
 
 var ReactSSRErrorHandler$2 = require("error_handler");
 
+var ProcessContext = React__default.createContext({});
+var withProcessProvider = function withProcessProvider(WrappedComponent) {
+  var ProcessProvider = function (_React$Component) {
+    inherits(ProcessProvider, _React$Component);
+    createClass(ProcessProvider, [{
+      key: "render",
+      value: function render() {
+        try {
+          return this.__originalRenderMethod__();
+        } catch (e) {
+          return ReactSSRErrorHandler$2(e, this.constructor.name);
+        }
+      }
+    }]);
+
+    function ProcessProvider(props) {
+      classCallCheck(this, ProcessProvider);
+
+      var _this = possibleConstructorReturn(this, (ProcessProvider.__proto__ || Object.getPrototypeOf(ProcessProvider)).call(this, props));
+
+      _this.state = {};
+      return _this;
+    }
+
+    createClass(ProcessProvider, [{
+      key: "componentWillReceiveProps",
+      value: function componentWillReceiveProps(next) {
+        if (next.id !== this.props.id || next.currentStep !== this.props.currentStep) {
+          this.setup(next);
+        }
+      }
+    }, {
+      key: "componentWillMount",
+      value: function componentWillMount() {
+        this.setup();
+      }
+    }, {
+      key: "setup",
+      value: function setup() {
+        var props = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : this.props;
+
+        this.setState({
+          currentProcess: props.id,
+          currentStep: props.currentStep
+        });
+      }
+    }, {
+      key: "__originalRenderMethod__",
+      value: function __originalRenderMethod__() {
+        return React__default.createElement(
+          ProcessContext.Provider,
+          { value: this.state },
+          React__default.createElement(WrappedComponent, this.props)
+        );
+      }
+    }]);
+    return ProcessProvider;
+  }(React__default.Component);
+
+  return ProcessProvider;
+};
+
+var withProcess$1 = function withProcess(WrappedComponent) {
+  var ProcessConsumer = function (_React$Component2) {
+    inherits(ProcessConsumer, _React$Component2);
+
+    function ProcessConsumer() {
+      classCallCheck(this, ProcessConsumer);
+      return possibleConstructorReturn(this, (ProcessConsumer.__proto__ || Object.getPrototypeOf(ProcessConsumer)).apply(this, arguments));
+    }
+
+    createClass(ProcessConsumer, [{
+      key: "render",
+      value: function render() {
+        try {
+          return this.__originalRenderMethod__();
+        } catch (e) {
+          return ReactSSRErrorHandler$2(e, this.constructor.name);
+        }
+      }
+    }, {
+      key: "__originalRenderMethod__",
+      value: function __originalRenderMethod__() {
+        var _this3 = this;
+
+        return React__default.createElement(
+          ProcessContext.Consumer,
+          null,
+          function (processContext) {
+            return React__default.createElement(WrappedComponent, _extends({}, _this3.props, {
+              currentProcess: processContext.currentStep,
+              currentStep: processContext.currentProcess
+            }));
+          }
+        );
+      }
+    }]);
+    return ProcessConsumer;
+  }(React__default.Component);
+
+  return ProcessConsumer;
+};
+
+var ReactSSRErrorHandler$3 = require("error_handler");
+
 var furmly_view = (function (Page, Warning, Container) {
   invariants.validComponent(Page, "Page");
   invariants.validComponent(Warning, "Warning");
@@ -1204,7 +1309,7 @@ var furmly_view = (function (Page, Warning, Container) {
         try {
           return this.__originalRenderMethod__();
         } catch (e) {
-          return ReactSSRErrorHandler$2(e, this.constructor.name);
+          return ReactSSRErrorHandler$3(e, this.constructor.name);
         }
       }
     }]);
@@ -1284,7 +1389,7 @@ var furmly_view = (function (Page, Warning, Container) {
 
   return {
     getComponent: function getComponent() {
-      return reactRedux.connect(mapStateToProps, mapDispatchToProps)(withLogger(FurmlyView));
+      return withProcess$1(reactRedux.connect(mapStateToProps, mapDispatchToProps)(withLogger(FurmlyView)));
     },
     mapStateToProps: mapStateToProps,
     mapDispatchToProps: mapDispatchToProps,
@@ -1292,7 +1397,7 @@ var furmly_view = (function (Page, Warning, Container) {
   };
 });
 
-var ReactSSRErrorHandler$3 = require("error_handler");
+var ReactSSRErrorHandler$4 = require("error_handler");
 
 var furmly_container = (function () {
   for (var _len = arguments.length, args = Array(_len), _key = 0; _key < _len; _key++) {
@@ -1321,7 +1426,7 @@ var furmly_container = (function () {
         try {
           return this.__originalRenderMethod__();
         } catch (e) {
-          return ReactSSRErrorHandler$3(e, this.constructor.name);
+          return ReactSSRErrorHandler$4(e, this.constructor.name);
         }
       }
     }]);
@@ -1572,7 +1677,7 @@ var view = {
   getKey: getKey
 };
 
-var ReactSSRErrorHandler$4 = require("error_handler");
+var ReactSSRErrorHandler$5 = require("error_handler");
 
 var TemplateCacheContext = React__default.createContext({});
 var withTemplateCacheProvider = function withTemplateCacheProvider(WrappedComponent) {
@@ -1584,7 +1689,7 @@ var withTemplateCacheProvider = function withTemplateCacheProvider(WrappedCompon
         try {
           return this.__originalRenderMethod__();
         } catch (e) {
-          return ReactSSRErrorHandler$4(e, this.constructor.name);
+          return ReactSSRErrorHandler$5(e, this.constructor.name);
         }
       }
     }]);
@@ -1645,7 +1750,7 @@ var withTemplateCache = function withTemplateCache(WrappedComponent) {
         try {
           return this.__originalRenderMethod__();
         } catch (e) {
-          return ReactSSRErrorHandler$4(e, this.constructor.name);
+          return ReactSSRErrorHandler$5(e, this.constructor.name);
         }
       }
     }, {
@@ -1668,7 +1773,7 @@ var withTemplateCache = function withTemplateCache(WrappedComponent) {
   return TemplateCacheConsumer;
 };
 
-var ReactSSRErrorHandler$5 = require("error_handler");
+var ReactSSRErrorHandler$6 = require("error_handler");
 
 var NavigationContext = React__default.createContext({});
 
@@ -1714,7 +1819,7 @@ var withNavigationProvider = function withNavigationProvider(WrappedComponent, N
         try {
           return this.__originalRenderMethod__();
         } catch (e) {
-          return ReactSSRErrorHandler$5(e, this.constructor.name);
+          return ReactSSRErrorHandler$6(e, this.constructor.name);
         }
       }
     }, {
@@ -1748,7 +1853,7 @@ var withNavigation = function withNavigation(WrappedComponent) {
         try {
           return this.__originalRenderMethod__();
         } catch (e) {
-          return ReactSSRErrorHandler$5(e, this.constructor.name);
+          return ReactSSRErrorHandler$6(e, this.constructor.name);
         }
       }
     }, {
@@ -1773,7 +1878,7 @@ var withNavigation = function withNavigation(WrappedComponent) {
   return NavigationConsumer;
 };
 
-var ReactSSRErrorHandler$6 = require("error_handler");
+var ReactSSRErrorHandler$7 = require("error_handler");
 
 /**
  * Higher order function that recieves Platform specific implementation of Input
@@ -1818,7 +1923,7 @@ var furmly_process = (function (ProgressBar, TextView, FurmlyView) {
         try {
           return this.__originalRenderMethod__();
         } catch (e) {
-          return ReactSSRErrorHandler$6(e, this.constructor.name);
+          return ReactSSRErrorHandler$7(e, this.constructor.name);
         }
       }
     }]);
@@ -1868,11 +1973,7 @@ var furmly_process = (function (ProgressBar, TextView, FurmlyView) {
         if (!this.props.description) {
           return React__default.createElement(TextView, { text: "Sorry we couldnt load that process...please wait a few minutes and retry." });
         }
-        return React__default.createElement(FurmlyView, {
-          currentStep: this.props.currentStep || 0,
-          currentProcess: this.props.id,
-          submit: this.submit
-        });
+        return React__default.createElement(FurmlyView, { submit: this.submit });
 
         /*jshint ignore:end */
       }
@@ -1887,7 +1988,7 @@ var furmly_process = (function (ProgressBar, TextView, FurmlyView) {
   };
   return {
     getComponent: function getComponent() {
-      return reactRedux.connect(mapStateToProps, mapDispatchToProps)(withLogger(withNavigation(withTemplateCacheProvider(FurmlyProcess))));
+      return reactRedux.connect(mapStateToProps, mapDispatchToProps)(withLogger(withNavigation(withTemplateCacheProvider(withProcessProvider(FurmlyProcess)))));
     },
     FurmlyProcess: FurmlyProcess,
     mapStateToProps: mapStateToProps,
@@ -1895,7 +1996,7 @@ var furmly_process = (function (ProgressBar, TextView, FurmlyView) {
   };
 });
 
-var ReactSSRErrorHandler$7 = require("error_handler");
+var ReactSSRErrorHandler$8 = require("error_handler");
 
 var furmly_section = (function (Layout, Header, Container) {
   invariants.validComponent(Layout, "Layout");
@@ -1910,7 +2011,7 @@ var furmly_section = (function (Layout, Header, Container) {
         try {
           return this.__originalRenderMethod__();
         } catch (e) {
-          return ReactSSRErrorHandler$7(e, this.constructor.name);
+          return ReactSSRErrorHandler$8(e, this.constructor.name);
         }
       }
     }]);
@@ -1951,7 +2052,7 @@ var furmly_section = (function (Layout, Header, Container) {
     }, FurmlySection: FurmlySection };
 });
 
-var ReactSSRErrorHandler$8 = require("error_handler");
+var ReactSSRErrorHandler$9 = require("error_handler");
 
 var furmly_select = (function (ProgressIndicator, Layout, Container) {
   if (invariants.validComponent(ProgressIndicator, "ProgressIndicator") && invariants.validComponent(Layout, "Layout") && !Container) throw new Error("Container cannot be null (furmly_select)");
@@ -1989,7 +2090,7 @@ var furmly_select = (function (ProgressIndicator, Layout, Container) {
         try {
           return this.__originalRenderMethod__();
         } catch (e) {
-          return ReactSSRErrorHandler$8(e, this.constructor.name);
+          return ReactSSRErrorHandler$9(e, this.constructor.name);
         }
       }
     }]);
@@ -2144,7 +2245,7 @@ var furmly_select = (function (ProgressIndicator, Layout, Container) {
 
   return {
     getComponent: function getComponent() {
-      return reactRedux.connect(mapStateToProps, mapDispatchToProps)(withLogger(FurmlySelect));
+      return withProcess$1(reactRedux.connect(mapStateToProps, mapDispatchToProps)(withLogger(FurmlySelect)));
     },
     FurmlySelect: FurmlySelect,
     mapStateToProps: mapStateToProps,
@@ -2152,7 +2253,7 @@ var furmly_select = (function (ProgressIndicator, Layout, Container) {
   };
 });
 
-var ReactSSRErrorHandler$9 = require("error_handler");
+var ReactSSRErrorHandler$10 = require("error_handler");
 
 var furmly_selectset = (function (Layout, Picker, ProgressBar, Container) {
   //map elements in FurmlyView props to elements in store.
@@ -2201,7 +2302,7 @@ var furmly_selectset = (function (Layout, Picker, ProgressBar, Container) {
         try {
           return this.__originalRenderMethod__();
         } catch (e) {
-          return ReactSSRErrorHandler$9(e, this.constructor.name);
+          return ReactSSRErrorHandler$10(e, this.constructor.name);
         }
       }
     }]);
@@ -2330,7 +2431,6 @@ var furmly_selectset = (function (Layout, Picker, ProgressBar, Container) {
     }, {
       key: "onContainerValueChanged",
       value: function onContainerValueChanged(value, pickerValue) {
-
         var eve = this._onContainerValueChanged.call(this, value, pickerValue);
 
         this.props.valueChanged.apply(this, eve);
@@ -2456,7 +2556,7 @@ var furmly_selectset = (function (Layout, Picker, ProgressBar, Container) {
   FurmlySelectSet.notifyExtra = true;
   return {
     getComponent: function getComponent() {
-      return reactRedux.connect(mapStateToProps, mapDispatchToProps)(withLogger(FurmlySelectSet));
+      return withProcess$1(reactRedux.connect(mapStateToProps, mapDispatchToProps)(withLogger(FurmlySelectSet)));
     },
     FurmlySelectSet: FurmlySelectSet,
     mapStateToProps: mapStateToProps,
@@ -2464,7 +2564,7 @@ var furmly_selectset = (function (Layout, Picker, ProgressBar, Container) {
   };
 });
 
-var ReactSSRErrorHandler$10 = require("error_handler");
+var ReactSSRErrorHandler$11 = require("error_handler");
 
 var furmly_list = (function (Layout, Button, List, Modal, ErrorText, ProgressBar, Container) {
   invariants.validComponent(Layout, "Layout");
@@ -2527,7 +2627,7 @@ var furmly_list = (function (Layout, Button, List, Modal, ErrorText, ProgressBar
         try {
           return this.__originalRenderMethod__();
         } catch (e) {
-          return ReactSSRErrorHandler$10(e, this.constructor.name);
+          return ReactSSRErrorHandler$11(e, this.constructor.name);
         }
       }
     }]);
@@ -2810,7 +2910,7 @@ var furmly_list = (function (Layout, Button, List, Modal, ErrorText, ProgressBar
 
   return {
     getComponent: function getComponent() {
-      return reactRedux.connect(mapStateToProps, mapDispatchToProps)(withLogger(withTemplateCache(FurmlyList)));
+      return withProcess$1(reactRedux.connect(mapStateToProps, mapDispatchToProps)(withLogger(withTemplateCache(FurmlyList))));
     },
     mapStateToProps: mapStateToProps,
     mapDispatchToProps: mapDispatchToProps,
@@ -2818,7 +2918,7 @@ var furmly_list = (function (Layout, Button, List, Modal, ErrorText, ProgressBar
   };
 });
 
-var ReactSSRErrorHandler$11 = require("error_handler");
+var ReactSSRErrorHandler$12 = require("error_handler");
 
 var FurmlyHidden = function (_React$Component) {
 	inherits(FurmlyHidden, _React$Component);
@@ -2828,7 +2928,7 @@ var FurmlyHidden = function (_React$Component) {
 			try {
 				return this.__originalRenderMethod__();
 			} catch (e) {
-				return ReactSSRErrorHandler$11(e, this.constructor.name);
+				return ReactSSRErrorHandler$12(e, this.constructor.name);
 			}
 		}
 	}]);
@@ -2872,7 +2972,7 @@ var FurmlyHidden = function (_React$Component) {
 	return FurmlyHidden;
 }(React__default.Component);
 
-var ReactSSRErrorHandler$12 = require("error_handler");
+var ReactSSRErrorHandler$13 = require("error_handler");
 
 var furmly_nav = (function (Link) {
   invariants.validComponent(Link, "Link");
@@ -2885,7 +2985,7 @@ var furmly_nav = (function (Link) {
         try {
           return this.__originalRenderMethod__();
         } catch (e) {
-          return ReactSSRErrorHandler$12(e, this.constructor.name);
+          return ReactSSRErrorHandler$13(e, this.constructor.name);
         }
       }
     }]);
@@ -2974,7 +3074,7 @@ var furmly_nav = (function (Link) {
   };
 });
 
-var ReactSSRErrorHandler$13 = require("error_handler");
+var ReactSSRErrorHandler$14 = require("error_handler");
 
 var furmly_image = (function (Image) {
   invariants.validComponent(Image, "Image");
@@ -2993,7 +3093,7 @@ var furmly_image = (function (Image) {
       }
       return React__default.createElement(Image, props);
     } catch (e) {
-      return ReactSSRErrorHandler$13(e);
+      return ReactSSRErrorHandler$14(e);
     }
   };
   return { getComponent: function getComponent() {
@@ -3001,7 +3101,7 @@ var furmly_image = (function (Image) {
     }, FurmlyImage: FurmlyImage };
 });
 
-var ReactSSRErrorHandler$14 = require("error_handler");
+var ReactSSRErrorHandler$15 = require("error_handler");
 
 var GRID_MODES = {
   CRUD: "CRUD",
@@ -3078,7 +3178,7 @@ var furmly_grid = (function (Layout, List, ItemView, Header, ProgressBar, Comman
         try {
           return this.__originalRenderMethod__();
         } catch (e) {
-          return ReactSSRErrorHandler$14(e, this.constructor.name);
+          return ReactSSRErrorHandler$15(e, this.constructor.name);
         }
       }
     }]);
@@ -3579,7 +3679,7 @@ var furmly_grid = (function (Layout, List, ItemView, Header, ProgressBar, Comman
 
   return {
     getComponent: function getComponent() {
-      return reactRedux.connect(mapStateToProps, mapDispatchToProps)(withNavigation(withLogger(FurmlyGrid)));
+      return withProcess$1(reactRedux.connect(mapStateToProps, mapDispatchToProps)(withNavigation(withLogger(FurmlyGrid))));
     },
     FurmlyGrid: FurmlyGrid,
     mapStateToProps: mapStateToProps,
@@ -3587,7 +3687,7 @@ var furmly_grid = (function (Layout, List, ItemView, Header, ProgressBar, Comman
   };
 });
 
-var ReactSSRErrorHandler$15 = require("error_handler");
+var ReactSSRErrorHandler$16 = require("error_handler");
 
 var furmly_htmlview = (function (PlatformComponent) {
   var FurmlyHTMLViewer = function (_Component) {
@@ -3598,7 +3698,7 @@ var furmly_htmlview = (function (PlatformComponent) {
         try {
           return this.__originalRenderMethod__();
         } catch (e) {
-          return ReactSSRErrorHandler$15(e, this.constructor.name);
+          return ReactSSRErrorHandler$16(e, this.constructor.name);
         }
       }
     }]);
@@ -3635,7 +3735,7 @@ var furmly_htmlview = (function (PlatformComponent) {
   };
 });
 
-var ReactSSRErrorHandler$16 = require("error_handler");
+var ReactSSRErrorHandler$17 = require("error_handler");
 
 /**
  * This component should render a file uploader
@@ -3661,7 +3761,7 @@ var furmly_fileupload = (function (Uploader, ProgressBar, Text) {
         try {
           return this.__originalRenderMethod__();
         } catch (e) {
-          return ReactSSRErrorHandler$16(e, this.constructor.name);
+          return ReactSSRErrorHandler$17(e, this.constructor.name);
         }
       }
     }]);
@@ -3800,13 +3900,13 @@ var furmly_fileupload = (function (Uploader, ProgressBar, Text) {
 
   return _ref = {
     getComponent: function getComponent() {
-      return reactRedux.connect(mapStateToProps, mapDispatchToProps)(withLogger(FurmlyFileUpload));
+      return withProcess(reactRedux.connect(mapStateToProps, mapDispatchToProps)(withLogger(FurmlyFileUpload)));
     },
     mapDispatchToProps: mapDispatchToProps
   }, defineProperty(_ref, "mapDispatchToProps", mapDispatchToProps), defineProperty(_ref, "FurmlyFileUpload", FurmlyFileUpload), _ref;
 });
 
-var ReactSSRErrorHandler$17 = require("error_handler");
+var ReactSSRErrorHandler$18 = require("error_handler");
 
 var furmly_actionview = (function (Layout, ProgressBar, Filter, Container) {
   invariants.validComponent(Filter, "Filter");
@@ -3857,7 +3957,7 @@ var furmly_actionview = (function (Layout, ProgressBar, Filter, Container) {
         try {
           return this.__originalRenderMethod__();
         } catch (e) {
-          return ReactSSRErrorHandler$17(e, this.constructor.name);
+          return ReactSSRErrorHandler$18(e, this.constructor.name);
         }
       }
     }]);
@@ -3948,7 +4048,7 @@ var furmly_actionview = (function (Layout, ProgressBar, Filter, Container) {
 
   return {
     getComponent: function getComponent() {
-      return reactRedux.connect(mapStateToProps, mapDispatchToProps)(withLogger(FurmlyActionView));
+      return withProcess$1(reactRedux.connect(mapStateToProps, mapDispatchToProps)(withLogger(FurmlyActionView)));
     },
     FurmlyActionView: FurmlyActionView,
     mapDispatchToProps: mapDispatchToProps,
@@ -3956,7 +4056,7 @@ var furmly_actionview = (function (Layout, ProgressBar, Filter, Container) {
   };
 });
 
-var ReactSSRErrorHandler$18 = require("error_handler");
+var ReactSSRErrorHandler$19 = require("error_handler");
 
 var furmly_label = (function (Label) {
   invariants.validComponent(Label, "Label");
@@ -3971,7 +4071,7 @@ var furmly_label = (function (Label) {
       }
       return React__default.createElement(Label, props);
     } catch (e) {
-      return ReactSSRErrorHandler$18(e);
+      return ReactSSRErrorHandler$19(e);
     }
   };
 
@@ -3980,7 +4080,7 @@ var furmly_label = (function (Label) {
     }, FurmlyLabel: FurmlyLabel };
 });
 
-var ReactSSRErrorHandler$19 = require("error_handler");
+var ReactSSRErrorHandler$20 = require("error_handler");
 
 var furmly_webview = (function (WebView, Text) {
   invariants.validComponent(WebView, "WebView");
@@ -3994,7 +4094,7 @@ var furmly_webview = (function (WebView, Text) {
         try {
           return this.__originalRenderMethod__();
         } catch (e) {
-          return ReactSSRErrorHandler$19(e, this.constructor.name);
+          return ReactSSRErrorHandler$20(e, this.constructor.name);
         }
       }
     }]);
@@ -4026,7 +4126,7 @@ var furmly_webview = (function (WebView, Text) {
     }, FurmlyWebView: FurmlyWebView };
 });
 
-var ReactSSRErrorHandler$20 = require("error_handler");
+var ReactSSRErrorHandler$21 = require("error_handler");
 
 var furmly_command = (function (Link, customDownloadCommand) {
   invariants.validComponent(Link, "Link");
@@ -4045,7 +4145,7 @@ var furmly_command = (function (Link, customDownloadCommand) {
         try {
           return this.__originalRenderMethod__();
         } catch (e) {
-          return ReactSSRErrorHandler$20(e, this.constructor.name);
+          return ReactSSRErrorHandler$21(e, this.constructor.name);
         }
       }
     }]);
@@ -4471,7 +4571,7 @@ var createStore = (function () {
   return redux.compose(redux.applyMiddleware.apply(undefined, toConsumableArray(middlewares)))(redux.createStore)(rootReducer);
 });
 
-var ReactSSRErrorHandler$21 = require("error_handler");
+var ReactSSRErrorHandler$22 = require("error_handler");
 
 var createProvider = function createProvider(Process) {
   for (var _len = arguments.length, args = Array(_len > 1 ? _len - 1 : 0), _key = 1; _key < _len; _key++) {
@@ -4489,7 +4589,7 @@ var createProvider = function createProvider(Process) {
             React__default.createElement(Process, props)
           );
         } catch (e) {
-          return ReactSSRErrorHandler$21(e);
+          return ReactSSRErrorHandler$22(e);
         }
       };
     },
@@ -4520,7 +4620,9 @@ var components = {
   withNavigation: withNavigation,
   withNavigationProvider: withNavigationProvider,
   withTemplateCache: withTemplateCache,
-  withTemplateCacheProvider: withTemplateCacheProvider
+  withTemplateCacheProvider: withTemplateCacheProvider,
+  withProcess: withProcess$1,
+  withProcessProvider: withProcessProvider
 };
 
 var Deferred = function Deferred(name) {
@@ -4569,6 +4671,8 @@ var createMap = function createMap() {
     withNavigationProvider: components.withNavigationProvider,
     withTemplateCache: components.withTemplateCache,
     withTemplateCacheProvider: components.withTemplateCacheProvider,
+    withProcess: components.withProcess,
+    withProcessProvider: components.withProcessProvider,
     prepareRecipe: function prepareRecipe(name, recipe) {
       var _this = this;
 

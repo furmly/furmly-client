@@ -3,6 +3,7 @@ import { connect } from "react-redux";
 import invariants from "./utils/invariants";
 import { valueChanged } from "./actions";
 import withLogger from "./furmly_base";
+import { withProcess } from "./furmly_process_context";
 export default (Page, Warning, Container) => {
   invariants.validComponent(Page, "Page");
   invariants.validComponent(Warning, "Warning");
@@ -103,10 +104,12 @@ export default (Page, Warning, Container) => {
 
   return {
     getComponent: () =>
-      connect(
-        mapStateToProps,
-        mapDispatchToProps
-      )(withLogger(FurmlyView)),
+      withProcess(
+        connect(
+          mapStateToProps,
+          mapDispatchToProps
+        )(withLogger(FurmlyView))
+      ),
     mapStateToProps,
     mapDispatchToProps,
     FurmlyView
