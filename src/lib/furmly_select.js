@@ -197,6 +197,11 @@ export default (ProgressIndicator, Layout, Container) => {
         this.props.log(`${this.props.name} is empty`);
         return <ProgressIndicator />;
       }
+      const {
+        args: {
+          config: { keyProperty }
+        }
+      } = this.props;
       return (
         <Layout
           value={this.props.label}
@@ -210,7 +215,9 @@ export default (ProgressIndicator, Layout, Container) => {
               label={this.props.label}
               items={this.props.items}
               displayProperty="displayLabel"
-              keyProperty={["uid", "_id"]}
+              keyProperty={
+                (keyProperty && keyProperty.split(",")) || ["uid", "_id"]
+              }
               value={unwrapObjectValue(this.props.value)}
               valueChanged={this.onValueChanged}
             />

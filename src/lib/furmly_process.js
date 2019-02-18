@@ -13,7 +13,7 @@ import { withProcessProvider } from "./furmly_process_context";
  * @param  {Function} Input Input class
  * @return {Function}       Wrapped class
  */
-export default (ProgressBar, TextView, FurmlyView) => {
+export default (ProgressBar, TextView, FurmlyView, Layout) => {
   invariants.validComponent(ProgressBar, "ProgressBar");
   invariants.validComponent(TextView, "TextView");
   invariants.validComponent(FurmlyView, "FurmlyView");
@@ -41,11 +41,18 @@ export default (ProgressBar, TextView, FurmlyView) => {
     };
   };
 
+  const componentNames = {
+    view: "view",
+    text: "text",
+    busy: "busy"
+  };
+  const componentNamesArr = Object.keys(componentNames);
   class FurmlyProcess extends Component {
     constructor(props) {
       super(props);
       this.state = {};
       this.submit = this.submit.bind(this);
+      this.getCurrentComponent = this.getCurrentComponent.bind(this);
     }
     componentDidMount() {
       if (
@@ -58,7 +65,7 @@ export default (ProgressBar, TextView, FurmlyView) => {
     }
     componentWillReceiveProps(next) {
       if (next.completed && next.completed != this.props.completed) {
-        return this.props.furmlyNavigator.goBack();
+        return this.props.processCompleted(next.props, this.props);
       }
 
       if (
@@ -82,23 +89,50 @@ export default (ProgressBar, TextView, FurmlyView) => {
         instanceId: this.props.instanceId
       });
     }
-    render() {
-      this.props.log("render");
-      /*jshint ignore:start */
+    getCurrentComponentName() {
       if (
         this.props.busy ||
-        (typeof this.props.busy == "undefined" && !this.props.description)
+        (typeof this.props.busy == "undefined" && !this.props.description) ||
+        this.props.completed
       ) {
-        return <ProgressBar title="Please wait..." />;
+        return componentNames.busy;
       }
       if (!this.props.description) {
-        return (
-          <TextView text="Sorry we couldnt load that process...please wait a few minutes and retry." />
-        );
+        return componentNames.text;
       }
-      return <FurmlyView submit={this.submit} />;
+      return componentNames.view;
+    }
+    getCurrentComponent(name) {
+      switch (name) {
+        case componentNames.view:
+          return (
+            <FurmlyView
+              currentStep={this.props.currentStep}
+              currentProcess={this.props.id}
+              submit={this.submit}
+            />
+          );
+        case componentNames.text:
+          return (
+            <TextView text="Sorry we couldnt load that process...please wait a few minutes and retry." />
+          );
+        case componentNames.busy:
+          return <ProgressBar title="Please wait..." />;
+      }
+    }
+    render() {
+      this.props.log("render");
 
-      /*jshint ignore:end */
+      if (Layout)
+        return (
+          <Layout
+            componentNames={componentNamesArr}
+            getCurrentComponent={name => this.getCurrentComponent(name)}
+            getCurrentComponentName={() => this.getCurrentComponentName()}
+          />
+        );
+
+      return this.getCurrentComponent(this.getCurrentComponentName());
     }
   }
 

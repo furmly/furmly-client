@@ -27,15 +27,21 @@ export const withNavigationProvider = (
     render() {
       return (
         <NavigationContext.Provider value={this.props.furmlyNavigator}>
-          <WrappedComponent {...this.props} />
+          {this.props.children}
         </NavigationContext.Provider>
       );
     }
   }
-  return connect(
+  const ConnectedNavigationProvider = connect(
     null,
     mapDispatchToProps
   )(NavigationProvider);
+
+  return props => (
+    <ConnectedNavigationProvider>
+      <WrappedComponent {...props} />
+    </ConnectedNavigationProvider>
+  );
 };
 
 export const withNavigation = WrappedComponent => {

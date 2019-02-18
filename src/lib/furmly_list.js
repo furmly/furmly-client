@@ -3,11 +3,7 @@ import { connect } from "react-redux";
 import ValidatorHelper from "./utils/validator";
 import invariants from "./utils/invariants";
 import _ from "lodash";
-import {
-  runFurmlyProcessor,
-  openConfirmation,
-  clearElementData
-} from "./actions";
+import { runFurmlyProcessor, clearElementData } from "./actions";
 import { getKey, copy, isArr } from "./utils/view";
 import withLogger from "./furmly_base";
 import { withTemplateCache } from "./furmly_template_cache_context";
@@ -20,6 +16,7 @@ export default (
   Modal,
   ErrorText,
   ProgressBar,
+  ConfirmationModal,
   Container
 ) => {
   invariants.validComponent(Layout, "Layout");
@@ -27,6 +24,7 @@ export default (
   invariants.validComponent(List, "List");
   invariants.validComponent(Modal, "Modal");
   invariants.validComponent(ErrorText, "ErrorText");
+  invariants.validComponent(ConfirmationModal, "ConfirmationModal");
   invariants.validComponent(Container, "Container");
 
   const EDIT = "EDIT",
@@ -35,11 +33,6 @@ export default (
     let component_uid = getKey(state, ownProps.component_uid, ownProps);
 
     return {
-      confirmation:
-        state.app &&
-        state.app.confirmationResult &&
-        state.app.confirmationResult[component_uid],
-      dataTemplate: state.furmly.view[component_uid],
       component_uid,
       busy: state.furmly.view[`${component_uid}-busy`],
       items: ownProps.value
@@ -67,8 +60,6 @@ export default (
     return {
       getListItemDataTemplate: (id, args, key) =>
         dispatch(runFurmlyProcessor(id, args, key)),
-      openConfirmation: (id, message, params) =>
-        dispatch(openConfirmation(id, message, params)),
       clearElementData: key => dispatch(clearElementData(key))
     };
   };
@@ -78,7 +69,8 @@ export default (
       super(props);
       this.state = {
         validator: {},
-        modalVisible: false
+        modalVisible: false,
+        confirmationVisible: false
       };
       this.showModal = this.showModal.bind(this);
       this.closeModal = this.closeModal.bind(this);
@@ -89,6 +81,8 @@ export default (
       this.isDisabled = this.isDisabled.bind(this);
       this.displayValueChanged = this.displayValueChanged.bind(this);
       this.getListItemDataTemplate = this.getListItemDataTemplate.bind(this);
+      this.cancelRemove = this.cancelRemove.bind(this);
+      this.confirmRemove = this.confirmRemove.bind(this);
       this.props.validator.validate = () => {
         return this.runValidators();
       };
@@ -96,22 +90,6 @@ export default (
     }
 
     componentWillReceiveProps(next) {
-      if (
-        next.confirmation !== this.props.confirmation &&
-        next.confirmation &&
-        next.confirmation.params &&
-        typeof next.confirmation.params.index !== "undefined" &&
-        this.props.items &&
-        this.props.items.length
-      ) {
-        let items = (this.props.items || []).slice();
-        return (
-          items.splice(next.confirmation.params.index, 1),
-          this.props.valueChanged({
-            [this.props.name]: items
-          })
-        );
-      }
       if (this.props.component_uid !== next.component_uid) {
         if (this._mounted) {
           this.getItemTemplate();
@@ -311,11 +289,24 @@ export default (
       }
     }
     remove(index) {
-      this.props.openConfirmation(
-        this.props.component_uid,
-        "Are you sure you want to remove that item ?",
-        { index }
-      );
+      this.setState({
+        confirmationVisible: { index }
+      });
+    }
+    cancelRemove() {
+      this.setState({ confirmationVisible: false });
+    }
+    confirmRemove() {
+      const { confirmationVisible } = this.state;
+      if (confirmationVisible && this.props.items && this.props.items.length) {
+        this.setState({ confirmationVisible: false }, () => {
+          let items = this.props.items.slice();
+          items.splice(confirmationVisible.index, 1);
+          this.props.valueChanged({
+            [this.props.name]: items
+          });
+        });
+      }
     }
     edit(index) {
       this.setState({
@@ -384,6 +375,14 @@ export default (
           value={this.props.label}
           description={this.props.description}
           addButton={<Button disabled={disabled} click={this.showModal} />}
+          confirmationModal={
+            <ConfirmationModal
+              content={"Are you sure you want to remove the selected item ?"}
+              visibility={!!this.state.confirmationVisible}
+              onCancel={this.cancelRemove}
+              onConfirm={this.confirmRemove}
+            />
+          }
           list={
             <List
               items={this.props.items}

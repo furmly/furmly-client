@@ -107,7 +107,7 @@ export default (
         validator: {},
         _filterValidator: {},
         showItemView: false,
-        count: this.props.args.pageCount || 5,
+        count: this.props.args.pageCount || 15,
         showCommandResultView: false
       };
       this.itemValueChanged = this.itemValueChanged.bind(this);
@@ -591,6 +591,7 @@ export default (
               canAddOrEdit={this.isCRUD()}
               header={header}
               footer={footer}
+              count={this.state.count}
               total={this.props.total}
               showItemView={this.showItemView}
               items={this.props.items}

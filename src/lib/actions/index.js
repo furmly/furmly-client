@@ -12,14 +12,15 @@ const preDispatch = config.preDispatch,
   throttled = {},
   cache = new MemCache({ ttl: config.processorsCacheTimeout });
 
-export const displayMessage = text => {
-  return {
-    type: "SHOW_MESSAGE",
-    message: text
-  };
-};
 function copy(value) {
   return JSON.parse(JSON.stringify(value));
+}
+
+export function showMessage(message) {
+  return {
+    type: "SHOW_MESSAGE",
+    message
+  };
 }
 
 function getQueryParams(args) {
@@ -88,9 +89,9 @@ function defaultError(dispatch, customType, meta, throttleEnabled) {
   return {
     type: customType || "SHOW_MESSAGE",
     meta: (action, state, res) => {
-      if (customType && res.status !== 401)
+      if (customType && res.status !== 401) {
         dispatch(
-          displayMessage(
+          showMessage(
             res.statusText ||
               (res.headers &&
                 res.headers.map &&
@@ -99,6 +100,8 @@ function defaultError(dispatch, customType, meta, throttleEnabled) {
               "Sorry , an error occurred while processing your request"
           )
         );
+      }
+
       log("an error occurred");
       log(action);
       let args = action[CALL_API];
@@ -340,13 +343,6 @@ export function runFurmlyProcessor(
   };
 }
 
-export function showMessage(message) {
-  return {
-    type: "SHOW_MESSAGE",
-    message
-  };
-}
-
 export function runFurmlyProcess(details) {
   return (dispatch, getState) =>
     dispatch({
@@ -461,6 +457,13 @@ export function getFurmlyFilePreview(id, key, fileType, query) {
         getState()
       )
     });
+  };
+}
+
+export function clearPreview(key) {
+  return {
+    type: ACTIONS.CLEAR_PREVIEW,
+    payload: { key }
   };
 }
 

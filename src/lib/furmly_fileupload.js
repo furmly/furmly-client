@@ -1,7 +1,11 @@
 import React, { Component } from "react";
 import { connect } from "react-redux";
 import withLogger from "./furmly_base";
-import { uploadFurmlyFile, getFurmlyFilePreview } from "./actions";
+import {
+  uploadFurmlyFile,
+  getFurmlyFilePreview,
+  clearPreview
+} from "./actions";
 import invariants from "./utils/invariants";
 import ValidationHelper from "./utils/validator";
 import { getKey } from "./utils/view";
@@ -26,6 +30,7 @@ export default (Uploader, ProgressBar, Text, previews = []) => {
       this._previewType = this.getPreviewType.call(this);
       this._supported = this.isSupported();
       this._getPreview = this._getPreview.bind(this);
+      this.clearPreview = this.clearPreview.bind(this);
       this._query = this.getPreviewQuery();
       this.props.validator.validate = () => {
         return this.runValidators();
@@ -64,10 +69,15 @@ export default (Uploader, ProgressBar, Text, previews = []) => {
               [this.props.name]: this.props.uploadedId
             });
         }, 0);
+        return;
+      }
+      if (!this.props.uploadedId && !this.props.value && this.props.preview) {
+        this.props.clearPreview(this.props.component_uid);
       }
     }
     componentWillUnmount() {
       this._mounted = false;
+      this.props.clearPreview(this.props.component_uid);
     }
     _getPreview(id) {
       this.props.getPreview(
@@ -97,6 +107,10 @@ export default (Uploader, ProgressBar, Text, previews = []) => {
     upload(file) {
       this.props.upload(file, this.props.component_uid);
     }
+    clearPreview() {
+      this.props.valueChanged({ [this.props.name]: undefined });
+      this.props.clearPreview(this.props.component_uid);
+    }
     render() {
       this.props.log("render");
       if (this.props.busy) return <ProgressBar />;
@@ -107,6 +121,7 @@ export default (Uploader, ProgressBar, Text, previews = []) => {
           key={this.props.component_uid}
           title={this.props.label}
           description={this.props.description}
+          clear={this.clearPreview}
           upload={this.upload}
           component_uid={this.props.component_uid}
           allowed={this.props.args.fileType}
@@ -134,7 +149,8 @@ export default (Uploader, ProgressBar, Text, previews = []) => {
     return {
       upload: (file, key) => dispatch(uploadFurmlyFile(file, key)),
       getPreview: (id, key, fileType, query) =>
-        dispatch(getFurmlyFilePreview(id, key, fileType, query))
+        dispatch(getFurmlyFilePreview(id, key, fileType, query)),
+      clearPreview: key => dispatch(clearPreview(key))
     };
   };
 

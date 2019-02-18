@@ -653,7 +653,6 @@ var ACTIONS = {
   CLEAR_DATA: "CLEAR_DATA",
   ADD_NAVIGATION_CONTEXT: "ADD_NAVIGATION_CONTEXT",
   REMOVE_NAVIGATION_CONTEXT: "REMOVE_NAVIGATION_CONTEXT",
-  OPEN_CONFIRMATION: "OPEN_CONFIRMATION",
   FETCHED_PROCESS: "FETCHED_PROCESS",
   FAILED_TO_FETCH_PROCESS: "FAILED_TO_FETCH_PROCESS",
   FETCHING_PROCESS: "FETCHING_PROCESS",
@@ -678,6 +677,7 @@ var ACTIONS = {
   GET_PREVIEW: "GET_PREVIEW",
   GOT_PREVIEW: "GOT_PREVIEW",
   FAILED_TO_GET_PREVIEW: "FAILED_TO_GET_PREVIEW",
+  CLEAR_PREVIEW: "CLEAR_PREVIEW",
   GET_ITEM_TEMPLATE: "GET_ITEM_TEMPLATE",
   GOT_ITEM_TEMPLATE: "GOT_ITEM_TEMPLATE",
   FAILED_TO_GET_ITEM_TEMPLATE: "FAILED_TO_GET_ITEM_TEMPLATE",
@@ -782,14 +782,15 @@ var BASE_URL = global.BASE_URL || config.baseUrl;
 var throttled = {};
 var cache = new MemCache({ ttl: config.processorsCacheTimeout });
 
-var displayMessage = function displayMessage(text) {
-  return {
-    type: "SHOW_MESSAGE",
-    message: text
-  };
-};
 function copy(value) {
   return JSON.parse(JSON.stringify(value));
+}
+
+function showMessage$1(message) {
+  return {
+    type: "SHOW_MESSAGE",
+    message: message
+  };
 }
 
 function getQueryParams(args) {
@@ -836,12 +837,7 @@ function addNavigationContext(args) {
     payload: args
   };
 }
-function openConfirmation(id, message, params) {
-  return {
-    type: ACTIONS.OPEN_CONFIRMATION,
-    payload: { message: message, params: params, id: id }
-  };
-}
+
 function valueChanged(payload) {
   return {
     type: ACTIONS.VALUE_CHANGED,
@@ -852,7 +848,10 @@ function defaultError(dispatch, customType, _meta, throttleEnabled) {
   return {
     type: customType || "SHOW_MESSAGE",
     meta: function meta(action, state, res) {
-      if (customType && res.status !== 401) dispatch(displayMessage(res.statusText || res.headers && res.headers.map && res.headers.map.errormessage && res.headers.map.errormessage[0] || "Sorry , an error occurred while processing your request"));
+      if (customType && res.status !== 401) {
+        dispatch(showMessage$1(res.statusText || res.headers && res.headers.map && res.headers.map.errormessage && res.headers.map.errormessage[0] || "Sorry , an error occurred while processing your request"));
+      }
+
       log("an error occurred");
       log(action);
       var args = action[reduxApiMiddleware.RSAA];
@@ -1052,13 +1051,6 @@ function runFurmlyProcessor(id, args, key) {
   };
 }
 
-function showMessage$1(message) {
-  return {
-    type: "SHOW_MESSAGE",
-    message: message
-  };
-}
-
 function runFurmlyProcess(details) {
   return function (dispatch, getState) {
     return dispatch(defineProperty({}, reduxApiMiddleware.RSAA, preDispatch({
@@ -1131,6 +1123,13 @@ function getFurmlyFilePreview(id, key, fileType, query) {
         "Content-Type": "application/json"
       }
     }, getState())));
+  };
+}
+
+function clearPreview(key) {
+  return {
+    type: ACTIONS.CLEAR_PREVIEW,
+    payload: { key: key }
   };
 }
 
@@ -1856,14 +1855,26 @@ var withNavigationProvider = function withNavigationProvider(WrappedComponent, N
         return React__default.createElement(
           NavigationContext.Provider,
           { value: this.props.furmlyNavigator },
-          React__default.createElement(WrappedComponent, this.props)
+          this.props.children
         );
       }
     }]);
     return NavigationProvider;
   }(React__default.Component);
 
-  return reactRedux.connect(null, mapDispatchToProps)(NavigationProvider);
+  var ConnectedNavigationProvider = reactRedux.connect(null, mapDispatchToProps)(NavigationProvider);
+
+  return function (props) {
+    try {
+      return React__default.createElement(
+        ConnectedNavigationProvider,
+        null,
+        React__default.createElement(WrappedComponent, props)
+      );
+    } catch (e) {
+      return ReactSSRErrorHandler$6(e);
+    }
+  };
 };
 
 var withNavigation = function withNavigation(WrappedComponent) {
@@ -1914,7 +1925,7 @@ var ReactSSRErrorHandler$7 = require("error_handler");
  * @param  {Function} Input Input class
  * @return {Function}       Wrapped class
  */
-var furmly_process = (function (ProgressBar, TextView, FurmlyView) {
+var furmly_process = (function (ProgressBar, TextView, FurmlyView, Layout) {
   invariants.validComponent(ProgressBar, "ProgressBar");
   invariants.validComponent(TextView, "TextView");
   invariants.validComponent(FurmlyView, "FurmlyView");
@@ -1944,6 +1955,13 @@ var furmly_process = (function (ProgressBar, TextView, FurmlyView) {
     };
   };
 
+  var componentNames = {
+    view: "view",
+    text: "text",
+    busy: "busy"
+  };
+  var componentNamesArr = Object.keys(componentNames);
+
   var FurmlyProcess = function (_Component) {
     inherits(FurmlyProcess, _Component);
     createClass(FurmlyProcess, [{
@@ -1964,6 +1982,7 @@ var furmly_process = (function (ProgressBar, TextView, FurmlyView) {
 
       _this.state = {};
       _this.submit = _this.submit.bind(_this);
+      _this.getCurrentComponent = _this.getCurrentComponent.bind(_this);
       return _this;
     }
 
@@ -1978,7 +1997,7 @@ var furmly_process = (function (ProgressBar, TextView, FurmlyView) {
       key: "componentWillReceiveProps",
       value: function componentWillReceiveProps(next) {
         if (next.completed && next.completed != this.props.completed) {
-          return this.props.furmlyNavigator.goBack();
+          return this.props.processCompleted(next.props, this.props);
         }
 
         if ((next.id !== this.props.id || !_.isEqual(next.fetchParams, this.props.fetchParams)) && !next.busy && !next.description || next.id == this.props.id && !_.isEqual(next.fetchParams, this.props.fetchParams) && !next.busy) {
@@ -1997,19 +2016,50 @@ var furmly_process = (function (ProgressBar, TextView, FurmlyView) {
         });
       }
     }, {
-      key: "__originalRenderMethod__",
-      value: function __originalRenderMethod__() {
-        this.props.log("render");
-        /*jshint ignore:start */
-        if (this.props.busy || typeof this.props.busy == "undefined" && !this.props.description) {
-          return React__default.createElement(ProgressBar, { title: "Please wait..." });
+      key: "getCurrentComponentName",
+      value: function getCurrentComponentName() {
+        if (this.props.busy || typeof this.props.busy == "undefined" && !this.props.description || this.props.completed) {
+          return componentNames.busy;
         }
         if (!this.props.description) {
-          return React__default.createElement(TextView, { text: "Sorry we couldnt load that process...please wait a few minutes and retry." });
+          return componentNames.text;
         }
-        return React__default.createElement(FurmlyView, { submit: this.submit });
+        return componentNames.view;
+      }
+    }, {
+      key: "getCurrentComponent",
+      value: function getCurrentComponent(name) {
+        switch (name) {
+          case componentNames.view:
+            return React__default.createElement(FurmlyView, {
+              currentStep: this.props.currentStep,
+              currentProcess: this.props.id,
+              submit: this.submit
+            });
+          case componentNames.text:
+            return React__default.createElement(TextView, { text: "Sorry we couldnt load that process...please wait a few minutes and retry." });
+          case componentNames.busy:
+            return React__default.createElement(ProgressBar, { title: "Please wait..." });
+        }
+      }
+    }, {
+      key: "__originalRenderMethod__",
+      value: function __originalRenderMethod__() {
+        var _this2 = this;
 
-        /*jshint ignore:end */
+        this.props.log("render");
+
+        if (Layout) return React__default.createElement(Layout, {
+          componentNames: componentNamesArr,
+          getCurrentComponent: function getCurrentComponent(name) {
+            return _this2.getCurrentComponent(name);
+          },
+          getCurrentComponentName: function getCurrentComponentName() {
+            return _this2.getCurrentComponentName();
+          }
+        });
+
+        return this.getCurrentComponent(this.getCurrentComponentName());
       }
     }]);
     return FurmlyProcess;
@@ -2277,6 +2327,8 @@ var furmly_select = (function (ProgressIndicator, Layout, Container) {
           this.props.log(this.props.name + " is empty");
           return React__default.createElement(ProgressIndicator, null);
         }
+        var keyProperty = this.props.args.config.keyProperty;
+
         return React__default.createElement(Layout, {
           value: this.props.label,
           inner: React__default.createElement(Container, {
@@ -2285,7 +2337,7 @@ var furmly_select = (function (ProgressIndicator, Layout, Container) {
             label: this.props.label,
             items: this.props.items,
             displayProperty: "displayLabel",
-            keyProperty: ["uid", "_id"],
+            keyProperty: keyProperty && keyProperty.split(",") || ["uid", "_id"],
             value: unwrapObjectValue(this.props.value),
             valueChanged: this.onValueChanged
           })
@@ -2620,12 +2672,13 @@ var furmly_selectset = (function (Layout, Picker, ProgressBar, Container) {
 
 var ReactSSRErrorHandler$11 = require("error_handler");
 
-var furmly_list = (function (Layout, Button, List, Modal, ErrorText, ProgressBar, Container) {
+var furmly_list = (function (Layout, Button, List, Modal, ErrorText, ProgressBar, ConfirmationModal, Container) {
   invariants.validComponent(Layout, "Layout");
   invariants.validComponent(Button, "Button");
   invariants.validComponent(List, "List");
   invariants.validComponent(Modal, "Modal");
   invariants.validComponent(ErrorText, "ErrorText");
+  invariants.validComponent(ConfirmationModal, "ConfirmationModal");
   invariants.validComponent(Container, "Container");
 
   var EDIT = "EDIT",
@@ -2635,8 +2688,6 @@ var furmly_list = (function (Layout, Button, List, Modal, ErrorText, ProgressBar
       var component_uid = getKey(state, ownProps.component_uid, ownProps);
 
       return {
-        confirmation: state.app && state.app.confirmationResult && state.app.confirmationResult[component_uid],
-        dataTemplate: state.furmly.view[component_uid],
         component_uid: component_uid,
         busy: state.furmly.view[component_uid + "-busy"],
         items: ownProps.value
@@ -2664,9 +2715,6 @@ var furmly_list = (function (Layout, Button, List, Modal, ErrorText, ProgressBar
       getListItemDataTemplate: function getListItemDataTemplate(id, args, key) {
         return dispatch(runFurmlyProcessor(id, args, key));
       },
-      openConfirmation: function openConfirmation$$1(id, message, params) {
-        return dispatch(openConfirmation(id, message, params));
-      },
       clearElementData: function clearElementData$$1(key) {
         return dispatch(clearElementData(key));
       }
@@ -2693,7 +2741,8 @@ var furmly_list = (function (Layout, Button, List, Modal, ErrorText, ProgressBar
 
       _this.state = {
         validator: {},
-        modalVisible: false
+        modalVisible: false,
+        confirmationVisible: false
       };
       _this.showModal = _this.showModal.bind(_this);
       _this.closeModal = _this.closeModal.bind(_this);
@@ -2704,6 +2753,8 @@ var furmly_list = (function (Layout, Button, List, Modal, ErrorText, ProgressBar
       _this.isDisabled = _this.isDisabled.bind(_this);
       _this.displayValueChanged = _this.displayValueChanged.bind(_this);
       _this.getListItemDataTemplate = _this.getListItemDataTemplate.bind(_this);
+      _this.cancelRemove = _this.cancelRemove.bind(_this);
+      _this.confirmRemove = _this.confirmRemove.bind(_this);
       _this.props.validator.validate = function () {
         return _this.runValidators();
       };
@@ -2714,10 +2765,6 @@ var furmly_list = (function (Layout, Button, List, Modal, ErrorText, ProgressBar
     createClass(FurmlyList, [{
       key: "componentWillReceiveProps",
       value: function componentWillReceiveProps(next) {
-        if (next.confirmation !== this.props.confirmation && next.confirmation && next.confirmation.params && typeof next.confirmation.params.index !== "undefined" && this.props.items && this.props.items.length) {
-          var items = (this.props.items || []).slice();
-          return items.splice(next.confirmation.params.index, 1), this.props.valueChanged(defineProperty({}, this.props.name, items));
-        }
         if (this.props.component_uid !== next.component_uid) {
           if (this._mounted) {
             this.getItemTemplate();
@@ -2894,7 +2941,29 @@ var furmly_list = (function (Layout, Button, List, Modal, ErrorText, ProgressBar
     }, {
       key: "remove",
       value: function remove(index) {
-        this.props.openConfirmation(this.props.component_uid, "Are you sure you want to remove that item ?", { index: index });
+        this.setState({
+          confirmationVisible: { index: index }
+        });
+      }
+    }, {
+      key: "cancelRemove",
+      value: function cancelRemove() {
+        this.setState({ confirmationVisible: false });
+      }
+    }, {
+      key: "confirmRemove",
+      value: function confirmRemove() {
+        var _this4 = this;
+
+        var confirmationVisible = this.state.confirmationVisible;
+
+        if (confirmationVisible && this.props.items && this.props.items.length) {
+          this.setState({ confirmationVisible: false }, function () {
+            var items = _this4.props.items.slice();
+            items.splice(confirmationVisible.index, 1);
+            _this4.props.valueChanged(defineProperty({}, _this4.props.name, items));
+          });
+        }
       }
     }, {
       key: "edit",
@@ -2909,7 +2978,7 @@ var furmly_list = (function (Layout, Button, List, Modal, ErrorText, ProgressBar
     }, {
       key: "getItemTemplate",
       value: function getItemTemplate$$1() {
-        var _this4 = this;
+        var _this5 = this;
 
         if (this.state.itemTemplate) return;
 
@@ -2931,7 +3000,7 @@ var furmly_list = (function (Layout, Button, List, Modal, ErrorText, ProgressBar
         //this happens asynchronously;
 
         setTimeout(function () {
-          if (_this4._mounted) _this4.setState({
+          if (_this5._mounted) _this5.setState({
             itemTemplate: _itemTemplate
           });
         }, 0);
@@ -2951,6 +3020,12 @@ var furmly_list = (function (Layout, Button, List, Modal, ErrorText, ProgressBar
             value: this.props.label,
             description: this.props.description,
             addButton: React__default.createElement(Button, { disabled: disabled, click: this.showModal }),
+            confirmationModal: React__default.createElement(ConfirmationModal, {
+              content: "Are you sure you want to remove the selected item ?",
+              visibility: !!this.state.confirmationVisible,
+              onCancel: this.cancelRemove,
+              onConfirm: this.confirmRemove
+            }),
             list: React__default.createElement(List, {
               items: this.props.items,
               rowClicked: this.edit,
@@ -3271,7 +3346,7 @@ var furmly_grid = (function (Layout, List, ItemView, Header, ProgressBar, Comman
         validator: {},
         _filterValidator: {},
         showItemView: false,
-        count: _this.props.args.pageCount || 5,
+        count: _this.props.args.pageCount || 15,
         showCommandResultView: false
       };
       _this.itemValueChanged = _this.itemValueChanged.bind(_this);
@@ -3690,6 +3765,7 @@ var furmly_grid = (function (Layout, List, ItemView, Header, ProgressBar, Comman
             canAddOrEdit: this.isCRUD(),
             header: header,
             footer: footer,
+            count: this.state.count,
             total: this.props.total,
             showItemView: this.showItemView,
             items: this.props.items,
@@ -3852,6 +3928,7 @@ var furmly_fileupload = (function (Uploader, ProgressBar, Text) {
       _this._previewType = _this.getPreviewType.call(_this);
       _this._supported = _this.isSupported();
       _this._getPreview = _this._getPreview.bind(_this);
+      _this.clearPreview = _this.clearPreview.bind(_this);
       _this._query = _this.getPreviewQuery();
       _this.props.validator.validate = function () {
         return _this.runValidators();
@@ -3903,12 +3980,17 @@ var furmly_fileupload = (function (Uploader, ProgressBar, Text) {
           setTimeout(function () {
             if (_this2._mounted) _this2.props.valueChanged(defineProperty({}, _this2.props.name, _this2.props.uploadedId));
           }, 0);
+          return;
+        }
+        if (!this.props.uploadedId && !this.props.value && this.props.preview) {
+          this.props.clearPreview(this.props.component_uid);
         }
       }
     }, {
       key: "componentWillUnmount",
       value: function componentWillUnmount() {
         this._mounted = false;
+        this.props.clearPreview(this.props.component_uid);
       }
     }, {
       key: "_getPreview",
@@ -3929,6 +4011,12 @@ var furmly_fileupload = (function (Uploader, ProgressBar, Text) {
         this.props.upload(file, this.props.component_uid);
       }
     }, {
+      key: "clearPreview",
+      value: function clearPreview$$1() {
+        this.props.valueChanged(defineProperty({}, this.props.name, undefined));
+        this.props.clearPreview(this.props.component_uid);
+      }
+    }, {
       key: "__originalRenderMethod__",
       value: function __originalRenderMethod__() {
         this.props.log("render");
@@ -3938,6 +4026,7 @@ var furmly_fileupload = (function (Uploader, ProgressBar, Text) {
           key: this.props.component_uid,
           title: this.props.label,
           description: this.props.description,
+          clear: this.clearPreview,
           upload: this.upload,
           component_uid: this.props.component_uid,
           allowed: this.props.args.fileType,
@@ -3971,6 +4060,9 @@ var furmly_fileupload = (function (Uploader, ProgressBar, Text) {
       },
       getPreview: function getPreview(id, key, fileType, query) {
         return dispatch(getFurmlyFilePreview(id, key, fileType, query));
+      },
+      clearPreview: function clearPreview$$1(key) {
+        return dispatch(clearPreview(key));
       }
     };
   };
@@ -4296,297 +4388,308 @@ var furmly_command = (function (Link, customDownloadCommand) {
 });
 
 function view$1 () {
-	var _Object$assign7, _Object$assign16, _Object$assign19, _Object$assign20, _Object$assign21, _Object$assign22, _Object$assign23, _Object$assign24;
+  var _Object$assign7, _Object$assign16, _Object$assign19, _Object$assign20, _Object$assign21, _Object$assign22, _Object$assign23, _Object$assign24;
 
-	var state = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : {};
-	var action = arguments[1];
+  var state = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : {};
+  var action = arguments[1];
 
-	switch (action.type) {
-		case ACTIONS.CLEAR_DATA:
-			return Object.assign(state, defineProperty({}, action.payload, null));
-		case ACTIONS.CLEAR_STACK:
-			return {};
-		case ACTIONS.FURMLY_PROCESS_FAILED:
-			return Object.assign({}, state, defineProperty({}, getBusyKey(action.meta), false));
+  switch (action.type) {
+    case ACTIONS.CLEAR_DATA:
+      return Object.assign(state, defineProperty({}, action.payload, null));
+    case ACTIONS.CLEAR_STACK:
+      return {};
+    case ACTIONS.FURMLY_PROCESS_FAILED:
+      return Object.assign({}, state, defineProperty({}, getBusyKey(action.meta), false));
 
-		case ACTIONS.REPLACE_STACK:
-			var _state = action.payload.reduce(function (sum, x) {
-				if (state[x.params.id]) {
-					sum[x.params.id] = state[x.params.id];
-				}
-				return sum;
-			}, {
-				message: state.message
-			});
-			return _state;
-		case ACTIONS.REMOVE_LAST_FURMLY_PARAMS:
-			//check if value is a furmly screen
-			//if it is check if its a process navigation or step navigation
-			//if it is a process navigation remove the data from the process.
-			//if it is a step navigation remove the step data from the process.
-			if (action.payload.item.key == "Furmly" || action.payload.item.$routeName == "Furmly") {
-				//it is a furmly navigation
-				//confirm there are no other references down the line.
-				var _state2 = state[action.payload.item.params.id],
-				    currentStep = _state2 && _state2.currentStep || 0;
-				if (action.payload.references[action.payload.item.params.id] && action.payload.references[action.payload.item.params.id][0] == 1) {
-					return Object.assign({},
-					//copy over state that does not belong to the removed object
-					Object.keys(state).reduce(function (sum, x) {
-						var key = isValidKey(x);
-						if (!key || key && key.step !== currentStep && key.process !== action.payload.item.params.id) sum[x] = state[x];
-						return sum;
-					}, {}), defineProperty({}, action.payload.item.params.id, null));
-				}
-				if (_state2 && typeof action.payload.item.params.currentStep !== "undefined") {
-					//it is a step navigation.
-					//remove one from current step.
+    case ACTIONS.REPLACE_STACK:
+      var _state = action.payload.reduce(function (sum, x) {
+        if (state[x.params.id]) {
+          sum[x.params.id] = state[x.params.id];
+        }
+        return sum;
+      }, {
+        message: state.message
+      });
+      return _state;
+    case ACTIONS.REMOVE_LAST_FURMLY_PARAMS:
+      //check if value is a furmly screen
+      //if it is check if its a process navigation or step navigation
+      //if it is a process navigation remove the data from the process.
+      //if it is a step navigation remove the step data from the process.
+      if (action.payload.item.key == "Furmly" || action.payload.item.$routeName == "Furmly") {
+        //it is a furmly navigation
+        //confirm there are no other references down the line.
+        var _state2 = state[action.payload.item.params.id],
+            currentStep = _state2 && _state2.currentStep || 0;
+        if (action.payload.references[action.payload.item.params.id] && action.payload.references[action.payload.item.params.id][0] == 1) {
+          return Object.assign({},
+          //copy over state that does not belong to the removed object
+          Object.keys(state).reduce(function (sum, x) {
+            var key = isValidKey(x);
+            if (!key || key && key.step !== currentStep && key.process !== action.payload.item.params.id) sum[x] = state[x];
+            return sum;
+          }, {}), defineProperty({}, action.payload.item.params.id, null));
+        }
+        if (_state2 && typeof action.payload.item.params.currentStep !== "undefined") {
+          //it is a step navigation.
+          //remove one from current step.
 
-					_state2.currentStep = _state2.currentStep - 1 || 0;
-					_state2.description.steps = _state2.description.steps.slice();
-					_state2.description.steps.pop();
-					return Object.assign({}, state, defineProperty({}, action.payload.item.params.id, Object.assign({}, _state2 || {}, defineProperty({}, action.payload.item.params.currentStep, null))));
-				}
-			}
-			return state;
-		case ACTIONS.FURMLY_PROCESS_RAN:
-			if (action.error || !action.payload) {
-				return state;
-			}
-			var proc = state[action.payload.id],
-			    id = action.payload.id,
-			    data = action.payload.data,
-			    currentState = {
-				currentStep: proc.currentStep || 0
-			},
-			    busy = false,
-			    description = proc.description;
-			if (config.uiOnDemand && action.payload.data && action.payload.data.status == "COMPLETED" || !config.uiOnDemand && (description.steps.length == 1 || currentState.currentStep + 1 > description.steps.length - 1)) {
-				var _Object$assign6;
+          _state2.currentStep = _state2.currentStep - 1 || 0;
+          _state2.description.steps = _state2.description.steps.slice();
+          _state2.description.steps.pop();
+          return Object.assign({}, state, defineProperty({}, action.payload.item.params.id, Object.assign({}, _state2 || {}, defineProperty({}, action.payload.item.params.currentStep, null))));
+        }
+      }
+      return state;
+    case ACTIONS.FURMLY_PROCESS_RAN:
+      if (action.error || !action.payload) {
+        return state;
+      }
+      var proc = state[action.payload.id],
+          id = action.payload.id,
+          data = action.payload.data,
+          currentState = {
+        currentStep: proc.currentStep || 0
+      },
+          busy = false,
+          description = proc.description;
+      if (config.uiOnDemand && action.payload.data && action.payload.data.status == "COMPLETED" || !config.uiOnDemand && (description.steps.length == 1 || currentState.currentStep + 1 > description.steps.length - 1)) {
+        var _Object$assign6;
 
-				return Object.assign({}, state, (_Object$assign6 = {}, defineProperty(_Object$assign6, id, {
-					completed: true
-				}), defineProperty(_Object$assign6, getBusyKey(id), false), defineProperty(_Object$assign6, "message", (typeof data === "undefined" ? "undefined" : _typeof(data)) == "object" && data.message || null), _Object$assign6));
-			}
+        return Object.assign({}, state, (_Object$assign6 = {}, defineProperty(_Object$assign6, id, {
+          completed: true
+        }), defineProperty(_Object$assign6, getBusyKey(id), false), defineProperty(_Object$assign6, "message", (typeof data === "undefined" ? "undefined" : _typeof(data)) == "object" && data.message || null), _Object$assign6));
+      }
 
-			currentState.instanceId = data ? data.$instanceId : null;
-			if (config.uiOnDemand && description.disableBackwardNavigation) description.steps[0] = data.$nextStep;else {
-				if (config.uiOnDemand) {
-					if (description.steps.length == currentState.currentStep + 1) {
-						description.steps.push(data.$nextStep);
-					}
-				}
-				currentState.currentStep = currentState.currentStep + 1;
-			}
-			currentState[currentState.currentStep] = (typeof data === "undefined" ? "undefined" : _typeof(data)) == "object" && _typeof(data.message) == "object" && data.message;
-			return Object.assign({}, state, (_Object$assign7 = {}, defineProperty(_Object$assign7, id, Object.assign({}, state[id], currentState)), defineProperty(_Object$assign7, getBusyKey(id), busy), _Object$assign7));
+      currentState.instanceId = data ? data.$instanceId : null;
+      if (config.uiOnDemand && description.disableBackwardNavigation) description.steps[0] = data.$nextStep;else {
+        if (config.uiOnDemand) {
+          if (description.steps.length == currentState.currentStep + 1) {
+            description.steps.push(data.$nextStep);
+          }
+        }
+        currentState.currentStep = currentState.currentStep + 1;
+      }
+      currentState[currentState.currentStep] = (typeof data === "undefined" ? "undefined" : _typeof(data)) == "object" && _typeof(data.message) == "object" && data.message;
+      return Object.assign({}, state, (_Object$assign7 = {}, defineProperty(_Object$assign7, id, Object.assign({}, state[id], currentState)), defineProperty(_Object$assign7, getBusyKey(id), busy), _Object$assign7));
 
-		case ACTIONS.FETCHING_GRID:
-			return Object.assign({}, state, defineProperty({}, action.meta.key, fetchingGrid(state[action.meta.key], action)));
-		case ACTIONS.FILTERED_GRID:
-			return Object.assign({}, state, defineProperty({}, action.payload.key, filteredGrid(state[action.payload.key], action)));
-		case ACTIONS.GET_SINGLE_ITEM_FOR_GRID:
-			return Object.assign({}, state, defineProperty({}, action.meta.key, getSingleItemForGrid$1(state[action.meta.key], action)));
+    case ACTIONS.FETCHING_GRID:
+      return Object.assign({}, state, defineProperty({}, action.meta.key, fetchingGrid(state[action.meta.key], action)));
+    case ACTIONS.FILTERED_GRID:
+      return Object.assign({}, state, defineProperty({}, action.payload.key, filteredGrid(state[action.payload.key], action)));
+    case ACTIONS.GET_SINGLE_ITEM_FOR_GRID:
+      return Object.assign({}, state, defineProperty({}, action.meta.key, getSingleItemForGrid$1(state[action.meta.key], action)));
 
-		case ACTIONS.GOT_SINGLE_ITEM_FOR_GRID:
-			return Object.assign({}, state, defineProperty({}, action.payload.key, gotSingleItemForGrid(state[action.payload.key], action)));
-		case ACTIONS.ERROR_WHILE_GETTING_SINGLE_ITEM_FOR_GRID:
-			return Object.assign({}, state, defineProperty({}, action.payload.key, errorWhileGettingSingleItemForGrid(state[action.payload.key], action)));
-		case ACTIONS.ERROR_WHILE_FETCHING_GRID:
-			return Object.assign({}, state, defineProperty({}, action.meta, failedToFetchGrid(state[action.meta])));
+    case ACTIONS.GOT_SINGLE_ITEM_FOR_GRID:
+      return Object.assign({}, state, defineProperty({}, action.payload.key, gotSingleItemForGrid(state[action.payload.key], action)));
+    case ACTIONS.ERROR_WHILE_GETTING_SINGLE_ITEM_FOR_GRID:
+      return Object.assign({}, state, defineProperty({}, action.payload.key, errorWhileGettingSingleItemForGrid(state[action.payload.key], action)));
+    case ACTIONS.ERROR_WHILE_FETCHING_GRID:
+      return Object.assign({}, state, defineProperty({}, action.meta, failedToFetchGrid(state[action.meta])));
 
-		case ACTIONS.FURMLY_GET_MORE_FOR_GRID:
-			return Object.assign({}, state, defineProperty({}, action.payload.key, reduceGrid(state[action.payload.key], action)));
+    case ACTIONS.FURMLY_GET_MORE_FOR_GRID:
+      return Object.assign({}, state, defineProperty({}, action.payload.key, reduceGrid(state[action.payload.key], action)));
 
-		case ACTIONS.FURMLY_PROCESS_RUNNING:
-			return Object.assign({}, state, (_Object$assign16 = {}, defineProperty(_Object$assign16, getBusyKey(action.meta.id), !action.error), defineProperty(_Object$assign16, action.meta.id, Object.assign({}, state[action.meta.id], defineProperty({}, state[action.meta.id].currentStep || 0, action.meta.form))), _Object$assign16));
-		case ACTIONS.VALUE_CHANGED:
-			return Object.assign({}, state, defineProperty({}, action.payload.id, Object.assign({}, state[action.payload.id], defineProperty({}, state[action.payload.id].currentStep || 0, action.payload.form))));
-		case ACTIONS.FURMLY_PROCESSOR_RAN:
-			return Object.assign({}, state, (_Object$assign19 = {}, defineProperty(_Object$assign19, action.payload.key, action.payload.data), defineProperty(_Object$assign19, getBusyKey(action.payload.key), false), defineProperty(_Object$assign19, getErrorKey(action.payload.key), !!action.error), _Object$assign19));
+    case ACTIONS.FURMLY_PROCESS_RUNNING:
+      return Object.assign({}, state, (_Object$assign16 = {}, defineProperty(_Object$assign16, getBusyKey(action.meta.id), !action.error), defineProperty(_Object$assign16, action.meta.id, Object.assign({}, state[action.meta.id], defineProperty({}, state[action.meta.id].currentStep || 0, action.meta.form))), _Object$assign16));
+    case ACTIONS.VALUE_CHANGED:
+      return Object.assign({}, state, defineProperty({}, action.payload.id, Object.assign({}, state[action.payload.id], defineProperty({}, state[action.payload.id].currentStep || 0, action.payload.form))));
+    case ACTIONS.FURMLY_PROCESSOR_RAN:
+      return Object.assign({}, state, (_Object$assign19 = {}, defineProperty(_Object$assign19, action.payload.key, action.payload.data), defineProperty(_Object$assign19, getBusyKey(action.payload.key), false), defineProperty(_Object$assign19, getErrorKey(action.payload.key), !!action.error), _Object$assign19));
 
-		case ACTIONS.FURMLY_PROCESSOR_RUNNING:
-			return Object.assign({}, state, (_Object$assign20 = {}, defineProperty(_Object$assign20, getBusyKey(action.meta.key), !action.error), defineProperty(_Object$assign20, getErrorKey(action.meta.key), !!action.error), _Object$assign20));
-		case ACTIONS.FURMLY_PROCESSOR_FAILED:
-			return Object.assign({}, state, (_Object$assign21 = {}, defineProperty(_Object$assign21, getBusyKey(action.meta), false), defineProperty(_Object$assign21, action.meta, null), defineProperty(_Object$assign21, getErrorKey(action.meta), true), _Object$assign21));
-		case ACTIONS.FETCHED_PROCESS:
-			var fetchedValue = Object.assign({}, action.payload.data.data);
-			var fetchedDescription = Object.assign({}, action.payload.data.description);
-			return Object.assign({}, state, (_Object$assign22 = {}, defineProperty(_Object$assign22, action.payload.id, {
-				description: fetchedDescription,
-				0: fetchedValue
-			}), defineProperty(_Object$assign22, getBusyKey(action.payload.id), false), defineProperty(_Object$assign22, getErrorKey(action.payload.id), action.error), _Object$assign22));
-		case ACTIONS.FETCHING_PROCESS:
-			return Object.assign({}, state, (_Object$assign23 = {}, defineProperty(_Object$assign23, getBusyKey(action.meta), !action.error), defineProperty(_Object$assign23, getErrorKey(action.meta), !!action.error), _Object$assign23));
-		case ACTIONS.FAILED_TO_FETCH_PROCESS:
-			return Object.assign({}, state, (_Object$assign24 = {}, defineProperty(_Object$assign24, action.meta, null), defineProperty(_Object$assign24, getBusyKey(action.meta), false), defineProperty(_Object$assign24, getErrorKey(action.meta), true), _Object$assign24));
-		case ACTIONS.START_FILE_UPLOAD:
-			return Object.assign({}, state, defineProperty({}, action.meta, startUpload(state[action.meta], action)));
-		case ACTIONS.FILE_UPLOADED:
-			return Object.assign({}, state, defineProperty({}, action.payload.key, fileUpload(state[action.payload.key], action)));
-		case ACTIONS.FILE_UPLOAD_FAILED:
-			return Object.assign({}, state, defineProperty({}, action.meta, uploadFailed(state[action.meta], action)));
-		case ACTIONS.GET_PREVIEW:
-			return Object.assign({}, state, defineProperty({}, action.meta, getPreview(state[action.meta], action)));
-		case ACTIONS.GOT_PREVIEW:
-			return Object.assign({}, state, defineProperty({}, action.payload.key, gotPreview(state[action.payload.key], action)));
-		case ACTIONS.FAILED_TO_GET_PREVIEW:
-			return Object.assign({}, state, defineProperty({}, action.meta, failedToGetPreview(state[action.meta], action)));
-		case ACTIONS.GET_ITEM_TEMPLATE:
-			return Object.assign({}, state, defineProperty({}, action.meta.key, getTemplate("gettingTemplate", state[action.meta.key], action)));
-		case ACTIONS.GOT_ITEM_TEMPLATE:
-			return Object.assign({}, state, defineProperty({}, action.payload.key, gotTemplate("gettingTemplate", "itemTemplate", state[action.payload.key], action)));
-		case ACTIONS.FAILED_TO_GET_ITEM_TEMPLATE:
-			return Object.assign({}, state, defineProperty({}, action.meta, failedToGetTemplate("gettingTemplate", state[action.meta], action)));
-		case ACTIONS.GET_FILTER_TEMPLATE:
-			return Object.assign({}, state, defineProperty({}, action.meta.key, getTemplate("gettingFilterTemplate", state[action.meta.key], action)));
-		case ACTIONS.GOT_FILTER_TEMPLATE:
-			if (action.error) {
-				return Object.assign({}, state, defineProperty({}, action.meta, failedToGetTemplate("gettingFilterTemplate", state[action.meta], action)));
-			}
-			return Object.assign({}, state, defineProperty({}, action.payload.key, gotTemplate("gettingFilterTemplate", "filterTemplate", state[action.payload.key], action)));
-		case ACTIONS.FAILED_TO_GET_FILTER_TEMPLATE:
-			return Object.assign({}, state, defineProperty({}, action.meta, failedToGetTemplate("gettingFilterTemplate", state[action.meta], action)));
-		default:
-			return state;
-	}
+    case ACTIONS.FURMLY_PROCESSOR_RUNNING:
+      return Object.assign({}, state, (_Object$assign20 = {}, defineProperty(_Object$assign20, getBusyKey(action.meta.key), !action.error), defineProperty(_Object$assign20, getErrorKey(action.meta.key), !!action.error), _Object$assign20));
+    case ACTIONS.FURMLY_PROCESSOR_FAILED:
+      return Object.assign({}, state, (_Object$assign21 = {}, defineProperty(_Object$assign21, getBusyKey(action.meta), false), defineProperty(_Object$assign21, action.meta, null), defineProperty(_Object$assign21, getErrorKey(action.meta), true), _Object$assign21));
+    case ACTIONS.FETCHED_PROCESS:
+      var fetchedValue = Object.assign({}, action.payload.data.data);
+      var fetchedDescription = Object.assign({}, action.payload.data.description);
+      return Object.assign({}, state, (_Object$assign22 = {}, defineProperty(_Object$assign22, action.payload.id, {
+        description: fetchedDescription,
+        0: fetchedValue
+      }), defineProperty(_Object$assign22, getBusyKey(action.payload.id), false), defineProperty(_Object$assign22, getErrorKey(action.payload.id), action.error), _Object$assign22));
+    case ACTIONS.FETCHING_PROCESS:
+      return Object.assign({}, state, (_Object$assign23 = {}, defineProperty(_Object$assign23, getBusyKey(action.meta), !action.error), defineProperty(_Object$assign23, getErrorKey(action.meta), !!action.error), _Object$assign23));
+    case ACTIONS.FAILED_TO_FETCH_PROCESS:
+      return Object.assign({}, state, (_Object$assign24 = {}, defineProperty(_Object$assign24, action.meta, null), defineProperty(_Object$assign24, getBusyKey(action.meta), false), defineProperty(_Object$assign24, getErrorKey(action.meta), true), _Object$assign24));
+    case ACTIONS.START_FILE_UPLOAD:
+      return Object.assign({}, state, defineProperty({}, action.meta, startUpload(state[action.meta], action)));
+    case ACTIONS.FILE_UPLOADED:
+      return Object.assign({}, state, defineProperty({}, action.payload.key, fileUpload(state[action.payload.key], action)));
+    case ACTIONS.FILE_UPLOAD_FAILED:
+      return Object.assign({}, state, defineProperty({}, action.meta, uploadFailed(state[action.meta], action)));
+    case ACTIONS.GET_PREVIEW:
+      return Object.assign({}, state, defineProperty({}, action.meta, getPreview(state[action.meta], action)));
+    case ACTIONS.CLEAR_PREVIEW:
+      return Object.assign({}, state, defineProperty({}, action.payload.key, clearPreview$1(state[action.payload.key])));
+    case ACTIONS.GOT_PREVIEW:
+      return Object.assign({}, state, defineProperty({}, action.payload.key, gotPreview(state[action.payload.key], action)));
+    case ACTIONS.FAILED_TO_GET_PREVIEW:
+      return Object.assign({}, state, defineProperty({}, action.meta, failedToGetPreview(state[action.meta], action)));
+    case ACTIONS.GET_ITEM_TEMPLATE:
+      return Object.assign({}, state, defineProperty({}, action.meta.key, getTemplate("gettingTemplate", state[action.meta.key], action)));
+    case ACTIONS.GOT_ITEM_TEMPLATE:
+      return Object.assign({}, state, defineProperty({}, action.payload.key, gotTemplate("gettingTemplate", "itemTemplate", state[action.payload.key], action)));
+    case ACTIONS.FAILED_TO_GET_ITEM_TEMPLATE:
+      return Object.assign({}, state, defineProperty({}, action.meta, failedToGetTemplate("gettingTemplate", state[action.meta], action)));
+    case ACTIONS.GET_FILTER_TEMPLATE:
+      return Object.assign({}, state, defineProperty({}, action.meta.key, getTemplate("gettingFilterTemplate", state[action.meta.key], action)));
+    case ACTIONS.GOT_FILTER_TEMPLATE:
+      if (action.error) {
+        return Object.assign({}, state, defineProperty({}, action.meta, failedToGetTemplate("gettingFilterTemplate", state[action.meta], action)));
+      }
+      return Object.assign({}, state, defineProperty({}, action.payload.key, gotTemplate("gettingFilterTemplate", "filterTemplate", state[action.payload.key], action)));
+    case ACTIONS.FAILED_TO_GET_FILTER_TEMPLATE:
+      return Object.assign({}, state, defineProperty({}, action.meta, failedToGetTemplate("gettingFilterTemplate", state[action.meta], action)));
+    default:
+      return state;
+  }
 }
 
 function getTemplate(busyIndicator) {
-	var _Object$assign38;
+  var _Object$assign39;
 
-	var state = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : {};
-	var action = arguments[2];
+  var state = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : {};
+  var action = arguments[2];
 
-	return Object.assign({}, state, (_Object$assign38 = {}, defineProperty(_Object$assign38, busyIndicator, !action.error), defineProperty(_Object$assign38, getErrorKey(busyIndicator), action.error), _Object$assign38));
+  return Object.assign({}, state, (_Object$assign39 = {}, defineProperty(_Object$assign39, busyIndicator, !action.error), defineProperty(_Object$assign39, getErrorKey(busyIndicator), action.error), _Object$assign39));
 }
 function gotTemplate(busyIndicator, propName) {
-	var _Object$assign39;
+  var _Object$assign40;
 
-	var state = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : {};
-	var action = arguments[3];
+  var state = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : {};
+  var action = arguments[3];
 
-	return Object.assign({}, state, (_Object$assign39 = {}, defineProperty(_Object$assign39, propName, action.payload.data), defineProperty(_Object$assign39, busyIndicator, false), defineProperty(_Object$assign39, getErrorKey(busyIndicator), action.error), _Object$assign39));
+  return Object.assign({}, state, (_Object$assign40 = {}, defineProperty(_Object$assign40, propName, action.payload.data), defineProperty(_Object$assign40, busyIndicator, false), defineProperty(_Object$assign40, getErrorKey(busyIndicator), action.error), _Object$assign40));
 }
 function failedToGetTemplate(busyIndicator) {
-	var state = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : {};
-	return Object.assign({}, state, defineProperty({}, busyIndicator, false));
+  var state = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : {};
+  return Object.assign({}, state, defineProperty({}, busyIndicator, false));
 }
 
 function startUpload() {
-	var state = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : {};
-	var action = arguments[1];
+  var state = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : {};
+  var action = arguments[1];
 
-	return Object.assign({}, state, { gettingTemplate: !action.error });
+  return Object.assign({}, state, { gettingTemplate: !action.error });
 }
 function fileUpload() {
-	var state = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : {};
-	var action = arguments[1];
+  var state = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : {};
+  var action = arguments[1];
 
-	return Object.assign({}, state, {
-		uploadedId: action.payload.id,
-		busy: false
-	});
+  return Object.assign({}, state, {
+    uploadedId: action.payload.id,
+    busy: false
+  });
 }
 function uploadFailed() {
-	var state = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : {};
-	return Object.assign({}, state, { busy: false });
+  var state = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : {};
+  return Object.assign({}, state, { busy: false });
 }
 function getPreview() {
-	var state = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : {};
-	var action = arguments[1];
+  var state = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : {};
+  var action = arguments[1];
 
-	return Object.assign({}, state, { busy: !action.error });
+  return Object.assign({}, state, { busy: !action.error });
 }
 function gotPreview() {
-	var state = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : {};
-	var action = arguments[1];
+  var state = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : {};
+  var action = arguments[1];
 
-	return Object.assign({}, state, {
-		preview: action.payload.data,
-		busy: false
-	});
+  return Object.assign({}, state, {
+    preview: action.payload.data,
+    busy: false
+  });
+}
+function clearPreview$1() {
+  var state = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : {};
+
+
+  return Object.assign({}, state, {
+    preview: null,
+    uploadedId: null
+  });
 }
 function failedToGetPreview() {
-	var state = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : {};
-	return Object.assign({}, state, { busy: false });
+  var state = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : {};
+  return Object.assign({}, state, { busy: false });
 }
 
 function reduceGrid() {
-	var state = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : {};
-	var action = arguments[1];
+  var state = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : {};
+  var action = arguments[1];
 
-	if (!state.data || state.data.items.length < action.payload.data.total) {
-		var current = state.data ? state.data.items : [];
-		action.payload.data.items = current.concat(action.payload.data.items);
-		state.data = action.payload.data;
-		return Object.assign({}, state, {
-			fetchingGrid: false,
-			failedToFetchGrid: !!action.error
-		});
-	}
-	return state;
+  if (!state.data || state.data.items.length < action.payload.data.total) {
+    var current = state.data ? state.data.items : [];
+    action.payload.data.items = current.concat(action.payload.data.items);
+    state.data = action.payload.data;
+    return Object.assign({}, state, {
+      fetchingGrid: false,
+      failedToFetchGrid: !!action.error
+    });
+  }
+  return state;
 }
 
 function filteredGrid() {
-	var state = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : {};
-	var action = arguments[1];
+  var state = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : {};
+  var action = arguments[1];
 
-	var current = state.data ? state.data.items : [];
-	state.data = action.payload.data;
-	return Object.assign({}, state, {
-		fetchingGrid: false,
-		failedToFetchGrid: !!action.error
-	});
+  var current = state.data ? state.data.items : [];
+  state.data = action.payload.data;
+  return Object.assign({}, state, {
+    fetchingGrid: false,
+    failedToFetchGrid: !!action.error
+  });
 }
 
 function fetchingGrid() {
-	var state = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : {};
-	var action = arguments[1];
+  var state = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : {};
+  var action = arguments[1];
 
-	return Object.assign({}, state, {
-		fetchingGrid: !action.error,
-		failedToFetchGrid: !!action.error,
-		filter: action.meta && action.meta.args ? action.meta.args.query : null
-	});
+  return Object.assign({}, state, {
+    fetchingGrid: !action.error,
+    failedToFetchGrid: !!action.error,
+    filter: action.meta && action.meta.args ? action.meta.args.query : null
+  });
 }
 
 function failedToFetchGrid() {
-	var state = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : {};
+  var state = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : {};
 
-	return Object.assign({}, state, {
-		fetchingGrid: false,
-		failedToFetchGrid: true
-	});
+  return Object.assign({}, state, {
+    fetchingGrid: false,
+    failedToFetchGrid: true
+  });
 }
 
 function getSingleItemForGrid$1() {
-	var state = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : {};
-	var action = arguments[1];
+  var state = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : {};
+  var action = arguments[1];
 
-	return Object.assign({}, state, defineProperty({
-		fetchingSingleItem: !action.error
-	}, getErrorKey("fetchingSingleItem"), !!action.error));
+  return Object.assign({}, state, defineProperty({
+    fetchingSingleItem: !action.error
+  }, getErrorKey("fetchingSingleItem"), !!action.error));
 }
 
 function gotSingleItemForGrid() {
-	var state = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : {};
-	var action = arguments[1];
+  var state = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : {};
+  var action = arguments[1];
 
-	return Object.assign({}, state, defineProperty({
-		singleItem: action.payload.data,
-		fetchingSingleItem: false
-	}, getErrorKey("fetchingSingleItem"), !!action.error));
+  return Object.assign({}, state, defineProperty({
+    singleItem: action.payload.data,
+    fetchingSingleItem: false
+  }, getErrorKey("fetchingSingleItem"), !!action.error));
 }
 
 function errorWhileGettingSingleItemForGrid() {
-	var state = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : {};
-	var action = arguments[1];
+  var state = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : {};
+  var action = arguments[1];
 
-	return Object.assign({}, state, defineProperty({
-		fetchingSingleItem: false,
-		singleItem: undefined
-	}, getErrorKey("fetchingSingleItem"), !!action.error));
+  return Object.assign({}, state, defineProperty({
+    fetchingSingleItem: false,
+    singleItem: undefined
+  }, getErrorKey("fetchingSingleItem"), !!action.error));
 }
 
 var reducers = [{ name: "navigation", run: navigation }, { name: "view", run: view$1 }];
