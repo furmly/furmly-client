@@ -1,7 +1,7 @@
 import config from "client_config";
 import { RSAA as CALL_API } from "redux-api-middleware";
 import MemCache from "../utils/memcache";
-import { CHECK_FOR_EXISTING_SCREEN } from "../action-enhancers";
+import { CHECK_FOR_EXISTING_SCREEN } from "../action-enhancers/constants";
 import debug from "debug";
 import { default as ACTIONS } from "./constants";
 const log = debug("furmly-actions");

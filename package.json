@@ -19,14 +19,14 @@
     "lodash": "^4.17.11",
     "prop-types": "^15.6.2",
     "redux": "^3.7.2",
-    "redux-action-enhancer": "^1.0.1",
+    "redux-action-enhancer": "1.0.1",
     "redux-api-middleware": "^2.3.0",
     "redux-thunk": "^2.3.0",
+    "react-redux": "^5.0.5",
     "uuid": "^3.1.0"
   },
   "peerDependencies": {
-    "react": "^16.6.0",
-    "react-redux": "^5.0.5"
+    "react": "^16.6.0"
   },
   "devDependencies": {
     "@doochik/babel-plugin-transform-react-ssr-try-catch": "github:chidionuekwusi/babel-plugin-transform-react-ssr-try-catch",
