@@ -538,13 +538,11 @@ export default (
         case "PROCESSOR":
           this.props.run(
             command.command.value,
-            Object.assign(
-              {},
-              JSON.parse(this.props.args.gridArgs || "{}"),
-              Object.keys(this.state.selectedItems)
-                .map(x => this.state.selectedItems[x])
-                .concat(item)
-            ),
+            Object.assign({}, JSON.parse(this.props.args.gridArgs || "{}"), {
+              items: Object.keys(this.state.selectedItems).map(
+                x => this.state.selectedItems[x]
+              )
+            }),
             this.props.component_uid + FurmlyGrid.commandResultViewName()
           );
           break;

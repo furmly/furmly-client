@@ -50,6 +50,8 @@ export default (ProgressIndicator, Layout, Container) => {
       this.onValueChanged = this.onValueChanged.bind(this);
       this.selectFirstItem = this.selectFirstItem.bind(this);
       this.getDisplayValue = this.getDisplayValue.bind(this);
+      this.getKey = this.getKey.bind(this);
+      this.getKeyValue = this.getKeyValue.bind(this);
       this.getValueBasedOnMode = this.getValueBasedOnMode.bind(this);
       this.props.validator.validate = () => {
         return this.runValidators();
@@ -131,7 +133,7 @@ export default (ProgressIndicator, Layout, Container) => {
       }
 
       if (next.items && next.items.length == 1 && !next.value) {
-        return this.selectFirstItem(next.items[0].uid || next.items[0]._id);
+        return this.selectFirstItem(this.getKeyValue(next, next.items[0]));
       }
 
       if (
@@ -155,6 +157,23 @@ export default (ProgressIndicator, Layout, Container) => {
     isObjectIdMode() {
       return this.props.args && this.props.args.mode === "ObjectId";
     }
+    getKey(props) {
+      const {
+        args: {
+          config: { keyProperty }
+        }
+      } = props;
+      return (keyProperty && keyProperty.split(",")) || ["uid", "_id"];
+    }
+    getKeyValue(props, item) {
+      const keys = this.getKey(props);
+      let val;
+      for (let i = 0; i < keys.length; i++) {
+        val = item[keys[i]];
+        if (typeof val !== "undefined") break;
+      }
+      return val;
+    }
     componentDidMount() {
       this._mounted = true;
       if (!this.props.items) {
@@ -173,7 +192,9 @@ export default (ProgressIndicator, Layout, Container) => {
         this.props.items.length == 1 &&
         !this.props.value
       ) {
-        return this.selectFirstItem(this.props.items[0]._id);
+        return this.selectFirstItem(
+          this.getKeyValue(this.props, this.props.items[0])
+        );
       }
       if (
         this.isObjectIdMode() &&
@@ -197,11 +218,7 @@ export default (ProgressIndicator, Layout, Container) => {
         this.props.log(`${this.props.name} is empty`);
         return <ProgressIndicator />;
       }
-      const {
-        args: {
-          config: { keyProperty }
-        }
-      } = this.props;
+
       return (
         <Layout
           value={this.props.label}
@@ -215,9 +232,7 @@ export default (ProgressIndicator, Layout, Container) => {
               label={this.props.label}
               items={this.props.items}
               displayProperty="displayLabel"
-              keyProperty={
-                (keyProperty && keyProperty.split(",")) || ["uid", "_id"]
-              }
+              keyProperty={this.getKey(this.props)}
               value={unwrapObjectValue(this.props.value)}
               valueChanged={this.onValueChanged}
             />
