@@ -5,7 +5,10 @@ export default function(state = createStack(), action) {
   switch (action.type) {
     case ACTIONS.SET_FURMLY_PARAMS:
     case ACTIONS.ALREADY_VISIBLE:
-      if (hasScreenAlready(state, action.payload)) {
+      if (
+        action.payload.hasScreenAlready ||
+        hasScreenAlready(state, action.payload)
+      ) {
         makeTop(state, action.payload);
       } else {
         state.stack.push(action.payload);

@@ -88,7 +88,7 @@ const createMap = () => {
         // save recipe.
         let cooked = this[name].apply(null, parsedRecipe);
         this[name] = getComponent(cooked);
-        preparedRecipes[name] = true;
+        preparedRecipes[name] = parsedRecipe;
         if (waiting[name] && waiting[name].length) {
           waiting[name].forEach(x => {
             deps[x.name] -= 1;
@@ -104,6 +104,9 @@ const createMap = () => {
     addRecipe(name, recipe, fn) {
       if (!this[name] && fn) this[name] = fn;
       recipes[name] = recipe;
+    },
+    getRecipe(name) {
+      return (preparedRecipes[name] || recipes[name] || []).slice();
     },
     removeRecipe(name) {
       recipes[name] = _defaultMap[name];
@@ -154,8 +157,10 @@ const createMap = () => {
   };
 
   Object.keys(api).map(key => {
-    if (key[0] == key[0].toUpperCase()) {
+    if (key[0] == key[0].toUpperCase() && key[0] !== "_") {
+      if (!api.constants) api.constants = {};
       api[`add${key}Recipe`] = api.addRecipe.bind(api, key);
+      api.constants[key] = key;
     }
   });
 

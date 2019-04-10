@@ -33,14 +33,7 @@ export function getValueBasedOnMode(props, v) {
 export function isObjectIdMode(props) {
   return props.args && props.args.mode === "ObjectId";
 }
-export function getCurrentStepFromState(state) {
-  return (
-    (state.furmly.navigation.stack.length &&
-      state.furmly.navigation.stack[state.furmly.navigation.stack.length - 1]
-        .params.currentStep) ||
-    0
-  );
-}
+
 export function getCurrentStep(state) {
   return (
     (state.furmly.navigation.stack.length &&
@@ -135,7 +128,7 @@ export const getErrorKey = keyInvariants(key => `${key}-error`);
 export const copy = value => JSON.parse(JSON.stringify(value));
 export const isArr = v => Array.prototype.isPrototypeOf(v);
 export default {
-  getCurrentStepFromState,
+  getCurrentStepFromState: getCurrentStep,
   getTitleFromState,
   getCurrentStep,
   getCurrentProcess,

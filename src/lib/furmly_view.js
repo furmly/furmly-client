@@ -1,5 +1,6 @@
 import React, { Component } from "react";
 import { connect } from "react-redux";
+import config from "client_config";
 import invariants from "./utils/invariants";
 import { valueChanged } from "./actions";
 import withLogger from "./furmly_base";
@@ -10,21 +11,25 @@ export default (Page, Warning, Container) => {
   invariants.validComponent(Container, "Container");
 
   const mapStateToProps = (_, initialProps) => (state, ownProps) => {
-    let _state = state.furmly.view[ownProps.currentProcess],
-      description = _state && _state.description,
-      map = {
-        value: (_state && _state[ownProps.currentStep]) || null
-      };
+    let _state = state.furmly.view[ownProps.currentProcess];
+    let description = _state && _state.description;
+    let map = {
+      value: (_state && _state[ownProps.currentStep]) || null
+    };
+    let currentStep =
+      config.uiOnDemand && config.disableBackwardNavigation
+        ? 0
+        : ownProps.currentStep;
 
-    if (description && description.steps[ownProps.currentStep]) {
-      map.elements = description.steps[ownProps.currentStep].form.elements;
-      if (description.steps[ownProps.currentStep].mode == "VIEW") {
+    if (description && description.steps[currentStep]) {
+      map.elements = description.steps[currentStep].form.elements;
+      if (description.steps[currentStep].mode == "VIEW") {
         map.hideSubmit = true;
       }
 
       map.title = description.title;
       map.processDescription = description.description;
-      map.commandLabel = description.steps[ownProps.currentStep].commandLabel;
+      map.commandLabel = description.steps[currentStep].commandLabel;
       map.uid = description.uid;
     }
     return map;

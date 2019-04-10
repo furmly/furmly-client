@@ -15,7 +15,8 @@ export default function(state = {}, action) {
       });
 
     case ACTIONS.REPLACE_STACK:
-      var _state = action.payload.reduce(
+      if (!action.preserveData) return { message: state.message };
+      const _state = action.payload.reduce(
         (sum, x) => {
           if (state[x.params.id]) {
             sum[x.params.id] = state[x.params.id];
@@ -38,8 +39,8 @@ export default function(state = {}, action) {
       ) {
         //it is a furmly navigation
         //confirm there are no other references down the line.
-        let _state = state[action.payload.item.params.id],
-          currentStep = (_state && _state.currentStep) || 0;
+        let _state = state[action.payload.item.params.id];
+        let currentStep = action.payload.currentStep;
         if (
           action.payload.references[action.payload.item.params.id] &&
           action.payload.references[action.payload.item.params.id][0] == 1
@@ -70,9 +71,9 @@ export default function(state = {}, action) {
           //it is a step navigation.
           //remove one from current step.
 
-          _state.currentStep = _state.currentStep - 1 || 0;
+          // _state.currentStep = _state.currentStep - 1 || 0;
           _state.description.steps = _state.description.steps.slice();
-          _state.description.steps.pop();
+          if (config.uiOnDemand) _state.description.steps.pop();
           return Object.assign({}, state, {
             [action.payload.item.params.id]: Object.assign({}, _state || {}, {
               [action.payload.item.params.currentStep]: null
@@ -88,10 +89,9 @@ export default function(state = {}, action) {
       let proc = state[action.payload.id],
         id = action.payload.id,
         data = action.payload.data,
-        currentState = {
-          currentStep: proc.currentStep || 0
-        },
+        currentState = {},
         busy = false,
+        currentStep = action.payload.currentStep,
         description = proc.description;
       if (
         (config.uiOnDemand &&
@@ -99,7 +99,7 @@ export default function(state = {}, action) {
           action.payload.data.status == "COMPLETED") ||
         (!config.uiOnDemand &&
           (description.steps.length == 1 ||
-            currentState.currentStep + 1 > description.steps.length - 1))
+            action.payload.currentStep > description.steps.length - 1))
       ) {
         return Object.assign({}, state, {
           [id]: {
@@ -111,17 +111,17 @@ export default function(state = {}, action) {
       }
 
       currentState.instanceId = data ? data.$instanceId : null;
-      if (config.uiOnDemand && description.disableBackwardNavigation)
+      if (config.uiOnDemand && description.disableBackwardNavigation) {
         description.steps[0] = data.$nextStep;
-      else {
+        currentStep = 0;
+      } else {
         if (config.uiOnDemand) {
-          if (description.steps.length == currentState.currentStep + 1) {
+          if (description.steps.length == action.payload.currentStep) {
             description.steps.push(data.$nextStep);
           }
         }
-        currentState.currentStep = currentState.currentStep + 1;
       }
-      currentState[currentState.currentStep] =
+      currentState[currentStep] =
         typeof data == "object" &&
         typeof data.message == "object" &&
         data.message;
@@ -171,13 +171,15 @@ export default function(state = {}, action) {
       return Object.assign({}, state, {
         [getBusyKey(action.meta.id)]: !action.error,
         [action.meta.id]: Object.assign({}, state[action.meta.id], {
-          [state[action.meta.id].currentStep || 0]: action.meta.form
+          // [state[action.meta.id].currentStep || 0]: action.meta.form
+          [action.payload.currentStep]: action.meta.form
         })
       });
     case ACTIONS.VALUE_CHANGED:
       return Object.assign({}, state, {
         [action.payload.id]: Object.assign({}, state[action.payload.id], {
-          [state[action.payload.id].currentStep || 0]: action.payload.form
+          // [state[action.payload.id].currentStep || 0]: action.payload.form
+          [action.payload.currentStep]: action.payload.form
         })
       });
     case ACTIONS.FURMLY_PROCESSOR_RAN:
@@ -354,7 +356,6 @@ function gotPreview(state = {}, action) {
   });
 }
 function clearPreview(state = {}) {
- 
   return Object.assign({}, state, {
     preview: null,
     uploadedId: null
@@ -378,7 +379,6 @@ function reduceGrid(state = {}, action) {
 }
 
 function filteredGrid(state = {}, action) {
-  let current = state.data ? state.data.items : [];
   state.data = action.payload.data;
   return Object.assign({}, state, {
     fetchingGrid: false,

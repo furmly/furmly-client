@@ -14,12 +14,12 @@ export const withNavigationProvider = (
     if (!navigator) navigator = new Navigator(dispatch, context);
     return {
       furmlyNavigator: {
-        visible: args => navigator.alreadyVisible(args),
-        replaceStack: arr => navigator.replaceStack(arr),
-        navigate: args => navigator.navigate(args),
-        setParams: args => navigator.setParams(args),
-        clearStack: () => navigator.clear(),
-        goBack: args => navigator.goBack(args)
+        visible: navigator.alreadyVisible.bind(navigator),
+        replaceStack: navigator.replaceStack.bind(navigator),
+        navigate: navigator.navigate.bind(navigator),
+        setParams: navigator.setParams.bind(navigator),
+        clearStack: navigator.clear.bind(navigator),
+        goBack: navigator.goBack.bind(navigator)
       }
     };
   };

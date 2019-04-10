@@ -23,12 +23,16 @@ export const withTemplateCacheProvider = WrappedComponent => {
     render() {
       return (
         <TemplateCacheContext.Provider value={this.state}>
-          <WrappedComponent {...this.props} />
+          {this.props.children}
         </TemplateCacheContext.Provider>
       );
     }
   }
-  return TemplateCacheProvider;
+  return props => (
+    <TemplateCacheProvider>
+      <WrappedComponent {...props} />
+    </TemplateCacheProvider>
+  );
 };
 
 export const withTemplateCache = WrappedComponent => {

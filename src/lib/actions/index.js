@@ -1,9 +1,13 @@
 import config from "client_config";
 import { RSAA as CALL_API } from "redux-api-middleware";
 import MemCache from "../utils/memcache";
-import { CHECK_FOR_EXISTING_SCREEN } from "../action-enhancers/constants";
+import {
+  CHECK_FOR_EXISTING_SCREEN,
+  FETCH_CURRENT_STEP
+} from "../action-enhancers/constants";
 import debug from "debug";
 import { default as ACTIONS } from "./constants";
+import { getCurrentStep } from "../utils/view";
 const log = debug("furmly-actions");
 
 const preDispatch = config.preDispatch,
@@ -42,14 +46,19 @@ export function setParams(args) {
   };
 }
 
-export function replaceStack(args) {
+export function replaceStack(args, preserveData) {
   return {
     type: ACTIONS.REPLACE_STACK,
-    payload: args
+    payload: args,
+    preserveData
   };
 }
 export function goBack(args) {
-  return { type: ACTIONS.REMOVE_LAST_FURMLY_PARAMS, payload: args };
+  return {
+    type: ACTIONS.REMOVE_LAST_FURMLY_PARAMS,
+    [FETCH_CURRENT_STEP]: true,
+    payload: args
+  };
 }
 export function clearNavigationStack() {
   return { type: ACTIONS.CLEAR_STACK };
@@ -82,6 +91,7 @@ export function openConfirmation(id, message, params) {
 export function valueChanged(payload) {
   return {
     type: ACTIONS.VALUE_CHANGED,
+    [FETCH_CURRENT_STEP]: true,
     payload
   };
 }
@@ -125,6 +135,7 @@ function defaultError(dispatch, customType, meta, throttleEnabled) {
 }
 export const loginUrl = `${BASE_URL}/login`;
 export const furmlyDownloadUrl = `${BASE_URL}/api/download/:id`;
+
 export function fetchFurmlyProcess(id, args) {
   if (config.cacheProcessDescription) {
     let cacheKey = { id, args },
@@ -151,6 +162,7 @@ export function fetchFurmlyProcess(id, args) {
             { type: ACTIONS.FETCHING_PROCESS, meta: id },
             {
               type: ACTIONS.FETCHED_PROCESS,
+              [FETCH_CURRENT_STEP]: true,
               payload: (action, state, res) => {
                 //workaround for react-native fetch.
                 setTimeout(() => null, 0);
@@ -352,6 +364,7 @@ export function runFurmlyProcess(details) {
           types: [
             {
               type: ACTIONS.FURMLY_PROCESS_RUNNING,
+              [FETCH_CURRENT_STEP]: true,
               meta: {
                 id: details.id,
                 form: details.form,
@@ -360,6 +373,7 @@ export function runFurmlyProcess(details) {
             },
             {
               type: ACTIONS.FURMLY_PROCESS_RAN,
+              [FETCH_CURRENT_STEP]: true,
               payload: (action, state, res) => {
                 return res
                   .json()
@@ -368,16 +382,14 @@ export function runFurmlyProcess(details) {
                       dispatch(showMessage(d.message));
                     }
                     let id = details.id;
+                    let currentStep = getCurrentStep(state);
                     if (
                       !(config.uiOnDemand && d.status == "COMPLETED") &&
                       !(
                         !config.uiOnDemand &&
                         (state.furmly.view[id].description.steps.length == 1 ||
                           (state.furmly.navigation.stack.length &&
-                            state.furmly.navigation.stack[
-                              state.furmly.navigation.stack.length - 1
-                            ].params.currentStep +
-                              1 >
+                            currentStep + 1 >
                               state.furmly.view[id].description.steps.length -
                                 1))
                       ) &&
@@ -389,13 +401,13 @@ export function runFurmlyProcess(details) {
                           state.furmly.navigation.stack.length - 1
                         ]
                       );
-                      _p.params.currentStep = (_p.params.currentStep || 0) + 1;
+                      _p.params.currentStep = (currentStep || 0) + 1;
                       dispatch(setParams(_p));
                       if (config.notifyStepAdvance) {
                         config.notifyStepAdvance(dispatch, state, _p);
                       }
                     }
-                    return { id: details.id, data: d };
+                    return { id: details.id, data: d, currentStep };
                   })
                   .catch(er => {
                     log(er);

@@ -1,5 +1,6 @@
 export { default, Deferred } from "./furmly_mapping.js";
 export { default as reducers } from "./lib/reducers";
+export { defaultRootReducer } from "./lib/utils/store";
 export { toggleAllBusyIndicators } from "./lib/utils/view";
 export { default as actionEnhancers } from "./lib/action-enhancers";
 export { default as utils } from "./lib/utils";

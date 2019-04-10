@@ -6,7 +6,8 @@ export const withProcessProvider = WrappedComponent => {
   class ProcessProvider extends React.Component {
     constructor(props) {
       super(props);
-      this.state = {};
+      this.state = {
+      };
     }
     componentWillReceiveProps(next) {
       if (
@@ -28,13 +29,20 @@ export const withProcessProvider = WrappedComponent => {
     render() {
       return (
         <ProcessContext.Provider value={this.state}>
-          <WrappedComponent {...this.props} />
+          {this.props.children}
         </ProcessContext.Provider>
       );
     }
   }
-  hoistNonReactStatic(ProcessProvider, WrappedComponent);
-  return ProcessProvider;
+
+  return props => {
+    const { id, currentStep } = props;
+    return (
+      <ProcessProvider id={id} currentStep={currentStep}>
+        <WrappedComponent {...props} />
+      </ProcessProvider>
+    );
+  };
 };
 
 export const withProcess = WrappedComponent => {

@@ -1,10 +1,12 @@
 import { createStore, combineReducers, applyMiddleware, compose } from "redux";
 import { apiMiddleware as defaultApiMiddleware } from "redux-api-middleware";
-import createActionEnhancerMiddleware from "redux-action-enhancer";
 import thunkMiddleware from "redux-thunk";
 import ACTIONS from "../actions/constants";
 import reducers from "../reducers";
-import { default as defaultActionEnhancers } from "../action-enhancers";
+import {
+  default as defaultActionEnhancers,
+  createActionEnhancerMiddleware
+} from "../action-enhancers";
 
 const combinedReducers = combineReducers({ furmly: reducers });
 
@@ -14,7 +16,7 @@ const sessionHasExpired = function(action) {
     (action && action.payload && action.payload.status == 401)
   );
 };
-const defaultRootReducer = function(state, action) {
+export const defaultRootReducer = function(state, action) {
   if (action.type === ACTIONS.SIGN_OUT || sessionHasExpired(action)) {
     state = {};
     if (sessionHasExpired(action)) state.popup = { message: "Session Expired" };
@@ -22,19 +24,29 @@ const defaultRootReducer = function(state, action) {
   return combinedReducers(state, action);
 };
 
-export default (
+const defaultOptions = {
+  extraMiddlewares: [],
+  apiMiddleware: defaultApiMiddleware,
+  rootReducer: defaultRootReducer
+};
+export default ({
   extraMiddlewares = [],
   apiMiddleware = defaultApiMiddleware,
   rootReducer = defaultRootReducer,
+  storeEnhancer,
   actionEnhancers
-) => {
+} = defaultOptions) => {
   let enhancers = defaultActionEnhancers();
   if (actionEnhancers) enhancers = enhancers.concat(actionEnhancers());
   const middlewares = [
     thunkMiddleware,
-    createActionEnhancerMiddleware(() => enhancers),
     apiMiddleware,
+    createActionEnhancerMiddleware(() => enhancers),
     ...extraMiddlewares
   ];
-  return compose(applyMiddleware(...middlewares))(createStore)(rootReducer);
+  const store = compose(applyMiddleware(...middlewares))(createStore)(
+    rootReducer
+  );
+  if (storeEnhancer) storeEnhancer(store);
+  return store;
 };

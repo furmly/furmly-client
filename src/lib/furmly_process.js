@@ -75,7 +75,8 @@ export default (ProgressBar, TextView, FurmlyView, Layout) => {
           !next.description) ||
         (next.id == this.props.id &&
           !_.isEqual(next.fetchParams, this.props.fetchParams) &&
-          !next.busy)
+          !next.busy) ||
+        (!next.description && typeof next.busy == "undefined" && next.id)
       ) {
         this.props.log("fetching...");
         this.props.fetch(next.id, next.fetchParams);
@@ -105,13 +106,7 @@ export default (ProgressBar, TextView, FurmlyView, Layout) => {
     getCurrentComponent(name) {
       switch (name) {
         case componentNames.view:
-          return (
-            <FurmlyView
-              currentStep={this.props.currentStep}
-              currentProcess={this.props.id}
-              submit={this.submit}
-            />
-          );
+          return <FurmlyView submit={this.submit} />;
         case componentNames.text:
           return (
             <TextView text="Sorry we couldnt load that process...please wait a few minutes and retry." />
