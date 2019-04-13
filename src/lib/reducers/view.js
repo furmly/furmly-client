@@ -99,7 +99,8 @@ export default function(state = {}, action) {
           action.payload.data.status == "COMPLETED") ||
         (!config.uiOnDemand &&
           (description.steps.length == 1 ||
-            action.payload.currentStep > description.steps.length - 1))
+            action.payload.currentStep > description.steps.length - 1 ||
+            (action.payload.data && action.payload.data.status == "COMPLETED")))
       ) {
         return Object.assign({}, state, {
           [id]: {

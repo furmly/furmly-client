@@ -88,12 +88,13 @@ export default (ProgressIndicator, Layout, Container) => {
         this.props.fetch(source, JSON.parse(args || "{}"), component_uid);
       }
     }
-    isValidValue(items = this.props.items, value = this.props.value) {
-      value = unwrapObjectValue(value);
+    isValidValue(props) {
+      const items = props.items;
+      const value = unwrapObjectValue(props.value);
       return (
         items &&
         items.length &&
-        items.filter(x => x._id == value || x.uid == value).length
+        items.filter(x => this.getKeyValue(props, x) == value).length
       );
     }
     getDisplayValue(value = this.props.value, items = this.props.items) {
@@ -139,7 +140,7 @@ export default (ProgressIndicator, Layout, Container) => {
       if (
         (next.items &&
           next.value &&
-          !this.isValidValue(next.items, next.value)) ||
+          !this.isValidValue(next)) ||
         (!next.items && !next.busy && !next.error)
       ) {
         return this.onValueChanged(null);

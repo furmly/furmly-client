@@ -128,7 +128,6 @@ export const getErrorKey = keyInvariants(key => `${key}-error`);
 export const copy = value => JSON.parse(JSON.stringify(value));
 export const isArr = v => Array.prototype.isPrototypeOf(v);
 export default {
-  getCurrentStepFromState: getCurrentStep,
   getTitleFromState,
   getCurrentStep,
   getCurrentProcess,

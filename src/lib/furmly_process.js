@@ -1,6 +1,10 @@
 import React, { Component } from "react";
 import { connect } from "react-redux";
-import { fetchFurmlyProcess, runFurmlyProcess } from "./actions";
+import {
+  fetchFurmlyProcess,
+  runFurmlyProcess,
+  clearNavigationStack
+} from "./actions";
 import _ from "lodash";
 import PropTypes from "prop-types";
 import invariants from "./utils/invariants";
@@ -35,6 +39,7 @@ export default (ProgressBar, TextView, FurmlyView, Layout) => {
       fetch: (id, params) => {
         dispatch(fetchFurmlyProcess(id, params));
       },
+      clearStack: () => dispatch(clearNavigationStack()),
       runProcess: info => {
         dispatch(runFurmlyProcess(info));
       }
@@ -65,6 +70,7 @@ export default (ProgressBar, TextView, FurmlyView, Layout) => {
     }
     componentWillReceiveProps(next) {
       if (next.completed && next.completed != this.props.completed) {
+        this.props.clearStack();
         return this.props.processCompleted(next.props, this.props);
       }
 
