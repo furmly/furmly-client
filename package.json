@@ -1,6 +1,6 @@
 {
   "name": "furmly-client",
-  "version": "1.0.6",
+  "version": "1.0.7",
   "description": "Higher order components describing the contract between the front end and backend.",
   "main": "dist/bundle.js",
   "scripts": {
