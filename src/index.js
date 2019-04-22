@@ -1,4 +1,5 @@
 export { default, Deferred } from "./furmly_mapping.js";
+export { CALL_API as API_MIDDLEWARE_SYMBOL } from "redux-api-middleware";
 export { default as reducers } from "./lib/reducers";
 export { defaultRootReducer } from "./lib/utils/store";
 export { toggleAllBusyIndicators } from "./lib/utils/view";
