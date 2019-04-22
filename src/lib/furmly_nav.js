@@ -1,5 +1,4 @@
 import React, { Component } from "react";
-import { connect } from "react-redux";
 import invariants from "./utils/invariants";
 import withLogger from "./furmly_base";
 import { withNavigation } from "./furmly_navigation_context";
@@ -70,8 +69,6 @@ export default Link => {
 
   return {
     getComponent: () => withNavigation(withLogger(FurmlyNav)),
-    FurmlyNav,
-    mapDispatchToState,
-    mapStateToProps
+    FurmlyNav
   };
 };
