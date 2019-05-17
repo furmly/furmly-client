@@ -1,4 +1,4 @@
-import React, { Component } from "react";
+import React from "react";
 import invariants from "./utils/invariants";
 import withLogger from "./furmly_base";
 
@@ -7,20 +7,20 @@ export default (...args) => {
   let Section = args[0],
     Header = args[1],
     ComponentWrapper,
-    ComponentLocator;
+    componentLocator;
   if (args.length == 3) {
-    ComponentLocator = args[2];
+    componentLocator = args[2];
   } else {
     ComponentWrapper = args[2];
-    ComponentLocator = args[3];
+    componentLocator = args[3];
   }
 
   if (
     invariants.validComponent(Section, "Section") &&
     invariants.validComponent(Header, "Header") &&
-    !ComponentLocator
+    !componentLocator
   )
-    throw new Error("ComponentLocator cannot be null (furmly_container)");
+    throw new Error("componentLocator cannot be null (furmly_container)");
 
   class FurmlyContainer extends React.PureComponent {
     constructor(props) {
@@ -98,7 +98,7 @@ export default (...args) => {
             return x.order - y.order;
           })
           .map((x, index) => {
-            const FurmlyComponent = ComponentLocator(x);
+            const FurmlyComponent = componentLocator(x);
             const source = self.props.value;
             const value = source ? this.props.value[x.name] : null;
             const elemProps = {};

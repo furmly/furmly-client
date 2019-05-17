@@ -358,7 +358,6 @@ export default (
     }
     showItemView(mode, args, skipFetch, _itemTemplate) {
       let template = _itemTemplate,
-        gettingItemTemplate = false,
         existingValue;
       if (this.props.args.extra)
         switch (mode) {
@@ -423,7 +422,7 @@ export default (
         this.props.args.extra.fetchTemplateProcessor &&
         !skipFetch
       ) {
-        gettingItemTemplate = true;
+
         this.props.getItemTemplate(
           this.props.args.extra.fetchTemplateProcessor,
           args,
@@ -436,7 +435,7 @@ export default (
         itemViewElements: template,
         mode
       };
-      //  if (!gettingItemTemplate)
+
       update.form = existingValue ? copy(existingValue) : existingValue;
       this.setState(update);
     }

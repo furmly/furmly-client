@@ -114,7 +114,7 @@ const createMap = () => {
     get _defaultMap() {
       return Object.assign({}, _defaultMap);
     },
-    componentLocator(interceptors) {
+    componentLocator(interceptors, throwOnUndefined = true) {
       return context => {
         let control;
         if (interceptors) control = interceptors(context, this, _defaultMap);
@@ -124,7 +124,12 @@ const createMap = () => {
             let upper = context.uid.toUpperCase();
             if (this[upper]) return this[upper];
           }
-          return this[context.elementType];
+          if (this[context.elementType]) return this[context.elementType];
+
+          if (throwOnUndefined)
+            throw new Error(
+              `No component has been configured for ${JSON.stringify(context)}`
+            );
         }
         return control;
       };

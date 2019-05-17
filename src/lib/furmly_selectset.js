@@ -33,6 +33,7 @@ export default (Layout, Picker, ProgressBar, Container) => {
       component_uid
     };
   };
+  const pickerKey = "id";
   const getPickerItemsById = function(v, items) {
     if (v && items && items.length) {
       let z = unwrapObjectValue(v);
@@ -262,6 +263,12 @@ export default (Layout, Picker, ProgressBar, Container) => {
         v
       );
     }
+    getPickerItemValue(item) {
+      return item.id;
+    }
+    getPickerKey() {
+      return pickerKey;
+    }
     respondToPickerValueChanged(v) {
       this.onContainerValueChanged(null, this.getPickerValue(v));
     }
@@ -299,7 +306,8 @@ export default (Layout, Picker, ProgressBar, Container) => {
               items={this.props.items}
               errors={this.state.errors}
               displayProperty="displayLabel"
-              keyProperty={["id"]}
+              getKey={this.getPickerKey}
+              getKeyValue={this.getPickerItemValue}
               value={unwrapObjectValue(this.props.value)}
               valueChanged={this.respondToPickerValueChanged}
             />

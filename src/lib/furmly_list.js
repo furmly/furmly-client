@@ -398,6 +398,8 @@ export default (
           errorText={<ErrorText value={this.state.errors} />}
           modal={
             <Modal
+              title={`${this.props.label} > ${(this.state.edit && "edit") ||
+                "add"}`}
               template={
                 <Container
                   elements={this.state.itemTemplate}

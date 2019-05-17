@@ -41,7 +41,7 @@ export default (ProgressIndicator, Layout, Container) => {
       }
     };
   };
-
+  const defaultKeyProperty = ["uid", "_id", "id"];
   class FurmlySelect extends Component {
     constructor(props) {
       super(props);
@@ -91,19 +91,26 @@ export default (ProgressIndicator, Layout, Container) => {
     isValidValue(props) {
       const items = props.items;
       const value = unwrapObjectValue(props.value);
-      return (
-        items &&
-        items.length &&
-        items.filter(x => this.getKeyValue(props, x) == value).length
-      );
+      if (items) {
+        for (let i = 0; i < items.length; i++) {
+          if (this.isValidKeyValue(props, items[i], value)) return true;
+        }
+      }
+      return false;
     }
-    getDisplayValue(value = this.props.value, items = this.props.items) {
+    getDisplayValue(
+      value = this.props.value,
+      items = this.props.items,
+      props = this.props
+    ) {
       value = unwrapObjectValue(value);
-      return (
-        items &&
-        items.length &&
-        items.filter(x => x._id == value || x.uid == value)[0].displayLabel
-      );
+      if (items) {
+        for (let i = 0; i < items.length; i++) {
+          if (this.isValidKeyValue(props, items[i], value))
+            return items[i].displayLabel;
+        }
+      }
+      return "";
     }
 
     getValueBasedOnMode(v) {
@@ -134,13 +141,11 @@ export default (ProgressIndicator, Layout, Container) => {
       }
 
       if (next.items && next.items.length == 1 && !next.value) {
-        return this.selectFirstItem(this.getKeyValue(next, next.items[0]));
+        return this.selectFirstItem(this.getKeyValue(next.items[0], next));
       }
 
       if (
-        (next.items &&
-          next.value &&
-          !this.isValidValue(next)) ||
+        (next.items && next.value && !this.isValidValue(next)) ||
         (!next.items && !next.busy && !next.error)
       ) {
         return this.onValueChanged(null);
@@ -164,9 +169,9 @@ export default (ProgressIndicator, Layout, Container) => {
           config: { keyProperty }
         }
       } = props;
-      return (keyProperty && keyProperty.split(",")) || ["uid", "_id"];
+      return (keyProperty && keyProperty.split(",")) || defaultKeyProperty;
     }
-    getKeyValue(props, item) {
+    getKeyValue(item, props = this.props) {
       const keys = this.getKey(props);
       let val;
       for (let i = 0; i < keys.length; i++) {
@@ -175,6 +180,15 @@ export default (ProgressIndicator, Layout, Container) => {
       }
       return val;
     }
+    isValidKeyValue(props, item, value) {
+      const keys = this.getKey(props);
+      for (let i = 0; i < keys.length; i++) {
+        const val = item[keys[i]];
+        if (typeof val !== "undefined" && val == value) return true;
+      }
+      return false;
+    }
+
     componentDidMount() {
       this._mounted = true;
       if (!this.props.items) {
@@ -233,7 +247,8 @@ export default (ProgressIndicator, Layout, Container) => {
               label={this.props.label}
               items={this.props.items}
               displayProperty="displayLabel"
-              keyProperty={this.getKey(this.props)}
+              getKeyValue={this.getKeyValue}
+              getKey={this.getKey}
               value={unwrapObjectValue(this.props.value)}
               valueChanged={this.onValueChanged}
             />

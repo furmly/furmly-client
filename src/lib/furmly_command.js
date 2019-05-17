@@ -3,7 +3,7 @@ import { connect } from "react-redux";
 import { runFurmlyProcessor, furmlyDownloadUrl } from "./actions";
 import invariants from "./utils/invariants";
 import withLogger from "./furmly_base";
-import debug from "debug";
+
 export default (Link, customDownloadCommand) => {
   invariants.validComponent(Link, "Link");
 
