@@ -14,7 +14,7 @@ rollup({
     "uuid/v4"
   ),
   plugins: [
-    resolve({ modulesOnly: true }),
+    resolve({ jail: path.resolve(__dirname, "../src") }),
     babel({
       exclude: "node_modules/**"
     })

@@ -84,7 +84,7 @@ export default (Page, Warning, Container) => {
             <Warning message="Oops you are not supposed to be here. Something may be broken. Please navigate home/login" />
           </Page>
         );
-      /*jshint ignore:start*/
+
       return (
         <Page
           submit={this.submit}
@@ -103,7 +103,6 @@ export default (Page, Warning, Container) => {
           />
         </Page>
       );
-      /*jshint ignore:end*/
     }
   }
 

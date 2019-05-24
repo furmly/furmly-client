@@ -1,5 +1,5 @@
 {
-  "presets": [["es2015", { "modules": false }], "react"],
+  "presets": [["es2015", { "modules": false }], "react", "minify"],
   "plugins": [
     [
       "@doochik/babel-plugin-transform-react-ssr-try-catch",
