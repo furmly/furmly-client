@@ -165,7 +165,9 @@ export default (
       this.setState({
         showCommandsView: false,
         showCommandResultView: true,
-        commandResult: props.commandProcessed
+        commandResult: Array.prototype.isPrototypeOf(props.commandProcessed)
+          ? props.commandProcessed
+          : [props.commandProcessed]
       });
     }
 
@@ -422,7 +424,6 @@ export default (
         this.props.args.extra.fetchTemplateProcessor &&
         !skipFetch
       ) {
-
         this.props.getItemTemplate(
           this.props.args.extra.fetchTemplateProcessor,
           args,
