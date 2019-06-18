@@ -19,7 +19,10 @@ const sessionHasExpired = function(action) {
 export const defaultRootReducer = function(state, action) {
   if (action.type === ACTIONS.SIGN_OUT || sessionHasExpired(action)) {
     state = {};
-    if (sessionHasExpired(action)) state.popup = { message: "Session Expired" };
+    if (sessionHasExpired(action)) {
+      state.message = "Session Expired";
+      state.SESSION_EXPIRED = 1;
+    }
   }
   return combinedReducers(state, action);
 };
