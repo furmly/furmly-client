@@ -20,8 +20,7 @@ export const defaultRootReducer = function(state, action) {
   if (action.type === ACTIONS.SIGN_OUT || sessionHasExpired(action)) {
     state = {};
     if (sessionHasExpired(action)) {
-      state.message = "Session Expired";
-      state.SESSION_EXPIRED = 1;
+      state.SESSION_EXPIRED = new Date();
     }
   }
   return combinedReducers(state, action);

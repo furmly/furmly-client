@@ -1,12 +1,13 @@
 import React, { Component } from "react";
 import { connect } from "react-redux";
+import _ from "lodash";
+import PropTypes from "prop-types";
 import {
   fetchFurmlyProcess,
   runFurmlyProcess,
   clearNavigationStack
 } from "./actions";
-import _ from "lodash";
-import PropTypes from "prop-types";
+
 import invariants from "./utils/invariants";
 import withLogger from "./furmly_base";
 import { withTemplateCacheProvider } from "./furmly_template_cache_context";
@@ -25,12 +26,16 @@ export default (ProgressBar, TextView, FurmlyView, Layout) => {
   //map elements in FurmlyInput props to elements in store.
   const mapStateToProps = (_, initialProps) => (state, ownProps) => {
     let _state = state.furmly.view[`${ownProps.id}`];
+    let sessionExpired = state.SESSION_EXPIRED;
+
+    console.log(state);
     return {
       busy: state.furmly.view[`${ownProps.id}-busy`],
       description: _state && _state.description,
       instanceId: _state && _state.instanceId,
-      message: state.furmly.view.message,
-      completed: _state && _state.completed
+      message: state.furmly.messaging,
+      completed: _state && _state.completed,
+      sessionExpired
     };
   };
 
@@ -72,6 +77,17 @@ export default (ProgressBar, TextView, FurmlyView, Layout) => {
       if (next.completed && next.completed != this.props.completed) {
         this.props.clearStack();
         return this.props.processCompleted(next.props, this.props);
+      }
+
+      if (
+        next.sessionExpired &&
+        next.sessionExpired !== this.props.sessionExpired
+      ) {
+        return this.props.sessionExpired();
+      }
+
+      if (next.message && next.message !== this.props.message) {
+        return this.props.showMessage(next.message);
       }
 
       if (
@@ -142,6 +158,7 @@ export default (ProgressBar, TextView, FurmlyView, Layout) => {
     fetchParams: PropTypes.object,
     description: PropTypes.object
   };
+
   return {
     getComponent: () =>
       connect(

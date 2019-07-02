@@ -20,10 +20,14 @@ function copy(value) {
   return JSON.parse(JSON.stringify(value));
 }
 
-export function showMessage(message) {
+export function showMessage(
+  message,
+  category = ACTIONS.MESSAGE_CATEGORIES.INFO
+) {
   return {
-    type: "SHOW_MESSAGE",
-    message
+    type: ACTIONS.SHOW_MESSAGE,
+    message,
+    category
   };
 }
 
@@ -97,7 +101,7 @@ export function valueChanged(payload) {
 }
 function defaultError(dispatch, customType, meta, throttleEnabled) {
   return {
-    type: customType || "SHOW_MESSAGE",
+    type: customType || ACTIONS.SHOW_MESSAGE,
     meta: (action, state, res) => {
       if (customType && res.status !== 401) {
         dispatch(
@@ -107,7 +111,8 @@ function defaultError(dispatch, customType, meta, throttleEnabled) {
                 res.headers.map &&
                 res.headers.map.errormessage &&
                 res.headers.map.errormessage[0]) ||
-              "Sorry , an error occurred while processing your request"
+              "Sorry , an error occurred while processing your request",
+            ACTIONS.MESSAGE_CATEGORIES.ERROR
           )
         );
       }
@@ -301,7 +306,8 @@ export function runFurmlyProcessor(
     )
       return dispatch(
         showMessage(
-          "Max attempts to reach our backend servers has been reached. Please check your internet connection"
+          "Max attempts to reach our backend servers has been reached. Please check your internet connection",
+          ACTIONS.MESSAGE_CATEGORIES.ERROR
         )
       );
     let waitIndex = config.waitingProcessors.length,
@@ -412,7 +418,7 @@ export function runFurmlyProcess(details) {
                   .catch(er => {
                     log(er);
                     dispatch({
-                      type: "SHOW_MESSAGE",
+                      type: ACTIONS.SHOW_MESSAGE,
                       message:
                         "An error occurred while trying to understand a response from the server."
                     });
