@@ -17,11 +17,11 @@ const sessionHasExpired = function(action) {
   );
 };
 export const defaultRootReducer = function(state, action) {
-  if (action.type === ACTIONS.SIGN_OUT || sessionHasExpired(action)) {
-    state = {};
-    if (sessionHasExpired(action)) {
-      state.SESSION_EXPIRED = new Date();
-    }
+  if (sessionHasExpired(action)) {
+    return { furmly: { ...state.furmly, SESSION_EXPIRED: new Date() } };
+  }
+  if (action.type == ACTIONS.CLEAN) {
+    state = { furmly: {} };
   }
   return combinedReducers(state, action);
 };

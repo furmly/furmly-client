@@ -6,8 +6,7 @@ export const withProcessProvider = WrappedComponent => {
   class ProcessProvider extends React.Component {
     constructor(props) {
       super(props);
-      this.state = {
-      };
+      this.state = {};
     }
     componentWillReceiveProps(next) {
       if (
@@ -35,7 +34,7 @@ export const withProcessProvider = WrappedComponent => {
     }
   }
 
-  return props => {
+  const ProcessProviderHOC = props => {
     const { id, currentStep } = props;
     return (
       <ProcessProvider id={id} currentStep={currentStep}>
@@ -43,6 +42,8 @@ export const withProcessProvider = WrappedComponent => {
       </ProcessProvider>
     );
   };
+  hoistNonReactStatic(ProcessProviderHOC, WrappedComponent);
+  return ProcessProviderHOC;
 };
 
 export const withProcess = WrappedComponent => {

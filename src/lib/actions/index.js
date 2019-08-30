@@ -20,6 +20,12 @@ function copy(value) {
   return JSON.parse(JSON.stringify(value));
 }
 
+export function clean() {
+  return {
+    type: ACTIONS.CLEAN
+  };
+}
+
 export function showMessage(
   message,
   category = ACTIONS.MESSAGE_CATEGORIES.INFO
@@ -125,11 +131,6 @@ function defaultError(dispatch, customType, meta, throttleEnabled) {
         throttled[throttleKey] = throttled[throttleKey] || [0, 1];
         throttled[throttleKey][0] += config.processorRetryOffset || 500;
         throttled[throttleKey][1] += 1;
-      }
-      //session expired
-      if (res.status == 401) {
-        dispatch(showMessage("Session may have expired"));
-        dispatch({ type: ACTIONS.SESSION_MAY_HAVE_EXPIRED });
       }
 
       return meta

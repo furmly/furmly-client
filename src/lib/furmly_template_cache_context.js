@@ -1,4 +1,5 @@
 import React from "react";
+import hoistNonReactStatic from "hoist-non-react-statics";
 import { copy } from "./utils/view";
 
 const TemplateCacheContext = React.createContext({});
@@ -28,11 +29,14 @@ export const withTemplateCacheProvider = WrappedComponent => {
       );
     }
   }
-  return props => (
+
+  const CacheProvider = props => (
     <TemplateCacheProvider>
       <WrappedComponent {...props} />
     </TemplateCacheProvider>
   );
+  hoistNonReactStatic(CacheProvider, WrappedComponent);
+  return CacheProvider;
 };
 
 export const withTemplateCache = WrappedComponent => {

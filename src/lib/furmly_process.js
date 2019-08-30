@@ -5,6 +5,7 @@ import PropTypes from "prop-types";
 import {
   fetchFurmlyProcess,
   runFurmlyProcess,
+  clean,
   clearNavigationStack
 } from "./actions";
 
@@ -26,7 +27,7 @@ export default (ProgressBar, TextView, FurmlyView, Layout) => {
   //map elements in FurmlyInput props to elements in store.
   const mapStateToProps = (_, initialProps) => (state, ownProps) => {
     let _state = state.furmly.view[`${ownProps.id}`];
-    let sessionExpired = state.SESSION_EXPIRED;
+    let SESSION_EXPIRED = state.furmly.SESSION_EXPIRED;
 
     console.log(state);
     return {
@@ -35,7 +36,7 @@ export default (ProgressBar, TextView, FurmlyView, Layout) => {
       instanceId: _state && _state.instanceId,
       message: state.furmly.messaging,
       completed: _state && _state.completed,
-      sessionExpired
+      SESSION_EXPIRED
     };
   };
 
@@ -44,6 +45,7 @@ export default (ProgressBar, TextView, FurmlyView, Layout) => {
       fetch: (id, params) => {
         dispatch(fetchFurmlyProcess(id, params));
       },
+      clean: () => dispatch(clean()),
       clearStack: () => dispatch(clearNavigationStack()),
       runProcess: info => {
         dispatch(runFurmlyProcess(info));
@@ -57,14 +59,19 @@ export default (ProgressBar, TextView, FurmlyView, Layout) => {
     busy: "busy"
   };
   const componentNamesArr = Object.keys(componentNames);
+  const instances = [];
   class FurmlyProcess extends Component {
     constructor(props) {
       super(props);
       this.state = {};
       this.submit = this.submit.bind(this);
       this.getCurrentComponent = this.getCurrentComponent.bind(this);
+      this.getCurrentComponentName = this.getCurrentComponentName.bind(this);
+      this.clean = this.clean.bind(this);
     }
+
     componentDidMount() {
+      FurmlyProcess.instances.push(this);
       if (
         !this.props.description ||
         (this.props.id !== this.props.description._id &&
@@ -73,6 +80,9 @@ export default (ProgressBar, TextView, FurmlyView, Layout) => {
         this.props.fetch(this.props.id, this.props.fetchParams);
       }
     }
+    componentWillUnmount() {
+      FurmlyProcess.instances.pop();
+    }
     componentWillReceiveProps(next) {
       if (next.completed && next.completed != this.props.completed) {
         this.props.clearStack();
@@ -80,13 +90,18 @@ export default (ProgressBar, TextView, FurmlyView, Layout) => {
       }
 
       if (
-        next.sessionExpired &&
-        next.sessionExpired !== this.props.sessionExpired
+        next.SESSION_EXPIRED &&
+        next.SESSION_EXPIRED !== this.props.SESSION_EXPIRED
       ) {
         return this.props.sessionExpired();
       }
 
-      if (next.message && next.message !== this.props.message) {
+      if (
+        next.message &&
+        next.message.message &&
+        next.message !== this.props.message &&
+        next.message.message !== this.props.message.message
+      ) {
         return this.props.showMessage(next.message);
       }
 
@@ -137,6 +152,9 @@ export default (ProgressBar, TextView, FurmlyView, Layout) => {
           return <ProgressBar title="Please wait..." />;
       }
     }
+    clean() {
+      this.props.clean();
+    }
     render() {
       this.props.log("render");
 
@@ -144,8 +162,8 @@ export default (ProgressBar, TextView, FurmlyView, Layout) => {
         return (
           <Layout
             componentNames={componentNamesArr}
-            getCurrentComponent={name => this.getCurrentComponent(name)}
-            getCurrentComponentName={() => this.getCurrentComponentName()}
+            getCurrentComponent={this.getCurrentComponent}
+            getCurrentComponentName={this.getCurrentComponentName}
           />
         );
 
@@ -153,6 +171,22 @@ export default (ProgressBar, TextView, FurmlyView, Layout) => {
     }
   }
 
+  Object.defineProperties(FurmlyProcess, {
+    instances: {
+      enumerable: true,
+      get: function() {
+        return instances;
+      }
+    },
+    clean: {
+      enumerable: true,
+      value: function() {
+        if (instances.length) {
+          instances[0].clean();
+        }
+      }
+    }
+  });
   FurmlyProcess.propTypes = {
     id: PropTypes.string.isRequired,
     fetchParams: PropTypes.object,
@@ -160,17 +194,22 @@ export default (ProgressBar, TextView, FurmlyView, Layout) => {
   };
 
   return {
-    getComponent: () =>
-      connect(
-        mapStateToProps,
-        mapDispatchToProps
-      )(
-        withLogger(
-          withNavigation(
-            withTemplateCacheProvider(withProcessProvider(FurmlyProcess))
-          )
+    getComponent: () => {
+      const ProcessComponent = withLogger(
+        withNavigation(
+          withTemplateCacheProvider(withProcessProvider(FurmlyProcess))
         )
-      ),
+      );
+      const ConnectedProcessComponent = connect(
+        mapStateToProps,
+        mapDispatchToProps,
+        null,
+        {
+          forwardRef: true
+        }
+      )(ProcessComponent);
+      return ConnectedProcessComponent;
+    },
     FurmlyProcess,
     mapStateToProps,
     mapDispatchToProps

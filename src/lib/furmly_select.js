@@ -51,6 +51,7 @@ export default (ProgressIndicator, Layout, Container) => {
       this.selectFirstItem = this.selectFirstItem.bind(this);
       this.getDisplayValue = this.getDisplayValue.bind(this);
       this.getKey = this.getKey.bind(this);
+      this.filter = this.filter.bind(this);
       this.getKeyValue = this.getKeyValue.bind(this);
       this.getValueBasedOnMode = this.getValueBasedOnMode.bind(this);
       this.props.validator.validate = () => {
@@ -97,6 +98,16 @@ export default (ProgressIndicator, Layout, Container) => {
         }
       }
       return false;
+    }
+    filter(query, items = this.props.items) {
+      const result = [];
+      if (items) {
+        const queryEx = new RegExp(query, "igm");
+        for (let i = 0; i < items.length; i++) {
+          if (queryEx.test(items[i].displayLabel)) result.push(items[i]);
+        }
+      }
+      return items;
     }
     getDisplayValue(
       value = this.props.value,
@@ -245,6 +256,7 @@ export default (ProgressIndicator, Layout, Container) => {
               }
               errors={this.state.errors}
               label={this.props.label}
+              filter={this.filter}
               items={this.props.items}
               displayProperty="displayLabel"
               getKeyValue={this.getKeyValue}
